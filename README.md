@@ -24,6 +24,7 @@ Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを H
 - Sora から音声データを HTTP/2 経由で受け取り、音声解析サービスへ送信します
 - 音声解析結果を HTTP/2 のレスポンスで Sora に戻します
 - 音声解析に必要とされる言語コードをクライアント事に指定可能です
+- mTLS 対応
 
 ## 使ってみる
 
