@@ -1,0 +1,5 @@
+suzu-dev
+tmp/*
+bin/*
+config.yaml
+suzu.log
