@@ -1,5 +1,6 @@
 # Audio Streaming Gateway Suzu
 
+
 **現在リリースに向けて開発中です**
 
 [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/shiguredo/suzu.svg)](https://github.com/shiguredo/suzu)
@@ -31,6 +32,7 @@ Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを H
 - Sora は受け取った解析結果を DataChannel 経由でクライアントへプッシュで送信します
 - 音声解析に必要とされる言語コードをクライアント事に指定可能です
 - mTLS 対応
+
 ## 使ってみる
 
 TBD
