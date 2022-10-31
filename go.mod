@@ -3,7 +3,7 @@ module github.com/shiguredo/suzu
 go 1.19
 
 require (
-	github.com/aws/aws-sdk-go v1.44.114
+	github.com/aws/aws-sdk-go v1.44.126
 	github.com/goccy/go-yaml v1.9.5
 	github.com/labstack/echo-contrib v0.13.0
 	github.com/labstack/echo/v4 v4.9.0
