@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go v1.44.126
 	github.com/goccy/go-yaml v1.9.6
 	github.com/labstack/echo-contrib v0.13.0
-	github.com/labstack/echo/v4 v4.9.0
+	github.com/labstack/echo/v4 v4.9.1
 	github.com/pion/randutil v0.1.0
 	github.com/pion/rtp v1.7.13
 	github.com/rs/zerolog v1.28.0
