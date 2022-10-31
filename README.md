@@ -1,6 +1,7 @@
 # Audio Streaming Gateway Suzu
 
-**現在開発中です**
+
+**現在リリースに向けて開発中です**
 
 [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/shiguredo/suzu.svg)](https://github.com/shiguredo/suzu)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -17,12 +18,18 @@ Please read https://github.com/shiguredo/oss/blob/master/README.en.md before use
 
 ## Audio Streaming Gateway Suzu について
 
-Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを HTTP/2 経由で受け取り、音声解析サービスへ送信しその結果を Sora へ戻すゲートウェイです。
+Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを HTTP/2 経由で受け取り、
+音声解析サービスへ送信し解析結果を Sora へ戻すゲートウェイです。
+
+## 目的
+
+リアルタイム通話で気軽に音声解析サービスを利用できる仕組みを提供する事です。
 
 ## 特徴
 
 - Sora から音声データを HTTP/2 経由で受け取り、音声解析サービスへ送信します
-- 音声解析結果を HTTP/2 のレスポンスで Sora に戻します
+- 音声解析サービスの解析結果を HTTP/2 レスポンスで Sora に戻します
+- Sora は受け取った解析結果を DataChannel 経由でクライアントへプッシュで送信します
 - 音声解析に必要とされる言語コードをクライアント事に指定可能です
 - mTLS 対応
 

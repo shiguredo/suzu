@@ -1,0 +1,29 @@
+---
+debug: true
+
+# Suzu の HTTP リクエストの待ち受けアドレスとポートです
+listen_addr: "127.0.0.1"
+listen_port: 48080
+
+exporter_ip_address: "127.0.0.1"
+exporter_port: 48081
+
+skip_basic_auth: true
+
+audio_sample_rate:   48000
+audio_channel_count: 2
+
+aws_credential_file: "./credentials"
+aws_profile: "default"
+aws_region: "ap-northeast-1"
+aws_enable_partial_results_stabilization: false
+aws_enable_channel_identification: true
+
+dump_file: "./dump.json"
+
+log_dir: .
+log_name: suzu.jsonl
+log_debug: false
+log_stdout: true
+
+time_to_wait_for_opus_packet: 500ms
