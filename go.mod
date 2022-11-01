@@ -12,7 +12,7 @@ require (
 	github.com/rs/zerolog v1.28.0
 	github.com/shiguredo/lumberjack/v3 v3.0.0
 	golang.org/x/net v0.1.0
-	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0
+	golang.org/x/sync v0.1.0
 )
 
 require (
