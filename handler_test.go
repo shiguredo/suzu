@@ -88,8 +88,10 @@ func TestSpeechHandler(t *testing.T) {
 		handler = TestHandler
 		path = "/test"
 	}
-
-	s := NewServer(&config, "aws")
+	s, err := NewServer(&config, "aws")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	t.Run("success", func(t *testing.T) {
 		defer goleak.VerifyNone(t)
@@ -311,7 +313,10 @@ func TestSpeechHandler(t *testing.T) {
 
 		config.TimeToWaitForOpusPacket = "100ms"
 
-		s := NewServer(&config, "aws")
+		s, err := NewServer(&config, "aws")
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		r := readDumpFile(t, "testdata/dump.json", 150*time.Millisecond)
 		defer r.Close()
@@ -330,7 +335,7 @@ func TestSpeechHandler(t *testing.T) {
 		c := e.NewContext(req2, rec)
 
 		h := s.createSpeechHandler(handler)
-		err := h(c)
+		err = h(c)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -368,7 +373,10 @@ func TestHealthcheckHandler(t *testing.T) {
 		Body       string
 	}
 
-	s := NewServer(&config, "aws")
+	s, err := NewServer(&config, "aws")
+	if err != nil {
+		t.Fatal(err)
+	}
 	body := fmt.Sprintf(`{"revision":"%s"}`, s.config.Revision)
 
 	testCaces := []struct {

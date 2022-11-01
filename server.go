@@ -27,7 +27,7 @@ type Server struct {
 	http.Server
 }
 
-func NewServer(c *Config, service string) *Server {
+func NewServer(c *Config, service string) (*Server, error) {
 	h2s := &http2.Server{
 		MaxConcurrentStreams: c.HTTP2MaxConcurrentStreams,
 		MaxReadFrameSize:     c.HTTP2MaxReadFrameSize,
@@ -50,7 +50,7 @@ func NewServer(c *Config, service string) *Server {
 		certPool, err := appendCerts(clientCAPath)
 		if err != nil {
 			zlog.Error().Err(err).Send()
-			panic(err)
+			return nil, err
 		}
 
 		tlsConfig := &tls.Config{
@@ -61,8 +61,7 @@ func NewServer(c *Config, service string) *Server {
 	}
 
 	if err := http2.ConfigureServer(&s.Server, h2s); err != nil {
-		// TODO: error を返す
-		panic(err)
+		return nil, err
 	}
 
 	e.Pre(middleware.RemoveTrailingSlash())
@@ -85,7 +84,7 @@ func NewServer(c *Config, service string) *Server {
 	case "gcp":
 		e.POST("/speech", s.createSpeechHandler(SpeechToTextHandler))
 	default:
-		panic("UNEXPECTED-SERVICE")
+		return nil, fmt.Errorf("UNEXPECTED-SERVICE")
 	}
 	e.POST("/test", s.createSpeechHandler(TestHandler))
 	e.POST("/dump", s.createSpeechHandler(PacketDumpHandler))
@@ -100,7 +99,7 @@ func NewServer(c *Config, service string) *Server {
 	s.echo = e
 	s.echoExporter = echoExporter
 
-	return s
+	return s, nil
 }
 
 func (s *Server) Start(address string, port int) error {

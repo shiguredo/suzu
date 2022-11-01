@@ -52,7 +52,7 @@ func main() {
 		log.Fatal("cannot parse config file, err=", err)
 	}
 
-	server := suzu.NewServer(&config, serviceType)
+	server, err := suzu.NewServer(&config, serviceType)
 	if err != nil {
 		log.Fatal("cannot create server:", err)
 	}
