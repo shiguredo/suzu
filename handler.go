@@ -40,7 +40,7 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 		}{}
 		if err := (&echo.DefaultBinder{}).BindHeaders(c, &h); err != nil {
 			zlog.Error().Err(err).Msg("INVALID-HEADER")
-			return err
+			return echo.NewHTTPError(http.StatusBadRequest)
 		}
 
 		languageCode, err := GetLanguageCode(h.SoraAudioStreamingLanguageCode, nil)
