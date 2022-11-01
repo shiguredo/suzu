@@ -441,3 +441,8 @@ func (r *ReaderWithTimer) Read(ctx context.Context, d time.Duration) <-chan Resp
 func silentPacket() []byte {
 	return []byte{252, 255, 254}
 }
+
+func SpeechToTextHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
+	ch := make(chan Response)
+	return ch, errors.New("NOT-IMPLEMENTED")
+}

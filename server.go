@@ -27,7 +27,7 @@ type Server struct {
 	http.Server
 }
 
-func NewServer(c *Config) *Server {
+func NewServer(c *Config, service string) *Server {
 	h2s := &http2.Server{
 		MaxConcurrentStreams: c.HTTP2MaxConcurrentStreams,
 		MaxReadFrameSize:     c.HTTP2MaxReadFrameSize,
@@ -79,7 +79,14 @@ func NewServer(c *Config) *Server {
 	// LB からのヘルスチェック専用 API
 	e.GET("/.ok", s.healthcheckHandler)
 
-	e.POST("/speech", s.createSpeechHandler(AmazonTranscribeHandler))
+	switch service {
+	case "aws":
+		e.POST("/speech", s.createSpeechHandler(AmazonTranscribeHandler))
+	case "gcp":
+		e.POST("/speech", s.createSpeechHandler(SpeechToTextHandler))
+	default:
+		panic("UNEXPECTED-SERVICE")
+	}
 	e.POST("/test", s.createSpeechHandler(TestHandler))
 	e.POST("/dump", s.createSpeechHandler(PacketDumpHandler))
 
