@@ -27,15 +27,6 @@ type Config struct {
 	BasicAuthUsername string `yaml:"basic_auth_username"`
 	BasicAuthPassword string `yaml:"basic_auth_password"`
 
-	SampleRate   int `yaml:"audio_sample_rate"`
-	ChannelCount int `yaml:"audio_channel_count"`
-
-	AwsCredentialFile                    string `yaml:"aws_credential_file"`
-	AwsProfile                           string `yaml:"aws_profile"`
-	AwsRegion                            string `yaml:"aws_region"`
-	AwsEnablePartialResultsStabilization bool   `yaml:"aws_enable_partial_results_stabilization"`
-	AwsEnableChannelIdentification       bool   `yaml:"aws_enable_channel_identification"`
-
 	DumpFile string `yaml:"dump_file"`
 
 	LogDir    string `yaml:"log_dir"`
@@ -44,6 +35,28 @@ type Config struct {
 	LogStdout bool   `yaml:"log_stdout"`
 
 	TimeToWaitForOpusPacket string `yaml:"time_to_wait_for_opus_packet"`
+
+	// 共通
+	SampleRate   int `yaml:"audio_sample_rate"`
+	ChannelCount int `yaml:"audio_channel_count"`
+
+	// amazon transcribe
+	AwsCredentialFile                    string `yaml:"aws_credential_file"`
+	AwsProfile                           string `yaml:"aws_profile"`
+	AwsRegion                            string `yaml:"aws_region"`
+	AwsEnablePartialResultsStabilization bool   `yaml:"aws_enable_partial_results_stabilization"`
+	AwsEnableChannelIdentification       bool   `yaml:"aws_enable_channel_identification"`
+
+	// google speech to text
+	EnableSeparateRecognitionPerChannel bool     `yaml:"enable_separate_recognition_per_channel"`
+	AlternativeLanguageCodes            []string `yaml:"alternative_language_codes"`
+	MaxAlternatives                     int32    `yaml:"max_alternatives"`
+	ProfanityFilter                     bool     `yaml:"profanity_filter"`
+	EnableWordTimeOffsets               bool     `yaml:"enable_word_time_offsets"`
+	EnableWordConfidence                bool     `yaml:"enable_word_confidence"`
+	EnableAutomaticPunctuation          bool     `yaml:"enable_automatic_punctuation"`
+	Model                               string   `yaml:"model"`
+	UseEnhanced                         bool     `yaml:"use_enhanced"`
 }
 
 func InitConfig(data []byte, config interface{}) error {
