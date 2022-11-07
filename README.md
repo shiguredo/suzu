@@ -45,6 +45,7 @@ Suzu を使ってみたい人は [USE.md](doc/USE.md) をお読みください�
 
 - [x] [Amazon Transcribe](https://aws.amazon.com/jp/transcribe/)
 - [ ] [Google Cloud Speech-to-Text](https://cloud.google.com/speech-to-text)
+    - 対応中　　　　
 - [ ] [Microsoft Azure Speech to Text](https://azure.microsoft.com/ja-jp/products/cognitive-services/speech-to-text/)
 - [ ] [Microsoft Azure Speech Translation](https://azure.microsoft.com/ja-jp/products/cognitive-services/speech-translation/)
 - [ ] [Deepgram](https://deepgram.com/)
@@ -77,7 +78,6 @@ limitations under the License.
 
 詳細は Discord やメールなどでお気軽にお問い合わせください。
 
-- [Google Cloud Speech-to-Text](https://cloud.google.com/speech-to-text) 対応
 - [Microsoft Azure Speech to Text](https://azure.microsoft.com/ja-jp/products/cognitive-services/speech-to-text/) 対応
 - [Microsoft Azure Speech Translation](https://azure.microsoft.com/ja-jp/products/cognitive-services/speech-translation/) 対応
 - [Deepgram](https://deepgram.com/) 対応

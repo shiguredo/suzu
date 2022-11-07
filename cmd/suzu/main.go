@@ -21,8 +21,8 @@ var (
 )
 
 func init() {
-	// XXX(v): とりあえず 同じ場所にある config.yaml を読みに行く実装
-	flag.StringVar(&configFilePath, "C", "config.yaml", "Tobi の設定ファイルへのパス")
+	// XXX(v): とりあえず 同じ場所にある config.toml を読みに行く実装
+	flag.StringVar(&configFilePath, "C", "config.toml", "suzu の設定ファイルへのパス")
 	flag.StringVar(&serviceType, "service", "aws", "音声文字変換のサービス（aws, gcp）")
 	flag.Parse()
 }
@@ -35,7 +35,7 @@ func main() {
 		log.Fatal("cannot open config file, err=", err)
 	}
 
-	// yaml をパース
+	// toml をパース
 	var config suzu.Config
 	if err := suzu.InitConfig(buf, &config); err != nil {
 		// パースに失敗した場合 Fatal で終了
