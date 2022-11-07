@@ -9,6 +9,12 @@ exporter_port = 48081
 
 skip_basic_auth = true
 
+# [http2]
+
+http2_fullchain_file = ""
+http2_privkey_file = ""
+
+
 audio_sample_rate = 48000
 audio_channel_count = 2
 
