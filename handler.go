@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -117,62 +115,6 @@ func NewHandlerArgs(config Config, sampleRate uint32, channelCount uint16, soraC
 	}
 }
 
-func AmazonTranscribeHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
-	ch := make(chan Response)
-	r, w := io.Pipe()
-
-	at := NewAmazonTranscribe(args.Config.AwsRegion, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount), args.Config.AwsEnablePartialResultsStabilization, args.Config.AwsEnableChannelIdentification)
-
-	go func() {
-		defer w.Close()
-		if err := opus2ogg(ctx, body, w, args.SampleRate, args.ChannelCount, args.Config); err != nil {
-			at.ResultCh <- TranscriptionResult{
-				Error: err,
-			}
-			return
-		}
-	}()
-
-	go func() {
-		defer at.Close()
-		if err := at.Start(ctx, args.Config, r); err != nil {
-			at.ResultCh <- TranscriptionResult{
-				Error: err,
-			}
-			return
-		}
-	}()
-
-	go func() {
-		defer close(ch)
-
-		for tr := range at.ResultCh {
-			if err := tr.Error; err != nil {
-				ch <- Response{
-					Error: err,
-				}
-				return
-			}
-			ch <- Response{
-				ChannelID: tr.ChannelID,
-				Message:   string(tr.Message),
-			}
-		}
-	}()
-
-	return ch, nil
-}
-
-func TestHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
-	ch := handleTest(ctx, body, args.Config)
-	return ch, nil
-}
-
-func PacketDumpHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
-	ch := handlePacketDump(ctx, args.Config.DumpFile, body, args.SoraChannelID, args.SoraConnectionID, args.LanguageCode, args.SampleRate, args.ChannelCount)
-	return ch, nil
-}
-
 func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sampleRate uint32, channelCount uint16, c Config) error {
 	o, err := NewWith(oggWriter, sampleRate, channelCount)
 	if err != nil {
@@ -240,131 +182,6 @@ type Response struct {
 	ChannelID *string `json:"channel_id"`
 	Message   string  `json:"message"`
 	Error     error   `json:"error,omitempty"`
-}
-
-func handleTest(ctx context.Context, r io.Reader, c Config) <-chan Response {
-	ch := make(chan Response)
-
-	go func() {
-		defer close(ch)
-
-		// TODO: エラー処理
-		t, _ := time.ParseDuration(c.TimeToWaitForOpusPacket)
-
-		reader := NewReaderWithTimer(r)
-		resultCh := reader.Read(ctx, t)
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case res := <-resultCh:
-				if err := res.Error; err != nil {
-					ch <- Response{
-						Error: res.Error,
-					}
-					return
-				}
-				ch <- Response{
-					ChannelID: &[]string{"ch_0"}[0],
-					Message:   fmt.Sprintf("n: %d", len(res.Message)),
-				}
-			}
-
-		}
-	}()
-
-	return ch
-}
-
-type dump struct {
-	Timestamp    int64  `json:"timestamp"`
-	ChannelID    string `json:"channel_id"`
-	ConnectionID string `json:"connection_id"`
-	LanguageCode string `json:"language_code"`
-	SampleRate   uint32 `json:"sample_rate"`
-	ChannelCount uint16 `json:"channel_count"`
-	Payload      []byte `json:"payload"`
-}
-
-func handlePacketDump(ctx context.Context, filename string, r io.Reader, channelID, connectionID, languageCode string, sampleRate uint32, channelCount uint16) <-chan Response {
-	ch := make(chan Response)
-
-	go func() {
-		defer close(ch)
-
-		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			select {
-			case <-ctx.Done():
-				return
-			case ch <- Response{
-				Error: err,
-			}:
-				return
-			}
-
-		}
-		defer f.Close()
-
-		enc := json.NewEncoder(f)
-
-		buf := make([]byte, 4*1024)
-
-		for {
-			n, err := r.Read(buf)
-			if err != nil {
-				select {
-				case <-ctx.Done():
-					return
-				case ch <- Response{
-					Error: err,
-				}:
-					return
-				}
-
-			}
-			if n > 0 {
-				p := make([]byte, n)
-				copy(p, buf[:n])
-				dump := dump{
-					Timestamp:    time.Now().UnixMilli(),
-					ChannelID:    channelID,
-					ConnectionID: connectionID,
-					LanguageCode: languageCode,
-					SampleRate:   sampleRate,
-					ChannelCount: channelCount,
-					Payload:      p,
-				}
-				if err := enc.Encode(dump); err != nil {
-					select {
-					case <-ctx.Done():
-						return
-					case ch <- Response{
-						Error: err,
-					}:
-						return
-					}
-				}
-				select {
-				case <-ctx.Done():
-					return
-				case ch <- Response{
-					ChannelID: &[]string{"ch_0"}[0],
-					Message:   fmt.Sprintf("n: %d", n),
-				}:
-				}
-			}
-		}
-	}()
-
-	return ch
-}
-
-func (s *Server) healthcheckHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"revision": s.config.Revision,
-	})
 }
 
 type ReaderWithTimer struct {
@@ -440,70 +257,4 @@ func (r *ReaderWithTimer) Read(ctx context.Context, d time.Duration) <-chan Resp
 
 func silentPacket() []byte {
 	return []byte{252, 255, 254}
-}
-
-func SpeechToTextHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
-	ch := make(chan Response)
-
-	r, w := io.Pipe()
-
-	go func() {
-		defer w.Close()
-		if err := opus2ogg(ctx, body, w, args.SampleRate, args.ChannelCount, args.Config); err != nil {
-			fmt.Println(err)
-			return
-		}
-	}()
-
-	stt := NewSpeechToText()
-	stream, err := stt.Start(ctx, args.Config, args, r)
-	if err != nil {
-		return nil, err
-	}
-
-	interimResults := false
-	go func() {
-		for {
-			resp, err := stream.Recv()
-			if err == io.EOF {
-				fmt.Println(err)
-				return
-			}
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			if err := resp.Error; err != nil {
-				if err.Code == 3 || err.Code == 11 {
-					fmt.Println(err)
-				}
-				fmt.Println(err)
-				return
-			}
-
-			for _, result := range resp.Results {
-				for _, alternative := range result.Alternatives {
-					if args.Config.EnableWordConfidence {
-						for _, word := range alternative.Words {
-							fmt.Printf("%s, Confidence: %v\n", word.Word, word)
-						}
-					}
-					transcript := alternative.Transcript
-					if interimResults {
-						ch <- Response{
-							Message: transcript,
-						}
-					} else {
-						if result.IsFinal {
-							ch <- Response{
-								Message: transcript,
-							}
-						}
-					}
-				}
-			}
-		}
-	}()
-
-	return ch, nil
 }
