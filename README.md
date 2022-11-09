@@ -19,7 +19,7 @@ Please read https://github.com/shiguredo/oss/blob/master/README.en.md before use
 ## Audio Streaming Gateway Suzu について
 
 Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを HTTP/2 経由で受け取り、
-音声解析サービスへ送信し解析結果を Sora へ戻すゲートウェイです。
+音声解析サービスへ送信し解析結果を Sora 経由で DataChannel でクライアントへ通知するゲートウェイです。
 
 ## 目的
 
