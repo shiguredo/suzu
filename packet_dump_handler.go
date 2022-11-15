@@ -3,7 +3,6 @@ package suzu
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"time"
@@ -19,81 +18,49 @@ type dump struct {
 	Payload      []byte `json:"payload"`
 }
 
-func PacketDumpHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
-	ch := handlePacketDump(ctx, args.Config.DumpFile, body, args.SoraChannelID, args.SoraConnectionID, args.LanguageCode, args.SampleRate, args.ChannelCount)
-	return ch, nil
-}
+func PacketDumpHandler(ctx context.Context, body io.Reader, args HandlerArgs) (*io.PipeReader, error) {
+	c := args.Config
+	filename := c.DumpFile
+	channelID := args.SoraChannelID
+	connectionID := args.SoraConnectionID
 
-func handlePacketDump(ctx context.Context, filename string, r io.Reader, channelID, connectionID, languageCode string, sampleRate uint32, channelCount uint16) <-chan Response {
-	ch := make(chan Response)
+	r, w := io.Pipe()
 
 	go func() {
-		defer close(ch)
-
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			select {
-			case <-ctx.Done():
-				return
-			case ch <- Response{
-				Error: err,
-			}:
-				return
-			}
-
+			w.CloseWithError(err)
+			return
 		}
 		defer f.Close()
+		defer w.Close()
 
-		enc := json.NewEncoder(f)
-
-		buf := make([]byte, 4*1024)
+		mv := io.MultiWriter(f, w)
+		encoder := json.NewEncoder(mv)
 
 		for {
+			buf := make([]byte, FrameSize)
 			n, err := r.Read(buf)
 			if err != nil {
-				select {
-				case <-ctx.Done():
-					return
-				case ch <- Response{
-					Error: err,
-				}:
-					return
-				}
-
+				return
 			}
 			if n > 0 {
-				p := make([]byte, n)
-				copy(p, buf[:n])
 				dump := dump{
 					Timestamp:    time.Now().UnixMilli(),
 					ChannelID:    channelID,
 					ConnectionID: connectionID,
-					LanguageCode: languageCode,
-					SampleRate:   sampleRate,
-					ChannelCount: channelCount,
-					Payload:      p,
+					LanguageCode: args.LanguageCode,
+					SampleRate:   args.SampleRate,
+					ChannelCount: args.ChannelCount,
+					Payload:      buf[:n],
 				}
-				if err := enc.Encode(dump); err != nil {
-					select {
-					case <-ctx.Done():
-						return
-					case ch <- Response{
-						Error: err,
-					}:
-						return
-					}
-				}
-				select {
-				case <-ctx.Done():
+				if err := encoder.Encode(dump); err != nil {
+					w.CloseWithError(err)
 					return
-				case ch <- Response{
-					ChannelID: &[]string{"ch_0"}[0],
-					Message:   fmt.Sprintf("n: %d", n),
-				}:
 				}
 			}
 		}
 	}()
 
-	return ch
+	return r, nil
 }

@@ -2,7 +2,6 @@ package suzu
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -18,7 +17,7 @@ import (
 
 // https://github.com/herrberk/go-http2-streaming/blob/master/http2/server.go
 // 受信時はくるくるループを回す
-func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerArgs) (<-chan Response, error)) echo.HandlerFunc {
+func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerArgs) (*io.PipeReader, error)) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
@@ -63,19 +62,27 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 		args := NewHandlerArgs(*s.config, sampleRate, channelCount, h.SoraChannelID, h.SoraConnectionID, languageCode)
 
 		// resultCh は関数内で閉じる想定
-		resultCh, err := f(ctx, c.Request().Body, args)
+		reader, err := f(ctx, c.Request().Body, args)
 		if err != nil {
 			zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 			// TODO: status code
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
-		enc := json.NewEncoder(c.Response())
+		// if _, err := io.Copy(c.Response(), reader); err != nil {
+		// if err.Error() == "client disconnected" {
+		// return echo.NewHTTPError(499)
+		// }
+		// zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+		// return echo.NewHTTPError(http.StatusInternalServerError)
+		// }
 
-		for result := range resultCh {
-			if err := result.Error; err != nil {
+		for {
+			buf := make([]byte, FrameSize)
+			n, err := reader.Read(buf)
+			if err != nil {
 				if errors.Is(err, io.EOF) {
-					return c.NoContent(http.StatusOK)
+					break
 				} else if err.Error() == "client disconnected" {
 					return echo.NewHTTPError(499)
 				}
@@ -83,12 +90,13 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 				return echo.NewHTTPError(http.StatusInternalServerError)
 			}
 
-			if err := enc.Encode(result); err != nil {
-				zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
-				return echo.NewHTTPError(http.StatusInternalServerError)
+			if n > 0 {
+				if _, err := c.Response().Write(buf[:n]); err != nil {
+					zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+					return echo.NewHTTPError(http.StatusInternalServerError)
+				}
+				c.Response().Flush()
 			}
-
-			c.Response().Flush()
 		}
 
 		return c.NoContent(http.StatusOK)
@@ -126,56 +134,24 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 		return err
 	}
 
-	ch := make(chan Response)
-
-	go func() {
-		defer close(ch)
-
-		// TODO: エラー処理
-		t, err := time.ParseDuration(c.TimeToWaitForOpusPacket)
+	for {
+		buf := make([]byte, FrameSize)
+		n, err := opusReader.Read(buf)
 		if err != nil {
-			ch <- Response{
-				Error: err,
-			}
-			return
-		}
-
-		reader := NewReaderWithTimer(opusReader)
-		resultCh := reader.Read(ctx, t)
-
-		for res := range resultCh {
-			if err := res.Error; err != nil {
-				ch <- Response{
-					Error: res.Error,
-				}
-				return
-			}
-			ch <- Response{
-				ChannelID: res.ChannelID,
-				Message:   res.Message,
-			}
-		}
-	}()
-
-	for response := range ch {
-		if err := response.Error; err != nil {
 			return err
 		}
+		if n > 0 {
+			opus := codecs.OpusPacket{}
+			_, err := opus.Unmarshal(buf[:n])
+			if err != nil {
+				return err
+			}
 
-		opus := codecs.OpusPacket{}
-		_, err := opus.Unmarshal([]byte(response.Message))
-		if err != nil {
-			// TODO: 停止または継続処理
-			return err
-		}
-
-		if err := o.Write(&opus); err != nil {
-			// TODO: 停止または継続処理
-			return err
+			if err := o.Write(&opus); err != nil {
+				return err
+			}
 		}
 	}
-
-	return nil
 }
 
 type Response struct {
@@ -184,75 +160,70 @@ type Response struct {
 	Error     error   `json:"error,omitempty"`
 }
 
-type ReaderWithTimer struct {
-	R io.Reader
-}
-
-func NewReaderWithTimer(r io.Reader) ReaderWithTimer {
-	return ReaderWithTimer{r}
-}
-
-func (r *ReaderWithTimer) Read(ctx context.Context, d time.Duration) <-chan Response {
-	type res struct {
-		Message []byte
+func readerWithSilentPacketFromOpusReader(ctx context.Context, d time.Duration, opusReader io.Reader) (io.Reader, error) {
+	type reqeust struct {
+		Payload []byte
 		Error   error
 	}
 
-	responseCh := make(chan Response)
-	resCh := make(chan res)
+	r, w := io.Pipe()
+	ch := make(chan reqeust)
 
 	go func() {
-		defer close(resCh)
-
-		buf := make([]byte, 4*1024)
-
 		for {
-			n, err := r.R.Read(buf)
+			buf := make([]byte, FrameSize)
+			n, err := opusReader.Read(buf)
 			if err != nil {
-				resCh <- res{
+				ch <- reqeust{
 					Error: err,
 				}
 				return
 			}
+
 			if n > 0 {
-				m := make([]byte, n)
-				copy(m, buf[:n])
-				resCh <- res{
-					Message: m,
+				ch <- reqeust{
+					Payload: buf[:n],
 				}
 			}
 		}
 	}()
 
 	timer := time.NewTimer(d)
-
 	go func() {
-		defer close(responseCh)
-		defer timer.Stop()
-
 		for {
 			select {
 			case <-timer.C:
-				responseCh <- Response{
-					Message: string(silentPacket()),
+				if _, err := w.Write(silentPacket()); err != nil {
+					w.CloseWithError(err)
+					return
 				}
-			case ret := <-resCh:
-				if err := ret.Error; err != nil {
-					responseCh <- Response{
-						Error: err,
+			case <-ctx.Done():
+				w.CloseWithError(ctx.Err())
+				if !timer.Stop() {
+					<-timer.C
+				}
+				return
+			case req := <-ch:
+				if err := req.Error; err != nil {
+					w.CloseWithError(err)
+					if !timer.Stop() {
+						<-timer.C
 					}
 					return
 				}
-				responseCh <- Response{
-					Message: string(ret.Message),
+				if _, err := w.Write(req.Payload); err != nil {
+					w.CloseWithError(ctx.Err())
+					if !timer.Stop() {
+						<-timer.C
+					}
+					return
 				}
 			}
-
 			timer.Reset(d)
 		}
 	}()
 
-	return responseCh
+	return r, nil
 }
 
 func silentPacket() []byte {

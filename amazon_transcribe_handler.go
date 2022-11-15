@@ -2,28 +2,37 @@ package suzu
 
 import (
 	"context"
+	"encoding/json"
 	"io"
+	"time"
 )
 
-func AmazonTranscribeHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
-	ch := make(chan Response)
-	r, w := io.Pipe()
-
+func AmazonTranscribeHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(args.Config.AwsRegion, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount), args.Config.AwsEnablePartialResultsStabilization, args.Config.AwsEnableChannelIdentification)
 
+	d, err := time.ParseDuration(args.Config.TimeToWaitForOpusPacket)
+	if err != nil {
+		return nil, err
+	}
+
+	reader, err := readerWithSilentPacketFromOpusReader(ctx, d, conn)
+	if err != nil {
+		return nil, err
+	}
+
+	oggReader, oggWriter := io.Pipe()
 	go func() {
-		defer w.Close()
-		if err := opus2ogg(ctx, body, w, args.SampleRate, args.ChannelCount, args.Config); err != nil {
-			at.ResultCh <- TranscriptionResult{
-				Error: err,
-			}
+		if err := opus2ogg(ctx, reader, oggWriter, args.SampleRate, args.ChannelCount, args.Config); err != nil {
+			oggWriter.CloseWithError(err)
 			return
 		}
+		oggWriter.Close()
 	}()
 
 	go func() {
 		defer at.Close()
-		if err := at.Start(ctx, args.Config, r); err != nil {
+
+		if err := at.Start(ctx, args.Config, oggReader); err != nil {
 			at.ResultCh <- TranscriptionResult{
 				Error: err,
 			}
@@ -31,22 +40,26 @@ func AmazonTranscribeHandler(ctx context.Context, body io.Reader, args HandlerAr
 		}
 	}()
 
+	r, w := io.Pipe()
 	go func() {
-		defer close(ch)
+		encoder := json.NewEncoder(w)
 
 		for tr := range at.ResultCh {
 			if err := tr.Error; err != nil {
-				ch <- Response{
-					Error: err,
-				}
+				w.CloseWithError(err)
 				return
 			}
-			ch <- Response{
+
+			res := Response{
 				ChannelID: tr.ChannelID,
 				Message:   string(tr.Message),
+			}
+			if err := encoder.Encode(res); err != nil {
+				w.CloseWithError(err)
+				return
 			}
 		}
 	}()
 
-	return ch, nil
+	return r, nil
 }

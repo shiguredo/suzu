@@ -2,47 +2,61 @@ package suzu
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"time"
 )
 
-func TestHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
-	ch := handleTest(ctx, body, args.Config)
-	return ch, nil
-}
+func TestHandler(ctx context.Context, opusReader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
+	c := args.Config
 
-func handleTest(ctx context.Context, r io.Reader, c Config) <-chan Response {
-	ch := make(chan Response)
+	d, err := time.ParseDuration(c.TimeToWaitForOpusPacket)
+	if err != nil {
+		return nil, err
+	}
+
+	reader, err := readerWithSilentPacketFromOpusReader(ctx, d, opusReader)
+	if err != nil {
+		return nil, err
+	}
+
+	oggReader, oggWriter := io.Pipe()
 
 	go func() {
-		defer close(ch)
+		if err := opus2ogg(ctx, reader, oggWriter, args.SampleRate, args.ChannelCount, args.Config); err != nil {
+			oggWriter.CloseWithError(err)
+			return
+		}
 
-		// TODO: エラー処理
-		t, _ := time.ParseDuration(c.TimeToWaitForOpusPacket)
+		oggWriter.Close()
+	}()
 
-		reader := NewReaderWithTimer(r)
-		resultCh := reader.Read(ctx, t)
+	r, w := io.Pipe()
+
+	go func() {
+		encoder := json.NewEncoder(w)
 
 		for {
-			select {
-			case <-ctx.Done():
+			buf := make([]byte, FrameSize)
+			n, err := oggReader.Read(buf)
+			if err != nil {
+				w.CloseWithError(err)
 				return
-			case res := <-resultCh:
-				if err := res.Error; err != nil {
-					ch <- Response{
-						Error: res.Error,
-					}
-					return
-				}
-				ch <- Response{
-					ChannelID: &[]string{"ch_0"}[0],
-					Message:   fmt.Sprintf("n: %d", len(res.Message)),
-				}
 			}
 
+			if n > 0 {
+				res := Response{
+					ChannelID: &[]string{"ch_0"}[0],
+					Message:   fmt.Sprintf("n: %d", n),
+				}
+				if err := encoder.Encode(res); err != nil {
+					w.CloseWithError(err)
+					return
+				}
+			}
 		}
 	}()
 
-	return ch
+	return r, nil
 }

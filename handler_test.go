@@ -25,13 +25,14 @@ import (
 
 var (
 	config = Config{
-		Debug:         true,
-		ListenAddr:    "127.0.0.1",
-		ListenPort:    48080,
-		SkipBasicAuth: true,
-		LogDebug:      true,
-		LogStdout:     true,
-		DumpFile:      "./test-dump.json",
+		Debug:                   true,
+		ListenAddr:              "127.0.0.1",
+		ListenPort:              48080,
+		SkipBasicAuth:           true,
+		LogDebug:                true,
+		LogStdout:               true,
+		DumpFile:                "./test-dump.json",
+		TimeToWaitForOpusPacket: "500ms",
 	}
 )
 
@@ -94,10 +95,9 @@ func TestSpeechHandler(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		defer goleak.VerifyNone(t)
-
 		//opt := goleak.IgnoreCurrent()
-		//defer goleak.VerifyNone(t, opt)
+		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+		defer goleak.VerifyNone(t, opt)
 
 		r := readDumpFile(t, "testdata/dump.json", 0)
 		defer r.Close()
@@ -138,7 +138,8 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("unexpected http proto version", func(t *testing.T) {
-		defer goleak.VerifyNone(t)
+		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+		defer goleak.VerifyNone(t, opt)
 
 		logger := log.Logger
 		defer func() {
@@ -180,7 +181,8 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("missing sora-audio-streaming-language-code header", func(t *testing.T) {
-		defer goleak.VerifyNone(t)
+		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+		defer goleak.VerifyNone(t, opt)
 
 		logger := log.Logger
 		defer func() {
@@ -221,7 +223,8 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("unsupported language code", func(t *testing.T) {
-		defer goleak.VerifyNone(t)
+		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+		defer goleak.VerifyNone(t, opt)
 
 		logger := log.Logger
 		defer func() {
@@ -263,7 +266,8 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("packet read error", func(t *testing.T) {
-		defer goleak.VerifyNone(t)
+		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+		defer goleak.VerifyNone(t, opt)
 
 		logger := log.Logger
 		defer func() {
@@ -304,7 +308,8 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("silent packet", func(t *testing.T) {
-		defer goleak.VerifyNone(t)
+		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+		defer goleak.VerifyNone(t, opt)
 
 		timeout := config.TimeToWaitForOpusPacket
 		defer func() {
@@ -390,7 +395,8 @@ func TestHealthcheckHandler(t *testing.T) {
 
 	for _, tc := range testCaces {
 		t.Run(tc.Name, func(t *testing.T) {
-			defer goleak.VerifyNone(t)
+			opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+			defer goleak.VerifyNone(t, opt)
 
 			e := echo.New()
 			req := httptest.NewRequest("GET", "/.ok", nil)

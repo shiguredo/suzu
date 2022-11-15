@@ -2,39 +2,39 @@ package suzu
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 )
 
-func SpeechToTextHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
-	ch := make(chan Response)
-
-	r, w := io.Pipe()
+func SpeechToTextHandler(ctx context.Context, opusReader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
+	oggReader, oggWriter := io.Pipe()
 
 	go func() {
-		defer w.Close()
-		if err := opus2ogg(ctx, body, w, args.SampleRate, args.ChannelCount, args.Config); err != nil {
-			fmt.Println(err)
+		defer oggWriter.Close()
+		if err := opus2ogg(ctx, opusReader, oggWriter, args.SampleRate, args.ChannelCount, args.Config); err != nil {
+			oggWriter.CloseWithError(err)
 			return
 		}
 	}()
 
 	stt := NewSpeechToText()
-	stream, err := stt.Start(ctx, args.Config, args, r)
+	stream, err := stt.Start(ctx, args.Config, args, oggReader)
 	if err != nil {
+		oggWriter.CloseWithError(err)
 		return nil, err
 	}
 
+	r, w := io.Pipe()
+
 	interimResults := false
 	go func() {
+		encoder := json.NewEncoder(w)
+
 		for {
 			resp, err := stream.Recv()
-			if err == io.EOF {
-				fmt.Println(err)
-				return
-			}
 			if err != nil {
-				fmt.Println(err)
+				w.CloseWithError(err)
 				return
 			}
 			if err := resp.Error; err != nil {
@@ -42,6 +42,7 @@ func SpeechToTextHandler(ctx context.Context, body io.Reader, args HandlerArgs) 
 					fmt.Println(err)
 				}
 				fmt.Println(err)
+				w.Close()
 				return
 			}
 
@@ -54,13 +55,21 @@ func SpeechToTextHandler(ctx context.Context, body io.Reader, args HandlerArgs) 
 					}
 					transcript := alternative.Transcript
 					if interimResults {
-						ch <- Response{
+						resp := Response{
 							Message: transcript,
+						}
+						if err := encoder.Encode(resp); err != nil {
+							w.CloseWithError(err)
+							return
 						}
 					} else {
 						if result.IsFinal {
-							ch <- Response{
+							resp := Response{
 								Message: transcript,
+							}
+							if err := encoder.Encode(resp); err != nil {
+								w.CloseWithError(err)
+								return
 							}
 						}
 					}
@@ -69,5 +78,5 @@ func SpeechToTextHandler(ctx context.Context, body io.Reader, args HandlerArgs) 
 		}
 	}()
 
-	return ch, nil
+	return r, nil
 }
