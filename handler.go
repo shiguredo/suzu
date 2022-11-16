@@ -126,11 +126,17 @@ func NewHandlerArgs(config Config, sampleRate uint32, channelCount uint16, soraC
 func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sampleRate uint32, channelCount uint16, c Config) error {
 	o, err := NewWith(oggWriter, sampleRate, channelCount)
 	if err != nil {
+		if w, ok := oggWriter.(*io.PipeWriter); ok {
+			w.CloseWithError(err)
+		}
 		return err
 	}
 	defer o.Close()
 
 	if err := o.writeHeaders(); err != nil {
+		if w, ok := oggWriter.(*io.PipeWriter); ok {
+			w.CloseWithError(err)
+		}
 		return err
 	}
 
@@ -138,16 +144,25 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 		buf := make([]byte, FrameSize)
 		n, err := opusReader.Read(buf)
 		if err != nil {
+			if w, ok := oggWriter.(*io.PipeWriter); ok {
+				w.CloseWithError(err)
+			}
 			return err
 		}
 		if n > 0 {
 			opus := codecs.OpusPacket{}
 			_, err := opus.Unmarshal(buf[:n])
 			if err != nil {
+				if w, ok := oggWriter.(*io.PipeWriter); ok {
+					w.CloseWithError(err)
+				}
 				return err
 			}
 
 			if err := o.Write(&opus); err != nil {
+				if w, ok := oggWriter.(*io.PipeWriter); ok {
+					w.CloseWithError(err)
+				}
 				return err
 			}
 		}
