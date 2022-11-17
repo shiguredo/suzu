@@ -5,14 +5,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"time"
 )
 
-func SpeechToTextHandler(ctx context.Context, opusReader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
+func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
+
+	d, err := time.ParseDuration(args.Config.TimeToWaitForOpusPacket)
+	if err != nil {
+		return nil, err
+	}
+
+	reader, err := readerWithSilentPacketFromOpusReader(d, conn)
+	if err != nil {
+		return nil, err
+	}
+
 	oggReader, oggWriter := io.Pipe()
 
 	go func() {
 		defer oggWriter.Close()
-		if err := opus2ogg(ctx, opusReader, oggWriter, args.SampleRate, args.ChannelCount, args.Config); err != nil {
+		if err := opus2ogg(ctx, reader, oggWriter, args.SampleRate, args.ChannelCount, args.Config); err != nil {
 			oggWriter.CloseWithError(err)
 			return
 		}
