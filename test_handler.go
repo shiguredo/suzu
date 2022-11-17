@@ -16,7 +16,7 @@ func TestHandler(ctx context.Context, opusReader io.Reader, args HandlerArgs) (*
 		return nil, err
 	}
 
-	reader, err := readerWithSilentPacketFromOpusReader(ctx, d, opusReader)
+	reader, err := readerWithSilentPacketFromOpusReader(d, opusReader)
 	if err != nil {
 		return nil, err
 	}

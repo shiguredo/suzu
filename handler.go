@@ -61,13 +61,13 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 
 		args := NewHandlerArgs(*s.config, sampleRate, channelCount, h.SoraChannelID, h.SoraConnectionID, languageCode)
 
-		// resultCh は関数内で閉じる想定
 		reader, err := f(ctx, c.Request().Body, args)
 		if err != nil {
 			zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 			// TODO: status code
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
+		defer reader.Close()
 
 		// if _, err := io.Copy(c.Response(), reader); err != nil {
 		// if err.Error() == "client disconnected" {
@@ -84,6 +84,7 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 				if errors.Is(err, io.EOF) {
 					break
 				} else if err.Error() == "client disconnected" {
+					zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 					return echo.NewHTTPError(499)
 				}
 				zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
@@ -175,7 +176,7 @@ type Response struct {
 	Error     error   `json:"error,omitempty"`
 }
 
-func readerWithSilentPacketFromOpusReader(ctx context.Context, d time.Duration, opusReader io.Reader) (io.Reader, error) {
+func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader) (io.Reader, error) {
 	type reqeust struct {
 		Payload []byte
 		Error   error
@@ -212,12 +213,6 @@ func readerWithSilentPacketFromOpusReader(ctx context.Context, d time.Duration, 
 					w.CloseWithError(err)
 					return
 				}
-			case <-ctx.Done():
-				w.CloseWithError(ctx.Err())
-				if !timer.Stop() {
-					<-timer.C
-				}
-				return
 			case req := <-ch:
 				if err := req.Error; err != nil {
 					w.CloseWithError(err)
@@ -227,7 +222,7 @@ func readerWithSilentPacketFromOpusReader(ctx context.Context, d time.Duration, 
 					return
 				}
 				if _, err := w.Write(req.Payload); err != nil {
-					w.CloseWithError(ctx.Err())
+					w.CloseWithError(err)
 					if !timer.Stop() {
 						<-timer.C
 					}

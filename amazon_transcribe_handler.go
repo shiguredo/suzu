@@ -15,7 +15,7 @@ func AmazonTranscribeHandler(ctx context.Context, conn io.Reader, args HandlerAr
 		return nil, err
 	}
 
-	reader, err := readerWithSilentPacketFromOpusReader(ctx, d, conn)
+	reader, err := readerWithSilentPacketFromOpusReader(d, conn)
 	if err != nil {
 		return nil, err
 	}
