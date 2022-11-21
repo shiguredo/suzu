@@ -1,6 +1,7 @@
 package suzu
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -102,7 +103,7 @@ func NewServer(c *Config, service string) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Start(address string, port int) error {
+func (s *Server) Start(ctx context.Context, address string, port int) error {
 	http2FullchainFile := s.config.HTTP2FullchainFile
 	http2PrivkeyFile := s.config.HTTP2PrivkeyFile
 
@@ -114,15 +115,44 @@ func (s *Server) Start(address string, port int) error {
 		return fmt.Errorf("http2PrivkeyFile error: %s", err)
 	}
 
-	if err := s.ListenAndServeTLS(http2FullchainFile, http2PrivkeyFile); err != http.ErrServerClosed {
+	ch := make(chan error)
+	go func() {
+		defer close(ch)
+		if err := s.ListenAndServeTLS(http2FullchainFile, http2PrivkeyFile); err != http.ErrServerClosed {
+			ch <- err
+			if err := s.Shutdown(ctx); err != nil {
+				// TODO: ch は待ち受けていないので、ここでログ出力
+			}
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-ch:
 		return err
 	}
 
-	return nil
 }
 
-func (s *Server) StartExporter(address string, port int) error {
-	return s.echoExporter.Start(net.JoinHostPort(address, strconv.Itoa(port)))
+func (s *Server) StartExporter(ctx context.Context, address string, port int) error {
+	ch := make(chan error)
+	go func() {
+		err := s.echoExporter.Start(net.JoinHostPort(address, strconv.Itoa(port)))
+		if err != nil {
+			ch <- err
+			if err := s.echoExporter.Shutdown(ctx); err != nil {
+				// TODO: ch は待ち受けていないので、ここでログ出力
+			}
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-ch:
+		return err
+	}
 }
 
 func appendCerts(clientCAPath string) (*x509.CertPool, error) {
