@@ -120,9 +120,12 @@ func (s *Server) Start(ctx context.Context, address string, port int) error {
 		defer close(ch)
 		if err := s.ListenAndServeTLS(http2FullchainFile, http2PrivkeyFile); err != http.ErrServerClosed {
 			ch <- err
-			if err := s.Shutdown(ctx); err != nil {
-				// TODO: ch は待ち受けていないので、ここでログ出力
-			}
+		}
+	}()
+
+	defer func() {
+		if err := s.Shutdown(ctx); err != nil {
+			// TODO: ログ出力
 		}
 	}()
 
@@ -141,9 +144,12 @@ func (s *Server) StartExporter(ctx context.Context, address string, port int) er
 		err := s.echoExporter.Start(net.JoinHostPort(address, strconv.Itoa(port)))
 		if err != nil {
 			ch <- err
-			if err := s.echoExporter.Shutdown(ctx); err != nil {
-				// TODO: ch は待ち受けていないので、ここでログ出力
-			}
+		}
+	}()
+
+	defer func() {
+		if err := s.echoExporter.Shutdown(ctx); err != nil {
+			// TODO: ログ出力
 		}
 	}()
 
