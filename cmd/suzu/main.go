@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"os"
@@ -15,7 +16,8 @@ var (
 )
 
 var (
-	g errgroup.Group
+	configFilePath string
+	serviceType    string
 )
 
 func main() {
@@ -51,12 +53,14 @@ func main() {
 		log.Fatal("cannot create server:", err)
 	}
 
+	g, ctx := errgroup.WithContext(context.Background())
+
 	g.Go(func() error {
-		return server.Start(config.ListenAddr, config.ListenPort)
+		return server.Start(ctx, config.ListenAddr, config.ListenPort)
 	})
 
 	g.Go(func() error {
-		return server.StartExporter(config.ExporterIPAddress, config.ExporterPort)
+		return server.StartExporter(ctx, config.ExporterIPAddress, config.ExporterPort)
 	})
 
 	if err := g.Wait(); err != nil {
