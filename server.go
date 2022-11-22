@@ -125,7 +125,7 @@ func (s *Server) Start(ctx context.Context, address string, port int) error {
 
 	defer func() {
 		if err := s.Shutdown(ctx); err != nil {
-			// TODO: ログ出力
+			zlog.Error().Err(err).Send()
 		}
 	}()
 
@@ -149,7 +149,7 @@ func (s *Server) StartExporter(ctx context.Context, address string, port int) er
 
 	defer func() {
 		if err := s.echoExporter.Shutdown(ctx); err != nil {
-			// TODO: ログ出力
+			zlog.Error().Err(err).Send()
 		}
 	}()
 
