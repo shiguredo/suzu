@@ -1,32 +1,13 @@
+# 使ってみる
+
 ## パッケージダウンロード
 
 
 
-## 開発者向け
+## Amazon Transcribe を利用する
 
-### セットアップ
 
-初回だけ make init と設定を cp する必要があります。
 
-```console
-$ make init
-$ cp config.example.yaml config.yaml
-```
 
-### リリースビルド
+## Google Speech To Text を利用する
 
-```console
-$ make
-```
-
-bin 以下にバイナリが生成されます。
-
-### ライブリロード
-
-air をインストールして使ってください。
-
-[cosmtrek/air: ☁️ Live reload for Go apps](https://github.com/cosmtrek/air)
-
-```console
-$ air
-```
