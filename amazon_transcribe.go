@@ -12,10 +12,9 @@ import (
 )
 
 type TranscriptionResult struct {
-	ChannelID        *string `json:"channel_id"`
-	SoraConnectionID string  `json:"sora_connection_id"`
-	Message          string  `json:"message"`
-	Error            error   `json:"error,omitempty"`
+	ChannelID *string `json:"channel_id"`
+	Message   []byte  `json:"message"`
+	Error     error   `json:"error,omitempty"`
 }
 
 const (
@@ -128,10 +127,14 @@ L:
 				for _, res := range e.Transcript.Results {
 					if !aws.BoolValue(res.IsPartial) {
 						for _, alt := range res.Alternatives {
+							var message []byte
+							if alt.Transcript != nil {
+								message = []byte(*alt.Transcript)
+							}
 							// TODO: 他に必要なフィールドも送信する
 							at.ResultCh <- TranscriptionResult{
 								ChannelID: res.ChannelId,
-								Message:   aws.StringValue(alt.Transcript),
+								Message:   message,
 							}
 						}
 					}
