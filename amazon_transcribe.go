@@ -48,12 +48,17 @@ func NewAmazonTranscribe(region, languageCode string, sampleRateHertz, audioChan
 }
 
 func NewStartStreamTranscriptionInput(languageCode string, sampleRateHertz, audioChannelCount int64, enablePartialResultsStabilization, enableChannelIdentification bool) transcribestreamingservice.StartStreamTranscriptionInput {
+	var numberOfChannels *int64
+	if enableChannelIdentification {
+		numberOfChannels = aws.Int64(audioChannelCount)
+	}
+
 	return transcribestreamingservice.StartStreamTranscriptionInput{
 		LanguageCode:                      aws.String(languageCode),
 		MediaEncoding:                     aws.String(transcribestreamingservice.MediaEncodingOggOpus),
 		MediaSampleRateHertz:              aws.Int64(sampleRateHertz),
 		EnablePartialResultsStabilization: aws.Bool(enablePartialResultsStabilization),
-		NumberOfChannels:                  aws.Int64(audioChannelCount),
+		NumberOfChannels:                  numberOfChannels,
 		EnableChannelIdentification:       aws.Bool(enableChannelIdentification),
 	}
 }
