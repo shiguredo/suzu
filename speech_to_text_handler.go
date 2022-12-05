@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+func init() {
+	serviceHandlers.registerHandler("gcp", SpeechToTextHandler)
+}
+
 func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 
 	d, err := time.ParseDuration(args.Config.TimeToWaitForOpusPacket)

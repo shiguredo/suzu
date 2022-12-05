@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+func init() {
+	serviceHandlers.registerHandler("aws", AmazonTranscribeHandler)
+}
+
 func AmazonTranscribeHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(args.Config.AwsRegion, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount), args.Config.AwsEnablePartialResultsStabilization, args.Config.AwsEnableChannelIdentification)
 

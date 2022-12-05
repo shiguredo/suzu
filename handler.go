@@ -3,6 +3,7 @@ package suzu
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -238,4 +239,31 @@ func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader)
 
 func silentPacket() []byte {
 	return []byte{252, 255, 254}
+}
+
+type serviceHandler func(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error)
+
+type ServiceHandlers struct {
+	Handlers map[string]serviceHandler
+}
+
+func NewServiceHandler() ServiceHandlers {
+	return ServiceHandlers{
+		Handlers: make(map[string]serviceHandler),
+	}
+}
+
+var serviceHandlers = NewServiceHandler()
+
+func (sh *ServiceHandlers) registerHandler(name string, handler serviceHandler) {
+	sh.Handlers[name] = handler
+}
+
+func (sh *ServiceHandlers) getServiceHandler(name string) (serviceHandler, error) {
+	h, ok := sh.Handlers[name]
+	if !ok {
+		return nil, fmt.Errorf("UNREGISTERED-SERVICE: %s", name)
+	}
+
+	return h, nil
 }

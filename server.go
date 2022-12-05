@@ -79,14 +79,11 @@ func NewServer(c *Config, service string) (*Server, error) {
 	// LB からのヘルスチェック専用 API
 	e.GET("/.ok", s.healthcheckHandler)
 
-	switch service {
-	case "aws":
-		e.POST("/speech", s.createSpeechHandler(AmazonTranscribeHandler))
-	case "gcp":
-		e.POST("/speech", s.createSpeechHandler(SpeechToTextHandler))
-	default:
-		return nil, fmt.Errorf("UNEXPECTED-SERVICE")
+	serviceHandler, err := serviceHandlers.getServiceHandler(service)
+	if err != nil {
+		return nil, err
 	}
+	e.POST("/speech", s.createSpeechHandler(serviceHandler))
 	e.POST("/test", s.createSpeechHandler(TestHandler))
 	e.POST("/dump", s.createSpeechHandler(PacketDumpHandler))
 
