@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/shiguredo/suzu"
 	"golang.org/x/sync/errgroup"
@@ -23,7 +25,7 @@ var (
 func init() {
 	// XXX(v): とりあえず 同じ場所にある config.toml を読みに行く実装
 	flag.StringVar(&configFilePath, "C", "config.toml", "suzu の設定ファイルへのパス")
-	flag.StringVar(&serviceType, "service", "aws", "音声文字変換のサービス（aws, gcp）")
+	flag.StringVar(&serviceType, "service", "aws", fmt.Sprintf("音声文字変換のサービス（%s）", strings.Join(suzu.ServiceHandlers.GetNames(), ", ")))
 	flag.Parse()
 }
 

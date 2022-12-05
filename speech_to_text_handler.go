@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	serviceHandlers.registerHandler("gcp", SpeechToTextHandler)
+	ServiceHandlers.registerHandler("gcp", SpeechToTextHandler)
 }
 
 func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {

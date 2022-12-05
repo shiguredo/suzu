@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	serviceHandlers.registerHandler("aws", AmazonTranscribeHandler)
+	ServiceHandlers.registerHandler("aws", AmazonTranscribeHandler)
 }
 
 func AmazonTranscribeHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {

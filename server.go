@@ -79,7 +79,7 @@ func NewServer(c *Config, service string) (*Server, error) {
 	// LB からのヘルスチェック専用 API
 	e.GET("/.ok", s.healthcheckHandler)
 
-	serviceHandler, err := serviceHandlers.getServiceHandler(service)
+	serviceHandler, err := ServiceHandlers.getServiceHandler(service)
 	if err != nil {
 		return nil, err
 	}
