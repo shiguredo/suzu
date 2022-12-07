@@ -31,7 +31,7 @@ var (
 		SkipBasicAuth: true,
 		LogDebug:      true,
 		LogStdout:     true,
-		DumpFile:      "./test-dump.json",
+		DumpFile:      "./test-dump.jsonl",
 	}
 )
 
@@ -149,7 +149,7 @@ func TestSpeechHandler(t *testing.T) {
 		}
 		log.Logger = zerolog.New(pw).With().Caller().Timestamp().Logger()
 
-		r := readDumpFile(t, "testdata/dump.json", 0)
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
 		e := echo.New()
