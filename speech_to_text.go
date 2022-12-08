@@ -18,8 +18,8 @@ func NewSpeechToText() SpeechToText {
 func (stt SpeechToText) Start(ctx context.Context, config Config, args HandlerArgs, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
 	recognitionConfig := NewRecognitionConfig(config, args)
 	speechpbRecognitionConfig := NewSpeechpbRecognitionConfig(recognitionConfig)
-	singleUtterance := true
-	interimResults := true
+	singleUtterance := config.SingleUtterance
+	interimResults := config.InterimResults
 	streamingRecognitionConfig := NewStreamingRecognitionConfig(speechpbRecognitionConfig, singleUtterance, interimResults)
 
 	client, err := speech.NewClient(ctx)

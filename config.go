@@ -58,6 +58,8 @@ type Config struct {
 	EnableAutomaticPunctuation          bool     `toml:"enable_automatic_punctuation"`
 	Model                               string   `toml:"model"`
 	UseEnhanced                         bool     `toml:"use_enhanced"`
+	SingleUtterance                     bool     `toml:"single_utterance"`
+	InterimResults                      bool     `toml:"interim_results"`
 
 	TimeToWaitForOpusPacket int `toml:"time_to_wait_for_opus_packet"`
 }
