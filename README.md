@@ -19,7 +19,7 @@ Please read https://github.com/shiguredo/oss/blob/master/README.en.md before use
 ## Audio Streaming Gateway Suzu について
 
 Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを HTTP/2 経由で受け取り、
-音声解析サービスへ送信し解析結果を Sora へ戻すゲートウェイです。
+音声解析サービスへ送信し解析結果を Sora 経由で DataChannel でクライアントへ通知するゲートウェイです。
 
 ## 目的
 
@@ -83,6 +83,6 @@ limitations under the License.
 - [Deepgram](https://deepgram.com/) 対応
 - [AmiVoice Cloud Platform](https://acp.amivoice.com/amivoice/) 対応
 - [ggerganov/whisper\.cpp: Port of OpenAI's Whisper model in C/C\+\+](https://github.com/ggerganov/whisper.cpp) 対応
-    - Suzu から利用できるようになる Whisper サーバを開発し、 ＯＳＳ として公開します
+    - Suzu から利用できるようになる Whisper サーバを開発し、OSS として公開します
 - ウェブフック機能対応
     - クライアント事に接続先サービスを変更できるようになる

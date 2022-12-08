@@ -14,10 +14,7 @@ func init() {
 func AmazonTranscribeHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(args.Config.AwsRegion, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount), args.Config.AwsEnablePartialResultsStabilization, args.Config.AwsEnableChannelIdentification)
 
-	d, err := time.ParseDuration(args.Config.TimeToWaitForOpusPacket)
-	if err != nil {
-		return nil, err
-	}
+	d := time.Duration(args.Config.TimeToWaitForOpusPacket) * time.Millisecond
 
 	reader, err := readerWithSilentPacketFromOpusReader(d, conn)
 	if err != nil {

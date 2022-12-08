@@ -11,10 +11,7 @@ import (
 func TestHandler(ctx context.Context, opusReader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	c := args.Config
 
-	d, err := time.ParseDuration(c.TimeToWaitForOpusPacket)
-	if err != nil {
-		return nil, err
-	}
+	d := time.Duration(c.TimeToWaitForOpusPacket) * time.Millisecond
 
 	reader, err := readerWithSilentPacketFromOpusReader(d, opusReader)
 	if err != nil {

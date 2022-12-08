@@ -31,8 +31,8 @@ var (
 		SkipBasicAuth:           true,
 		LogDebug:                true,
 		LogStdout:               true,
-		DumpFile:                "./test-dump.json",
-		TimeToWaitForOpusPacket: "500ms",
+		DumpFile:                "./test-dump.jsonl",
+		TimeToWaitForOpusPacket: 500,
 	}
 )
 
@@ -99,7 +99,7 @@ func TestSpeechHandler(t *testing.T) {
 		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
 		defer goleak.VerifyNone(t, opt)
 
-		r := readDumpFile(t, "testdata/dump.json", 0)
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
 		e := echo.New()
@@ -152,7 +152,7 @@ func TestSpeechHandler(t *testing.T) {
 		}
 		log.Logger = zerolog.New(pw).With().Caller().Timestamp().Logger()
 
-		r := readDumpFile(t, "testdata/dump.json", 0)
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
 		e := echo.New()
@@ -195,7 +195,7 @@ func TestSpeechHandler(t *testing.T) {
 		}
 		log.Logger = zerolog.New(pw).With().Caller().Timestamp().Logger()
 
-		r := readDumpFile(t, "testdata/dump.json", 0)
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
 		e := echo.New()
@@ -237,7 +237,7 @@ func TestSpeechHandler(t *testing.T) {
 		}
 		log.Logger = zerolog.New(pw).With().Caller().Timestamp().Logger()
 
-		r := readDumpFile(t, "testdata/dump.json", 0)
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
 		e := echo.New()
@@ -316,14 +316,14 @@ func TestSpeechHandler(t *testing.T) {
 			config.TimeToWaitForOpusPacket = timeout
 		}()
 
-		config.TimeToWaitForOpusPacket = "100ms"
+		config.TimeToWaitForOpusPacket = 100
 
 		s, err := NewServer(&config, "aws")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		r := readDumpFile(t, "testdata/dump.json", 150*time.Millisecond)
+		r := readDumpFile(t, "testdata/dump.jsonl", 150*time.Millisecond)
 		defer r.Close()
 
 		e := echo.New()

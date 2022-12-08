@@ -4,3 +4,4 @@ bin/*
 config.yaml
 config.toml
 suzu.log
+*.pem

@@ -14,10 +14,7 @@ func init() {
 
 func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 
-	d, err := time.ParseDuration(args.Config.TimeToWaitForOpusPacket)
-	if err != nil {
-		return nil, err
-	}
+	d := time.Duration(args.Config.TimeToWaitForOpusPacket) * time.Millisecond
 
 	reader, err := readerWithSilentPacketFromOpusReader(d, conn)
 	if err != nil {

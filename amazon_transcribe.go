@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 	zlog "github.com/rs/zerolog/log"
@@ -49,31 +48,46 @@ func NewAmazonTranscribe(region, languageCode string, sampleRateHertz, audioChan
 }
 
 func NewStartStreamTranscriptionInput(languageCode string, sampleRateHertz, audioChannelCount int64, enablePartialResultsStabilization, enableChannelIdentification bool) transcribestreamingservice.StartStreamTranscriptionInput {
+	var numberOfChannels *int64
+	if enableChannelIdentification {
+		numberOfChannels = aws.Int64(audioChannelCount)
+	}
+
 	return transcribestreamingservice.StartStreamTranscriptionInput{
 		LanguageCode:                      aws.String(languageCode),
 		MediaEncoding:                     aws.String(transcribestreamingservice.MediaEncodingOggOpus),
 		MediaSampleRateHertz:              aws.Int64(sampleRateHertz),
 		EnablePartialResultsStabilization: aws.Bool(enablePartialResultsStabilization),
-		NumberOfChannels:                  aws.Int64(audioChannelCount),
+		NumberOfChannels:                  numberOfChannels,
 		EnableChannelIdentification:       aws.Bool(enableChannelIdentification),
 	}
 }
 
-func (at *AmazonTranscribe) NewAmazonTranscribeClient(credentials *credentials.Credentials) *transcribestreamingservice.TranscribeStreamingService {
+func (at *AmazonTranscribe) NewAmazonTranscribeClient(config Config) *transcribestreamingservice.TranscribeStreamingService {
+	cfg := aws.NewConfig().WithRegion(at.Region)
 
-	cfg := aws.NewConfig().WithRegion(at.Region).WithCredentials(credentials)
 	if at.Debug {
 		cfg = cfg.WithLogLevel(aws.LogDebug)
 	}
 
-	sess := session.Must(session.NewSession(cfg))
+	var sess *session.Session
+	if config.AwsProfile != "" {
+		sessOpts := session.Options{
+			Config:            *cfg,
+			Profile:           config.AwsProfile,
+			SharedConfigFiles: []string{config.AwsCredentialFile},
+			SharedConfigState: session.SharedConfigEnable,
+		}
+		sess = session.Must(session.NewSessionWithOptions(sessOpts))
+	} else {
+		sess = session.Must(session.NewSession(cfg))
+	}
 	return transcribestreamingservice.New(sess, cfg)
 }
 
 func (at *AmazonTranscribe) Start(ctx context.Context, config Config, r io.Reader) error {
-	credentials := credentials.NewSharedCredentials(config.AwsCredentialFile, config.AwsProfile)
 	// return at.startTranscribeService(ctx, credentials, config)
-	if err := at.startTranscribeService(ctx, credentials, config); err != nil {
+	if err := at.startTranscribeService(ctx, config); err != nil {
 		return err
 	}
 
@@ -84,9 +98,9 @@ func (at *AmazonTranscribe) Start(ctx context.Context, config Config, r io.Reade
 	return nil
 }
 
-func (at *AmazonTranscribe) startTranscribeService(ctx context.Context, credentials *credentials.Credentials, config Config) error {
+func (at *AmazonTranscribe) startTranscribeService(ctx context.Context, config Config) error {
 
-	client := at.NewAmazonTranscribeClient(credentials)
+	client := at.NewAmazonTranscribeClient(config)
 	input := NewStartStreamTranscriptionInput(at.LanguageCode, at.MediaSampleRateHertz, at.NumberOfChannels, config.AwsEnablePartialResultsStabilization, config.AwsEnableChannelIdentification)
 
 	resp, err := client.StartStreamTranscriptionWithContext(ctx, &input)
@@ -111,7 +125,7 @@ L:
 	for {
 		select {
 		case <-ctx.Done():
-			break L
+			return
 		case event := <-at.StartStreamTranscriptionEventStream.Events():
 			switch e := event.(type) {
 			case *transcribestreamingservice.TranscriptEvent:
