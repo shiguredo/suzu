@@ -97,7 +97,7 @@ func TestSpeechHandler(t *testing.T) {
 		//opt := goleak.IgnoreCurrent()
 		//defer goleak.VerifyNone(t, opt)
 
-		r := readDumpFile(t, "testdata/dump.json", 0)
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
 		e := echo.New()
@@ -191,7 +191,7 @@ func TestSpeechHandler(t *testing.T) {
 		}
 		log.Logger = zerolog.New(pw).With().Caller().Timestamp().Logger()
 
-		r := readDumpFile(t, "testdata/dump.json", 0)
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
 		e := echo.New()
@@ -232,7 +232,7 @@ func TestSpeechHandler(t *testing.T) {
 		}
 		log.Logger = zerolog.New(pw).With().Caller().Timestamp().Logger()
 
-		r := readDumpFile(t, "testdata/dump.json", 0)
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
 		e := echo.New()
@@ -309,11 +309,11 @@ func TestSpeechHandler(t *testing.T) {
 			config.TimeToWaitForOpusPacket = timeout
 		}()
 
-		config.TimeToWaitForOpusPacket = "100ms"
+		config.TimeToWaitForOpusPacket = 100
 
 		s := NewServer(&config)
 
-		r := readDumpFile(t, "testdata/dump.json", 150*time.Millisecond)
+		r := readDumpFile(t, "testdata/dump.jsonl", 150*time.Millisecond)
 		defer r.Close()
 
 		e := echo.New()
