@@ -33,5 +33,3 @@ log_dir = "."
 log_name = "suzu.jsonl"
 log_debug = false
 log_stdout = true
-
-time_to_wait_for_opus_packet = "500ms"

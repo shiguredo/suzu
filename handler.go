@@ -189,14 +189,7 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 	go func() {
 		defer close(ch)
 
-		// TODO: エラー処理
-		t, err := time.ParseDuration(c.TimeToWaitForOpusPacket)
-		if err != nil {
-			ch <- Response{
-				Error: err,
-			}
-			return
-		}
+		t := time.Duration(c.TimeToWaitForOpusPacket) * time.Millisecond
 
 		reader := NewReaderWithTimer(opusReader)
 		resultCh := reader.Read(ctx, t)
@@ -248,8 +241,7 @@ func handleTest(ctx context.Context, r io.Reader, c Config) <-chan Response {
 	go func() {
 		defer close(ch)
 
-		// TODO: エラー処理
-		t, _ := time.ParseDuration(c.TimeToWaitForOpusPacket)
+		t := time.Duration(c.TimeToWaitForOpusPacket) * time.Millisecond
 
 		reader := NewReaderWithTimer(r)
 		resultCh := reader.Read(ctx, t)

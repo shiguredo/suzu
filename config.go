@@ -4,6 +4,11 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+const (
+	// 100ms
+	DefaultTimeToWaitForOpusPacket = 100
+)
+
 type Config struct {
 	Revision string
 
@@ -43,13 +48,17 @@ type Config struct {
 	LogDebug  bool   `toml:"log_debug"`
 	LogStdout bool   `toml:"log_stdout"`
 
-	TimeToWaitForOpusPacket string `toml:"time_to_wait_for_opus_packet"`
+	TimeToWaitForOpusPacket int `toml:"time_to_wait_for_opus_packet"`
 }
 
-func InitConfig(data []byte, config interface{}) error {
+func InitConfig(data []byte, config *Config) error {
 	if err := toml.Unmarshal(data, config); err != nil {
 		// パースに失敗した場合 Fatal で終了
 		return err
+	}
+
+	if config.TimeToWaitForOpusPacket == 0 {
+		config.TimeToWaitForOpusPacket = DefaultTimeToWaitForOpusPacket
 	}
 
 	// TODO(v): 初期値
