@@ -145,9 +145,6 @@ L:
 					}
 				}
 			default:
-				// TODO: エラーの場合は stream.Err() でとるため、不要そうであればここでのログ出力処理は削除する
-				err := fmt.Errorf("UNEXPECTED-STREAM-EVENT: %v", e)
-				zlog.Debug().Str("type", "transcribestreamingservice").Err(err).Send()
 				break L
 			}
 		}
