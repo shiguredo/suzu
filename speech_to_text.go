@@ -2,10 +2,10 @@ package suzu
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	speech "cloud.google.com/go/speech/apiv1"
+	zlog "github.com/rs/zerolog/log"
 	speechpb "google.golang.org/genproto/googleapis/cloud/speech/v1"
 )
 
@@ -44,7 +44,7 @@ func (stt SpeechToText) Start(ctx context.Context, config Config, args HandlerAr
 			n, err := r.Read(buf)
 			if err != nil {
 				// TODO: エラー処理
-				fmt.Println(err)
+				zlog.Error().Err(err).Send()
 				return
 			}
 			if n > 0 {
@@ -54,7 +54,8 @@ func (stt SpeechToText) Start(ctx context.Context, config Config, args HandlerAr
 						AudioContent: audioContent,
 					},
 				}); err != nil {
-					fmt.Println(err)
+					// TODO: エラー処理
+					zlog.Error().Err(err).Send()
 					return
 				}
 			}

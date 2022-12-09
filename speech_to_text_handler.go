@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	zlog "github.com/rs/zerolog/log"
 )
 
 func init() {
@@ -52,9 +54,9 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 			}
 			if err := resp.Error; err != nil {
 				if err.Code == 3 || err.Code == 11 {
-					fmt.Println(err)
+					zlog.Error().Str("CHANNEL-ID", args.SoraChannelID).Str("CONNECTION-ID", args.SoraConnectionID).Str("MESSAGE", err.GetMessage()).Int32("CODE", err.GetCode()).Send()
 				}
-				fmt.Println(err)
+				zlog.Error().Str("CHANNEL-ID", args.SoraChannelID).Str("CONNECTION-ID", args.SoraConnectionID).Str("MESSAGE", err.GetMessage()).Int32("CODE", err.GetCode()).Send()
 				w.Close()
 				return
 			}
