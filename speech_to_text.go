@@ -18,8 +18,8 @@ func NewSpeechToText() SpeechToText {
 func (stt SpeechToText) Start(ctx context.Context, config Config, args HandlerArgs, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
 	recognitionConfig := NewRecognitionConfig(config, args)
 	speechpbRecognitionConfig := NewSpeechpbRecognitionConfig(recognitionConfig)
-	singleUtterance := config.SingleUtterance
-	interimResults := config.InterimResults
+	singleUtterance := config.GcpSingleUtterance
+	interimResults := config.GcpInterimResults
 	streamingRecognitionConfig := NewStreamingRecognitionConfig(speechpbRecognitionConfig, singleUtterance, interimResults)
 
 	client, err := speech.NewClient(ctx)
@@ -91,26 +91,26 @@ func NewRecognitionConfig(c Config, args HandlerArgs) RecognitionConfig {
 		Encoding:                            speechpb.RecognitionConfig_OGG_OPUS,
 		SampleRateHertz:                     int32(args.SampleRate),
 		AudioChannelCount:                   int32(args.ChannelCount),
-		EnableSeparateRecognitionPerChannel: c.EnableSeparateRecognitionPerChannel,
+		EnableSeparateRecognitionPerChannel: c.GcpEnableSeparateRecognitionPerChannel,
 		LanguageCode:                        args.LanguageCode,
-		AlternativeLanguageCodes:            c.AlternativeLanguageCodes,
-		MaxAlternatives:                     c.MaxAlternatives,
-		ProfanityFilter:                     c.ProfanityFilter,
+		AlternativeLanguageCodes:            c.GcpAlternativeLanguageCodes,
+		MaxAlternatives:                     c.GcpMaxAlternatives,
+		ProfanityFilter:                     c.GcpProfanityFilter,
 		// Adaptation:
 		SpeechContexts: []*speechpb.SpeechContext{
 			// &speechpb.SpeechContext{
 			// Phrases: []string{},
 			// },
 		},
-		EnableWordTimeOffsets:      c.EnableWordTimeOffsets,
-		EnableWordConfidence:       c.EnableWordConfidence,
-		EnableAutomaticPunctuation: c.EnableAutomaticPunctuation,
+		EnableWordTimeOffsets:      c.GcpEnableWordTimeOffsets,
+		EnableWordConfidence:       c.GcpEnableWordConfidence,
+		EnableAutomaticPunctuation: c.GcpEnableAutomaticPunctuation,
 		// EnableSpokenPunctuation:
 		// EnableSpokenEmojis:
 		// DiarizationConfig:
 		// Metadata:
-		Model:       c.Model,
-		UseEnhanced: c.UseEnhanced,
+		Model:       c.GcpModel,
+		UseEnhanced: c.GcpUseEnhanced,
 	}
 }
 

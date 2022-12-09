@@ -52,17 +52,17 @@ type Config struct {
 	AwsEnableChannelIdentification       bool   `toml:"aws_enable_channel_identification"`
 
 	// Google Cloud Platform
-	EnableSeparateRecognitionPerChannel bool     `toml:"enable_separate_recognition_per_channel"`
-	AlternativeLanguageCodes            []string `toml:"alternative_language_codes"`
-	MaxAlternatives                     int32    `toml:"max_alternatives"`
-	ProfanityFilter                     bool     `toml:"profanity_filter"`
-	EnableWordTimeOffsets               bool     `toml:"enable_word_time_offsets"`
-	EnableWordConfidence                bool     `toml:"enable_word_confidence"`
-	EnableAutomaticPunctuation          bool     `toml:"enable_automatic_punctuation"`
-	Model                               string   `toml:"model"`
-	UseEnhanced                         bool     `toml:"use_enhanced"`
-	SingleUtterance                     bool     `toml:"single_utterance"`
-	InterimResults                      bool     `toml:"interim_results"`
+	GcpEnableSeparateRecognitionPerChannel bool     `toml:"gcp_enable_separate_recognition_per_channel"`
+	GcpAlternativeLanguageCodes            []string `toml:"gcp_alternative_language_codes"`
+	GcpMaxAlternatives                     int32    `toml:"gcp_max_alternatives"`
+	GcpProfanityFilter                     bool     `toml:"gcp_profanity_filter"`
+	GcpEnableWordTimeOffsets               bool     `toml:"gcp_enable_word_time_offsets"`
+	GcpEnableWordConfidence                bool     `toml:"gcp_enable_word_confidence"`
+	GcpEnableAutomaticPunctuation          bool     `toml:"gcp_enable_automatic_punctuation"`
+	GcpModel                               string   `toml:"gcp_model"`
+	GcpUseEnhanced                         bool     `toml:"gcp_use_enhanced"`
+	GcpSingleUtterance                     bool     `toml:"gcp_single_utterance"`
+	GcpInterimResults                      bool     `toml:"gcp_interim_results"`
 }
 
 func InitConfig(data []byte, config *Config) error {

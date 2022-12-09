@@ -61,7 +61,7 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 
 			for _, result := range resp.Results {
 				for _, alternative := range result.Alternatives {
-					if args.Config.EnableWordConfidence {
+					if args.Config.GcpEnableWordConfidence {
 						for _, word := range alternative.Words {
 							fmt.Printf("%s, Confidence: %v\n", word.Word, word)
 						}
