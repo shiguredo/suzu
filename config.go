@@ -6,7 +6,7 @@ import (
 
 const (
 	// 100ms
-	DefaultTimeToWaitForOpusPacket = 100
+	DefaultTimeToWaitForOpusPacketMs = 100
 )
 
 type Config struct {
@@ -35,12 +35,6 @@ type Config struct {
 	SampleRate   int `toml:"audio_sample_rate"`
 	ChannelCount int `toml:"audio_channel_count"`
 
-	AwsCredentialFile                    string `toml:"aws_credential_file"`
-	AwsProfile                           string `toml:"aws_profile"`
-	AwsRegion                            string `toml:"aws_region"`
-	AwsEnablePartialResultsStabilization bool   `toml:"aws_enable_partial_results_stabilization"`
-	AwsEnableChannelIdentification       bool   `toml:"aws_enable_channel_identification"`
-
 	DumpFile string `toml:"dump_file"`
 
 	LogDir    string `toml:"log_dir"`
@@ -48,7 +42,16 @@ type Config struct {
 	LogDebug  bool   `toml:"log_debug"`
 	LogStdout bool   `toml:"log_stdout"`
 
-	// google speech to text
+	TimeToWaitForOpusPacketMs int `toml:"time_to_wait_for_opus_packet_ms"`
+
+	// Amazon Web Services
+	AwsCredentialFile                    string `toml:"aws_credential_file"`
+	AwsProfile                           string `toml:"aws_profile"`
+	AwsRegion                            string `toml:"aws_region"`
+	AwsEnablePartialResultsStabilization bool   `toml:"aws_enable_partial_results_stabilization"`
+	AwsEnableChannelIdentification       bool   `toml:"aws_enable_channel_identification"`
+
+	// Google Cloud Platform
 	EnableSeparateRecognitionPerChannel bool     `toml:"enable_separate_recognition_per_channel"`
 	AlternativeLanguageCodes            []string `toml:"alternative_language_codes"`
 	MaxAlternatives                     int32    `toml:"max_alternatives"`
@@ -60,8 +63,6 @@ type Config struct {
 	UseEnhanced                         bool     `toml:"use_enhanced"`
 	SingleUtterance                     bool     `toml:"single_utterance"`
 	InterimResults                      bool     `toml:"interim_results"`
-
-	TimeToWaitForOpusPacket int `toml:"time_to_wait_for_opus_packet"`
 }
 
 func InitConfig(data []byte, config *Config) error {
@@ -70,8 +71,8 @@ func InitConfig(data []byte, config *Config) error {
 		return err
 	}
 
-	if config.TimeToWaitForOpusPacket == 0 {
-		config.TimeToWaitForOpusPacket = DefaultTimeToWaitForOpusPacket
+	if config.TimeToWaitForOpusPacketMs == 0 {
+		config.TimeToWaitForOpusPacketMs = DefaultTimeToWaitForOpusPacketMs
 	}
 
 	// TODO(v): 初期値

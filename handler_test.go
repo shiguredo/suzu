@@ -25,14 +25,14 @@ import (
 
 var (
 	config = Config{
-		Debug:                   true,
-		ListenAddr:              "127.0.0.1",
-		ListenPort:              48080,
-		SkipBasicAuth:           true,
-		LogDebug:                true,
-		LogStdout:               true,
-		DumpFile:                "./test-dump.jsonl",
-		TimeToWaitForOpusPacket: 500,
+		Debug:                     true,
+		ListenAddr:                "127.0.0.1",
+		ListenPort:                48080,
+		SkipBasicAuth:             true,
+		LogDebug:                  true,
+		LogStdout:                 true,
+		DumpFile:                  "./test-dump.jsonl",
+		TimeToWaitForOpusPacketMs: 500,
 	}
 )
 
@@ -311,12 +311,12 @@ func TestSpeechHandler(t *testing.T) {
 		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
 		defer goleak.VerifyNone(t, opt)
 
-		timeout := config.TimeToWaitForOpusPacket
+		timeout := config.TimeToWaitForOpusPacketMs
 		defer func() {
-			config.TimeToWaitForOpusPacket = timeout
+			config.TimeToWaitForOpusPacketMs = timeout
 		}()
 
-		config.TimeToWaitForOpusPacket = 100
+		config.TimeToWaitForOpusPacketMs = 100
 
 		s, err := NewServer(&config, "aws")
 		if err != nil {
