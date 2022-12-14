@@ -49,6 +49,7 @@ type Config struct {
 	AwsProfile                           string `toml:"aws_profile"`
 	AwsRegion                            string `toml:"aws_region"`
 	AwsEnablePartialResultsStabilization bool   `toml:"aws_enable_partial_results_stabilization"`
+	AwsPartialResultsStability           string `toml:"aws_partial_results_stability"`
 	AwsEnableChannelIdentification       bool   `toml:"aws_enable_channel_identification"`
 
 	// Google Cloud Platform
