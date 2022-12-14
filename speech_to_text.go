@@ -43,8 +43,10 @@ func (stt SpeechToText) Start(ctx context.Context, config Config, args HandlerAr
 			buf := make([]byte, FrameSize)
 			n, err := r.Read(buf)
 			if err != nil {
-				// TODO: エラー処理
-				zlog.Error().Err(err).Send()
+				if err != io.EOF {
+					// TODO: エラー処理
+					zlog.Error().Err(err).Send()
+				}
 				return
 			}
 			if n > 0 {
