@@ -9,27 +9,41 @@ exporter_port = 48081
 
 skip_basic_auth = true
 
-# [http2]
-
-http2_fullchain_file = ""
-http2_privkey_file = ""
-
-
+# 音声データのサンプリングレートです
 audio_sample_rate = 48000
+# 音声データのチャネル数です
 audio_channel_count = 1
 
-# [aws]
-aws_credential_file = "./credentials"
-aws_profile = "default"
-aws_region = "ap-northeast-1"
-aws_enable_partial_results_stabilization = false
-aws_enable_channel_identification = false
+# 受信した音声データの保存先ファイルです
+dump_file = "./dump.jsonl"
 
-dump_file = "./dump.jsonll"
+## [http2]
+# Suzu のサーバ証明書ファイルです
+http2_fullchain_file = ""
+# Suzu の秘密鍵ファイルです
+http2_privkey_file = ""
+# クライアント認証用の CA 証明書ファイルです
+http2_verify_cacert_path = ""
 
-# [log]
-
+## [log]
+# ログの出力先ディレクトリです
 log_dir = "."
+# ログの出力先ファイルのファイル名です
 log_name = "suzu.jsonl"
 log_debug = false
+# ログを標準出力に出力可否の指定です
 log_stdout = true
+
+## [aws]
+aws_region = "ap-northeast-1"
+# Partial-result stabilization の有効化です
+aws_enable_partial_results_stabilization = false
+# 安定化レベルの指定です（high, medium, low）
+# aws_partial_results_stability = "low"
+# マルチチャネルの音声のチャネル識別の有効化です
+aws_enable_channel_identification = false
+# 認証情報ファイルの指定です
+aws_credential_file = "./credentials"
+# プロファイルの指定です
+# 認証情報に AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY を使用する場合は、下記のプロファイルの指定行をコメントアウトします
+aws_profile = "default"
