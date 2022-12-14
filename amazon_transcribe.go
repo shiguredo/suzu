@@ -138,7 +138,8 @@ L:
 			switch e := event.(type) {
 			case *transcribestreamingservice.TranscriptEvent:
 				for _, res := range e.Transcript.Results {
-					if !aws.BoolValue(res.IsPartial) {
+					// TODO: debug == true では res.IsPartial == true 時の Transcript も取得する
+					if !*res.IsPartial {
 						for _, alt := range res.Alternatives {
 							var message []byte
 							if alt.Transcript != nil {
