@@ -29,7 +29,8 @@ Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを H
 
 - Sora から音声データを HTTP/2 経由で受け取り、音声解析サービスへ送信します
 - 音声解析サービスの解析結果を HTTP/2 レスポンスで Sora に戻します
-- Sora は受け取った解析結果を DataChannel 経由でクライアントへプッシュで送信します
+- Sora は受け取った解析結果をクライアントへプッシュで送信します
+    - [DataChannel 経由のシグナリング](https://sora-doc.shiguredo.jp/DATA_CHANNEL_SIGNALING) の利用を推奨します
 - 音声解析に必要とされる言語コードをクライアント事に指定可能です
 - mTLS 対応
 
