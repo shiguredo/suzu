@@ -6,7 +6,9 @@ import (
 
 	speech "cloud.google.com/go/speech/apiv1"
 	zlog "github.com/rs/zerolog/log"
-	speechpb "google.golang.org/genproto/googleapis/cloud/speech/v1"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	speechpb "cloud.google.com/go/speech/apiv1/speechpb"
 )
 
 type SpeechToText struct{}
@@ -81,8 +83,8 @@ type RecognitionConfig struct {
 	EnableWordTimeOffsets      bool
 	EnableWordConfidence       bool
 	EnableAutomaticPunctuation bool
-	// EnableSpokenPunctuation:
-	// EnableSpokenEmojis:
+	EnableSpokenPunctuation    bool
+	EnableSpokenEmojis         bool
 	// DiarizationConfig:
 	// Metadata:
 	Model       string
@@ -108,8 +110,8 @@ func NewRecognitionConfig(c Config, args HandlerArgs) RecognitionConfig {
 		EnableWordTimeOffsets:      c.GcpEnableWordTimeOffsets,
 		EnableWordConfidence:       c.GcpEnableWordConfidence,
 		EnableAutomaticPunctuation: c.GcpEnableAutomaticPunctuation,
-		// EnableSpokenPunctuation:
-		// EnableSpokenEmojis:
+		EnableSpokenPunctuation:    c.GcpEnableSpokenPunctuation,
+		EnableSpokenEmojis:         c.GcpEnableSpokenEmojis,
 		// DiarizationConfig:
 		// Metadata:
 		Model:       c.GcpModel,
@@ -124,16 +126,16 @@ func NewSpeechpbRecognitionConfig(rc RecognitionConfig) *speechpb.RecognitionCon
 		AudioChannelCount:                   rc.AudioChannelCount,
 		EnableSeparateRecognitionPerChannel: rc.EnableSeparateRecognitionPerChannel,
 		LanguageCode:                        rc.LanguageCode,
-		//AlternativeLanguageCodes:            rc.AlternativeLanguageCodes,
-		MaxAlternatives: rc.MaxAlternatives,
-		ProfanityFilter: rc.ProfanityFilter,
+		AlternativeLanguageCodes:            rc.AlternativeLanguageCodes,
+		MaxAlternatives:                     rc.MaxAlternatives,
+		ProfanityFilter:                     rc.ProfanityFilter,
 		// Adaptation:
-		SpeechContexts:        rc.SpeechContexts,
-		EnableWordTimeOffsets: rc.EnableWordTimeOffsets,
-		//EnableWordConfidence:       rc.EnableWordConfidence,
+		SpeechContexts:             rc.SpeechContexts,
+		EnableWordTimeOffsets:      rc.EnableWordTimeOffsets,
+		EnableWordConfidence:       rc.EnableWordConfidence,
 		EnableAutomaticPunctuation: rc.EnableAutomaticPunctuation,
-		// EnableSpokenPunctuation:
-		// EnableSpokenEmojis:
+		EnableSpokenPunctuation:    wrapperspb.Bool(rc.EnableSpokenPunctuation),
+		EnableSpokenEmojis:         wrapperspb.Bool(rc.EnableSpokenEmojis),
 		// DiarizationConfig:
 		// Metadata:
 		Model:       rc.Model,

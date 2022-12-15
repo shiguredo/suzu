@@ -60,6 +60,8 @@ type Config struct {
 	GcpEnableWordTimeOffsets               bool     `toml:"gcp_enable_word_time_offsets"`
 	GcpEnableWordConfidence                bool     `toml:"gcp_enable_word_confidence"`
 	GcpEnableAutomaticPunctuation          bool     `toml:"gcp_enable_automatic_punctuation"`
+	GcpEnableSpokenPunctuation             bool     `toml:"gcp_enable_spoken_punctuation"`
+	GcpEnableSpokenEmojis                  bool     `toml:"gcp_enable_spoken_emojis"`
 	GcpModel                               string   `toml:"gcp_model"`
 	GcpUseEnhanced                         bool     `toml:"gcp_use_enhanced"`
 	GcpSingleUtterance                     bool     `toml:"gcp_single_utterance"`
