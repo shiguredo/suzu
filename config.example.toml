@@ -13,6 +13,7 @@ skip_basic_auth = true
 
 http2_fullchain_file = ""
 http2_privkey_file = ""
+# http2_verify_cacert_path = ""
 
 
 audio_sample_rate = 48000
