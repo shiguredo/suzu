@@ -48,7 +48,7 @@ aws_credential_file = "./credentials"
 # 認証情報に AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY を使用する場合は、下記のプロファイルの指定行をコメントアウトします
 aws_profile = "default"
 
-# [speech to text]
+# [gcp]
 # gcp_enable_separate_recognition_per_channel = false
 # gcp_alternative_language_codes = []
 # gcp_max_alternatives = 1
