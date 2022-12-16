@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -33,6 +34,10 @@ type AmazonTranscribe struct {
 	StartStreamTranscriptionEventStream *transcribestreamingservice.StartStreamTranscriptionEventStream
 	ResultCh                            chan TranscriptionResult
 }
+
+var (
+	mu sync.Mutex
+)
 
 func NewAmazonTranscribe(region, languageCode string, sampleRateHertz, audioChannelCount int64, enablePartialResultsStabilization, enableChannelIdentification bool) *AmazonTranscribe {
 	return &AmazonTranscribe{
@@ -66,7 +71,7 @@ func NewStartStreamTranscriptionInput(languageCode string, sampleRateHertz, audi
 func (at *AmazonTranscribe) NewAmazonTranscribeClient(config Config) *transcribestreamingservice.TranscribeStreamingService {
 	cfg := aws.NewConfig().WithRegion(at.Region)
 
-	if at.Debug {
+	if config.Debug {
 		cfg = cfg.WithLogLevel(aws.LogDebug)
 	}
 
@@ -99,6 +104,8 @@ func (at *AmazonTranscribe) Start(ctx context.Context, config Config, r io.Reade
 }
 
 func (at *AmazonTranscribe) startTranscribeService(ctx context.Context, config Config) error {
+	defer mu.Unlock()
+	mu.Lock()
 
 	client := at.NewAmazonTranscribeClient(config)
 	input := NewStartStreamTranscriptionInput(at.LanguageCode, at.MediaSampleRateHertz, at.NumberOfChannels, config.AwsEnablePartialResultsStabilization, config.AwsEnableChannelIdentification)
@@ -117,7 +124,10 @@ func (at *AmazonTranscribe) startTranscribeService(ctx context.Context, config C
 }
 
 func (at *AmazonTranscribe) Close() error {
-	return at.StartStreamTranscriptionEventStream.Close()
+	if at.StartStreamTranscriptionEventStream != nil {
+		return at.StartStreamTranscriptionEventStream.Close()
+	}
+	return nil
 }
 
 func (at *AmazonTranscribe) ReceiveResults(ctx context.Context) {
