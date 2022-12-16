@@ -49,7 +49,7 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
-		zlog.Debug().Msg("CONNECTED")
+		zlog.Debug().Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Msg("CONNECTED")
 
 		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		c.Response().WriteHeader(http.StatusOK)
