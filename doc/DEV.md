@@ -6,7 +6,7 @@
 
 ```console
 $ make init
-$ cp config.example.yaml config.yaml
+$ cp config.example.toml config.toml
 ```
 
 ## リリースビルド
