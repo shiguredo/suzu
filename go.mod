@@ -8,7 +8,7 @@ require (
 	github.com/labstack/echo-contrib v0.13.0
 	github.com/labstack/echo/v4 v4.9.1
 	github.com/pion/randutil v0.1.0
-	github.com/pion/rtp v1.7.13
+	github.com/pion/rtp/v2 v2.0.0
 	github.com/rs/zerolog v1.28.0
 	github.com/shiguredo/lumberjack/v3 v3.0.0
 	golang.org/x/net v0.4.0
@@ -16,6 +16,7 @@ require (
 )
 
 require (
+	github.com/pion/rtp v1.7.13
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/goleak v1.2.0
 )
