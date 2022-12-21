@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sync"
+	"net"
+	"net/http"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 	zlog "github.com/rs/zerolog/log"
+	"golang.org/x/net/http2"
 )
 
 type TranscriptionResult struct {
@@ -34,10 +37,6 @@ type AmazonTranscribe struct {
 	StartStreamTranscriptionEventStream *transcribestreamingservice.StartStreamTranscriptionEventStream
 	ResultCh                            chan TranscriptionResult
 }
-
-var (
-	mu sync.Mutex
-)
 
 func NewAmazonTranscribe(region, languageCode string, sampleRateHertz, audioChannelCount int64, enablePartialResultsStabilization, enableChannelIdentification bool) *AmazonTranscribe {
 	return &AmazonTranscribe{
@@ -73,7 +72,27 @@ func (at *AmazonTranscribe) NewAmazonTranscribeClient(config Config) *transcribe
 
 	if config.Debug {
 		cfg = cfg.WithLogLevel(aws.LogDebug)
+		//cfg = cfg.WithLogLevel(aws.LogDebugWithRequestErrors)
 	}
+
+	// TODO: 後で変更する
+	tr := &http.Transport{
+		ForceAttemptHTTP2:     true,
+		ResponseHeaderTimeout: 5 * time.Second,
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+			Timeout:   5 * time.Second,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		MaxIdleConnsPerHost:   10,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+	http2.ConfigureTransport(tr)
+	client := &http.Client{Transport: tr}
 
 	var sess *session.Session
 	if config.AwsProfile != "" {
@@ -84,7 +103,9 @@ func (at *AmazonTranscribe) NewAmazonTranscribeClient(config Config) *transcribe
 			SharedConfigState: session.SharedConfigEnable,
 		}
 		sess = session.Must(session.NewSessionWithOptions(sessOpts))
+		sess.Config.HTTPClient = client
 	} else {
+		cfg = cfg.WithHTTPClient(client)
 		sess = session.Must(session.NewSession(cfg))
 	}
 	return transcribestreamingservice.New(sess, cfg)
@@ -104,9 +125,6 @@ func (at *AmazonTranscribe) Start(ctx context.Context, config Config, r io.Reade
 }
 
 func (at *AmazonTranscribe) startTranscribeService(ctx context.Context, config Config) error {
-	defer mu.Unlock()
-	mu.Lock()
-
 	client := at.NewAmazonTranscribeClient(config)
 	input := NewStartStreamTranscriptionInput(at.LanguageCode, at.MediaSampleRateHertz, at.NumberOfChannels, config.AwsEnablePartialResultsStabilization, config.AwsEnableChannelIdentification)
 
