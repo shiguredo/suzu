@@ -105,6 +105,7 @@ func (at *AmazonTranscribe) NewAmazonTranscribeClient(config Config) *transcribe
 		sess = session.Must(session.NewSessionWithOptions(sessOpts))
 		sess.Config.HTTPClient = client
 	} else {
+		// デフォルトの HTTPClient の場合は、同時に複数接続する場合に HTTP リクエストがエラーになるため、aws.Config に独自の HTTPClient を指定する
 		cfg = cfg.WithHTTPClient(client)
 		sess = session.Must(session.NewSession(cfg))
 	}
