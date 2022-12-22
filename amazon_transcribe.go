@@ -4,15 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 	zlog "github.com/rs/zerolog/log"
-	"golang.org/x/net/http2"
 )
 
 type TranscriptionResult struct {
@@ -76,23 +73,8 @@ func (at *AmazonTranscribe) NewAmazonTranscribeClient(config Config) *transcribe
 	}
 
 	// TODO: 後で変更する
-	tr := &http.Transport{
-		ForceAttemptHTTP2:     true,
-		ResponseHeaderTimeout: 5 * time.Second,
-		Proxy:                 http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-			Timeout:   5 * time.Second,
-		}).DialContext,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   5 * time.Second,
-		MaxIdleConnsPerHost:   10,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-	http2.ConfigureTransport(tr)
-	client := &http.Client{Transport: tr}
+	tr := &http.Transport{}
+	cfg = cfg.WithHTTPClient(&http.Client{Transport: tr})
 
 	var sess *session.Session
 	if config.AwsProfile != "" {
@@ -103,10 +85,8 @@ func (at *AmazonTranscribe) NewAmazonTranscribeClient(config Config) *transcribe
 			SharedConfigState: session.SharedConfigEnable,
 		}
 		sess = session.Must(session.NewSessionWithOptions(sessOpts))
-		sess.Config.HTTPClient = client
 	} else {
 		// デフォルトの HTTPClient の場合は、同時に複数接続する場合に HTTP リクエストがエラーになるため、aws.Config に独自の HTTPClient を指定する
-		cfg = cfg.WithHTTPClient(client)
 		sess = session.Must(session.NewSession(cfg))
 	}
 	return transcribestreamingservice.New(sess, cfg)
