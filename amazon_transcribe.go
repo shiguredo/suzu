@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sync"
+	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -34,10 +34,6 @@ type AmazonTranscribe struct {
 	StartStreamTranscriptionEventStream *transcribestreamingservice.StartStreamTranscriptionEventStream
 	ResultCh                            chan TranscriptionResult
 }
-
-var (
-	mu sync.Mutex
-)
 
 func NewAmazonTranscribe(region, languageCode string, sampleRateHertz, audioChannelCount int64, enablePartialResultsStabilization, enableChannelIdentification bool) *AmazonTranscribe {
 	return &AmazonTranscribe{
@@ -73,7 +69,12 @@ func (at *AmazonTranscribe) NewAmazonTranscribeClient(config Config) *transcribe
 
 	if config.Debug {
 		cfg = cfg.WithLogLevel(aws.LogDebug)
+		//cfg = cfg.WithLogLevel(aws.LogDebugWithRequestErrors)
 	}
+
+	// TODO: 後で変更する
+	tr := &http.Transport{}
+	cfg = cfg.WithHTTPClient(&http.Client{Transport: tr})
 
 	var sess *session.Session
 	if config.AwsProfile != "" {
@@ -85,6 +86,7 @@ func (at *AmazonTranscribe) NewAmazonTranscribeClient(config Config) *transcribe
 		}
 		sess = session.Must(session.NewSessionWithOptions(sessOpts))
 	} else {
+		// デフォルトの HTTPClient の場合は、同時に複数接続する場合に HTTP リクエストがエラーになるため、aws.Config に独自の HTTPClient を指定する
 		sess = session.Must(session.NewSession(cfg))
 	}
 	return transcribestreamingservice.New(sess, cfg)
@@ -104,9 +106,6 @@ func (at *AmazonTranscribe) Start(ctx context.Context, config Config, r io.Reade
 }
 
 func (at *AmazonTranscribe) startTranscribeService(ctx context.Context, config Config) error {
-	defer mu.Unlock()
-	mu.Lock()
-
 	client := at.NewAmazonTranscribeClient(config)
 	input := NewStartStreamTranscriptionInput(at.LanguageCode, at.MediaSampleRateHertz, at.NumberOfChannels, config.AwsEnablePartialResultsStabilization, config.AwsEnableChannelIdentification)
 
