@@ -22,6 +22,7 @@ import (
 // 受信時はくるくるループを回す
 func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerArgs) (<-chan Response, error)) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		// TODO: request-id を表示したい
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
 		if c.Request().ProtoMajor != 2 {
@@ -49,7 +50,12 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
-		zlog.Debug().Msg("CONNECTED")
+		// TODO: request-id を表示したい
+		zlog.Debug().
+			Str("channel_id", h.SoraChannelID).
+			Str("connection_id", h.SoraConnectionID).
+			Str("language_code", h.SoraAudioStreamingLanguageCode).
+			Msg("CONNECTED")
 
 		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		c.Response().WriteHeader(http.StatusOK)
@@ -92,6 +98,11 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 
 			c.Response().Flush()
 		}
+
+		zlog.Debug().
+			Str("channel_id", h.SoraChannelID).
+			Str("connection_id", h.SoraConnectionID).
+			Msg("DISCONNECTED")
 
 		return c.NoContent(http.StatusOK)
 	}
