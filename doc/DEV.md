@@ -6,7 +6,7 @@
 
 ```console
 $ make init
-$ cp config.example.yaml config.yaml
+$ cp config.example.toml config.toml
 ```
 
 ## リリースビルド
@@ -17,7 +17,7 @@ $ make
 
 bin 以下にバイナリが生成されます。
 
-## ライブリロード
+## ライブラリロード
 
 air をインストールして使ってください。
 

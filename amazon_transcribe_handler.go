@@ -31,7 +31,7 @@ func AmazonTranscribeHandler(ctx context.Context, conn io.Reader, args HandlerAr
 	}()
 
 	go func() {
-		//defer at.Close()
+		defer at.Close()
 
 		if err := at.Start(ctx, args.Config, oggReader); err != nil {
 			at.ResultCh <- TranscriptionResult{

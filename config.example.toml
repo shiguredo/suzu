@@ -17,7 +17,7 @@ audio_channel_count = 1
 # 受信した音声データの保存先ファイルです
 dump_file = "./dump.jsonl"
 
-## [http2]
+# [http2]
 # Suzu のサーバ証明書ファイルです
 http2_fullchain_file = ""
 # Suzu の秘密鍵ファイルです
@@ -25,7 +25,7 @@ http2_privkey_file = ""
 # クライアント認証用の CA 証明書ファイルです
 http2_verify_cacert_path = ""
 
-## [log]
+# [log]
 # ログの出力先ディレクトリです
 log_dir = "."
 # ログの出力先ファイルのファイル名です
@@ -34,7 +34,7 @@ log_debug = false
 # ログを標準出力に出力可否の指定です
 log_stdout = true
 
-## [aws]
+# [aws]
 aws_region = "ap-northeast-1"
 # Partial-result stabilization の有効化です
 aws_enable_partial_results_stabilization = false
