@@ -43,6 +43,12 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 			zlog.Error().Err(err).Msg("INVALID-HEADER")
 			return err
 		}
+		defer func() {
+			zlog.Debug().
+				Str("channel_id", h.SoraChannelID).
+				Str("connection_id", h.SoraConnectionID).
+				Msg("DISCONNECTED")
+		}()
 
 		languageCode, err := GetLanguageCode(h.SoraAudioStreamingLanguageCode, nil)
 		if err != nil {
@@ -98,11 +104,6 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 
 			c.Response().Flush()
 		}
-
-		zlog.Debug().
-			Str("channel_id", h.SoraChannelID).
-			Str("connection_id", h.SoraConnectionID).
-			Msg("DISCONNECTED")
 
 		return c.NoContent(http.StatusOK)
 	}
