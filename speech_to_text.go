@@ -78,17 +78,14 @@ type RecognitionConfig struct {
 	AlternativeLanguageCodes            []string
 	MaxAlternatives                     int32
 	ProfanityFilter                     bool
-	// Adaptation:
-	SpeechContexts             []*speechpb.SpeechContext
-	EnableWordTimeOffsets      bool
-	EnableWordConfidence       bool
-	EnableAutomaticPunctuation bool
-	EnableSpokenPunctuation    bool
-	EnableSpokenEmojis         bool
-	// DiarizationConfig:
-	// Metadata:
-	Model       string
-	UseEnhanced bool
+	SpeechContexts                      []*speechpb.SpeechContext
+	EnableWordTimeOffsets               bool
+	EnableWordConfidence                bool
+	EnableAutomaticPunctuation          bool
+	EnableSpokenPunctuation             bool
+	EnableSpokenEmojis                  bool
+	Model                               string
+	UseEnhanced                         bool
 }
 
 func NewRecognitionConfig(c Config, args HandlerArgs) RecognitionConfig {
@@ -101,8 +98,7 @@ func NewRecognitionConfig(c Config, args HandlerArgs) RecognitionConfig {
 		AlternativeLanguageCodes:            c.GcpAlternativeLanguageCodes,
 		MaxAlternatives:                     c.GcpMaxAlternatives,
 		ProfanityFilter:                     c.GcpProfanityFilter,
-		// Adaptation:
-		SpeechContexts: []*speechpb.SpeechContext{
+		SpeechContexts:                      []*speechpb.SpeechContext{
 			// &speechpb.SpeechContext{
 			// Phrases: []string{},
 			// },
@@ -112,10 +108,8 @@ func NewRecognitionConfig(c Config, args HandlerArgs) RecognitionConfig {
 		EnableAutomaticPunctuation: c.GcpEnableAutomaticPunctuation,
 		EnableSpokenPunctuation:    c.GcpEnableSpokenPunctuation,
 		EnableSpokenEmojis:         c.GcpEnableSpokenEmojis,
-		// DiarizationConfig:
-		// Metadata:
-		Model:       c.GcpModel,
-		UseEnhanced: c.GcpUseEnhanced,
+		Model:                      c.GcpModel,
+		UseEnhanced:                c.GcpUseEnhanced,
 	}
 }
 
@@ -129,17 +123,14 @@ func NewSpeechpbRecognitionConfig(rc RecognitionConfig) *speechpb.RecognitionCon
 		AlternativeLanguageCodes:            rc.AlternativeLanguageCodes,
 		MaxAlternatives:                     rc.MaxAlternatives,
 		ProfanityFilter:                     rc.ProfanityFilter,
-		// Adaptation:
-		SpeechContexts:             rc.SpeechContexts,
-		EnableWordTimeOffsets:      rc.EnableWordTimeOffsets,
-		EnableWordConfidence:       rc.EnableWordConfidence,
-		EnableAutomaticPunctuation: rc.EnableAutomaticPunctuation,
-		EnableSpokenPunctuation:    wrapperspb.Bool(rc.EnableSpokenPunctuation),
-		EnableSpokenEmojis:         wrapperspb.Bool(rc.EnableSpokenEmojis),
-		// DiarizationConfig:
-		// Metadata:
-		Model:       rc.Model,
-		UseEnhanced: rc.UseEnhanced,
+		SpeechContexts:                      rc.SpeechContexts,
+		EnableWordTimeOffsets:               rc.EnableWordTimeOffsets,
+		EnableWordConfidence:                rc.EnableWordConfidence,
+		EnableAutomaticPunctuation:          rc.EnableAutomaticPunctuation,
+		EnableSpokenPunctuation:             wrapperspb.Bool(rc.EnableSpokenPunctuation),
+		EnableSpokenEmojis:                  wrapperspb.Bool(rc.EnableSpokenEmojis),
+		Model:                               rc.Model,
+		UseEnhanced:                         rc.UseEnhanced,
 	}
 }
 
