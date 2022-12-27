@@ -79,30 +79,12 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 						}
 					}
 					transcript := alternative.Transcript
-					if args.Config.GcpInterimResults {
-						if result.IsFinal {
-							resp := Response{
-								Message: transcript,
-							}
-							if err := encoder.Encode(resp); err != nil {
-								w.CloseWithError(err)
-								return
-							}
-						} else {
-							zlog.Debug().
-								Str("CHANNEL-ID", args.SoraChannelID).
-								Str("CONNECTION-ID", args.SoraConnectionID).
-								Str("Transcript", transcript).
-								Send()
-						}
-					} else {
-						resp := Response{
-							Message: transcript,
-						}
-						if err := encoder.Encode(resp); err != nil {
-							w.CloseWithError(err)
-							return
-						}
+					resp := Response{
+						Message: transcript,
+					}
+					if err := encoder.Encode(resp); err != nil {
+						w.CloseWithError(err)
+						return
 					}
 				}
 			}
