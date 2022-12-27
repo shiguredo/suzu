@@ -20,7 +20,6 @@ import (
 // 受信時はくるくるループを回す
 func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerArgs) (*io.PipeReader, error)) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		// TODO: request-id を表示したい
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
 		if c.Request().ProtoMajor != 2 {
@@ -54,7 +53,6 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
-		// TODO: request-id を表示したい
 		zlog.Debug().
 			Str("channel_id", h.SoraChannelID).
 			Str("connection_id", h.SoraConnectionID).
@@ -77,18 +75,10 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 		reader, err := f(ctx, c.Request().Body, args)
 		if err != nil {
 			zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
-			// TODO: status code
+			// TODO: エラー内容で status code を変更する
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 		defer reader.Close()
-
-		// if _, err := io.Copy(c.Response(), reader); err != nil {
-		// if err.Error() == "client disconnected" {
-		// return echo.NewHTTPError(499)
-		// }
-		// zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
-		// return echo.NewHTTPError(http.StatusInternalServerError)
-		// }
 
 		for {
 			buf := make([]byte, FrameSize)
@@ -96,7 +86,8 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					break
-				} else if err.Error() == "client disconnected" {
+				} else if err.Error() == "failed to read audio, client disconnected" {
+					// TODO: エラーレベルを見直す
 					zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 					return echo.NewHTTPError(499)
 				}

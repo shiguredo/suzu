@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
-	zlog "github.com/rs/zerolog/log"
 )
 
 type TranscriptionResult struct {
@@ -177,6 +176,7 @@ L:
 		return
 	}
 
+	// io.EOF の場合は err は nil になるため明示的に io.EOF を送る
 	at.ResultCh <- TranscriptionResult{
 		Error: io.EOF,
 	}
@@ -184,7 +184,6 @@ L:
 
 func (at *AmazonTranscribe) streamAudioFromReader(ctx context.Context, r io.Reader, frameSize int) error {
 	if err := transcribestreamingservice.StreamAudioFromReader(ctx, at.StartStreamTranscriptionEventStream, frameSize, r); err != nil {
-		zlog.Debug().Err(err).Send()
 		return err
 	}
 	return nil
