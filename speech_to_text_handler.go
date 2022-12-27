@@ -51,14 +51,9 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 				return
 			}
 			if err := resp.Error; err != nil {
-				if err.Code == 3 || err.Code == 11 {
-					zlog.Error().
-						Str("CHANNEL-ID", args.SoraChannelID).
-						Str("CONNECTION-ID", args.SoraConnectionID).
-						Str("MESSAGE", err.GetMessage()).
-						Int32("CODE", err.GetCode()).
-						Send()
-				}
+				// TODO: 音声の長さの上限値に達した場合の処理の追加
+				// if err.Code == 3 || err.Code == 11 {
+				// }
 				zlog.Error().
 					Str("CHANNEL-ID", args.SoraChannelID).
 					Str("CONNECTION-ID", args.SoraConnectionID).
