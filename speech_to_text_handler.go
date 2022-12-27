@@ -3,7 +3,6 @@ package suzu
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"time"
 
@@ -42,7 +41,6 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 
 	r, w := io.Pipe()
 
-	interimResults := false
 	go func() {
 		encoder := json.NewEncoder(w)
 
@@ -54,9 +52,19 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 			}
 			if err := resp.Error; err != nil {
 				if err.Code == 3 || err.Code == 11 {
-					zlog.Error().Str("CHANNEL-ID", args.SoraChannelID).Str("CONNECTION-ID", args.SoraConnectionID).Str("MESSAGE", err.GetMessage()).Int32("CODE", err.GetCode()).Send()
+					zlog.Error().
+						Str("CHANNEL-ID", args.SoraChannelID).
+						Str("CONNECTION-ID", args.SoraConnectionID).
+						Str("MESSAGE", err.GetMessage()).
+						Int32("CODE", err.GetCode()).
+						Send()
 				}
-				zlog.Error().Str("CHANNEL-ID", args.SoraChannelID).Str("CONNECTION-ID", args.SoraConnectionID).Str("MESSAGE", err.GetMessage()).Int32("CODE", err.GetCode()).Send()
+				zlog.Error().
+					Str("CHANNEL-ID", args.SoraChannelID).
+					Str("CONNECTION-ID", args.SoraConnectionID).
+					Str("MESSAGE", err.GetMessage()).
+					Int32("CODE", err.GetCode()).
+					Send()
 				w.Close()
 				return
 			}
@@ -65,19 +73,18 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 				for _, alternative := range result.Alternatives {
 					if args.Config.GcpEnableWordConfidence {
 						for _, word := range alternative.Words {
-							fmt.Printf("%s, Confidence: %v\n", word.Word, word)
+							zlog.Debug().
+								Str("CHANNEL-ID", args.SoraChannelID).
+								Str("CONNECTION-ID", args.SoraConnectionID).
+								Str("Wrod", word.Word).
+								Float32("Confidence", word.Confidence).
+								Str("StartTime", word.StartTime.String()).
+								Str("EndTime", word.EndTime.String()).
+								Send()
 						}
 					}
 					transcript := alternative.Transcript
-					if interimResults {
-						resp := Response{
-							Message: transcript,
-						}
-						if err := encoder.Encode(resp); err != nil {
-							w.CloseWithError(err)
-							return
-						}
-					} else {
+					if args.Config.GcpInterimResults {
 						if result.IsFinal {
 							resp := Response{
 								Message: transcript,
@@ -86,6 +93,20 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 								w.CloseWithError(err)
 								return
 							}
+						} else {
+							zlog.Debug().
+								Str("CHANNEL-ID", args.SoraChannelID).
+								Str("CONNECTION-ID", args.SoraConnectionID).
+								Str("Transcript", transcript).
+								Send()
+						}
+					} else {
+						resp := Response{
+							Message: transcript,
+						}
+						if err := encoder.Encode(resp); err != nil {
+							w.CloseWithError(err)
+							return
 						}
 					}
 				}

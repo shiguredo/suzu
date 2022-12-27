@@ -49,6 +49,8 @@ aws_credential_file = "./credentials"
 aws_profile = "default"
 
 # [gcp]
+gcp_single_utterance = false
+gcp_interim_results = false
 # gcp_enable_separate_recognition_per_channel = false
 # gcp_alternative_language_codes = []
 # gcp_max_alternatives = 1
