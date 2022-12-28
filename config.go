@@ -53,6 +53,7 @@ type Config struct {
 	AwsEnableChannelIdentification       bool   `toml:"aws_enable_channel_identification"`
 
 	// Google Cloud Platform
+	GcpCredentialFile                      string   `toml:"gcp_credential_file"`
 	GcpEnableSeparateRecognitionPerChannel bool     `toml:"gcp_enable_separate_recognition_per_channel"`
 	GcpAlternativeLanguageCodes            []string `toml:"gcp_alternative_language_codes"`
 	GcpMaxAlternatives                     int32    `toml:"gcp_max_alternatives"`

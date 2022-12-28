@@ -6,6 +6,7 @@ import (
 
 	speech "cloud.google.com/go/speech/apiv1"
 	zlog "github.com/rs/zerolog/log"
+	"google.golang.org/api/option"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	speechpb "cloud.google.com/go/speech/apiv1/speechpb"
@@ -20,11 +21,15 @@ func NewSpeechToText() SpeechToText {
 func (stt SpeechToText) Start(ctx context.Context, config Config, args HandlerArgs, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
 	recognitionConfig := NewRecognitionConfig(config, args)
 	speechpbRecognitionConfig := NewSpeechpbRecognitionConfig(recognitionConfig)
-	singleUtterance := config.GcpSingleUtterance
-	interimResults := config.GcpInterimResults
-	streamingRecognitionConfig := NewStreamingRecognitionConfig(speechpbRecognitionConfig, singleUtterance, interimResults)
+	streamingRecognitionConfig := NewStreamingRecognitionConfig(speechpbRecognitionConfig, config.GcpSingleUtterance, config.GcpInterimResults)
 
-	client, err := speech.NewClient(ctx)
+	var opts []option.ClientOption
+	credentialFile := config.GcpCredentialFile
+	if credentialFile != "" {
+		opts = append(opts, option.WithCredentialsFile(credentialFile))
+	}
+
+	client, err := speech.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
