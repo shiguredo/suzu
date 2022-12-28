@@ -28,7 +28,7 @@ type Server struct {
 	http.Server
 }
 
-func NewServer(c *Config) *Server {
+func NewServer(c *Config, service string) (*Server, error) {
 	h2s := &http2.Server{
 		MaxConcurrentStreams: c.HTTP2MaxConcurrentStreams,
 		MaxReadFrameSize:     c.HTTP2MaxReadFrameSize,
@@ -51,7 +51,7 @@ func NewServer(c *Config) *Server {
 		certPool, err := appendCerts(clientCAPath)
 		if err != nil {
 			zlog.Error().Err(err).Send()
-			panic(err)
+			return nil, err
 		}
 
 		tlsConfig := &tls.Config{
@@ -62,8 +62,7 @@ func NewServer(c *Config) *Server {
 	}
 
 	if err := http2.ConfigureServer(&s.Server, h2s); err != nil {
-		// TODO: error を返す
-		panic(err)
+		return nil, err
 	}
 
 	e.Pre(middleware.RemoveTrailingSlash())
@@ -80,7 +79,11 @@ func NewServer(c *Config) *Server {
 	// LB からのヘルスチェック専用 API
 	e.GET("/.ok", s.healthcheckHandler)
 
-	e.POST("/speech", s.createSpeechHandler(AmazonTranscribeHandler))
+	serviceHandler, err := ServiceHandlers.getServiceHandler(service)
+	if err != nil {
+		return nil, err
+	}
+	e.POST("/speech", s.createSpeechHandler(serviceHandler))
 	e.POST("/test", s.createSpeechHandler(TestHandler))
 	e.POST("/dump", s.createSpeechHandler(PacketDumpHandler))
 
@@ -94,7 +97,9 @@ func NewServer(c *Config) *Server {
 	s.echo = e
 	s.echoExporter = echoExporter
 
-	return s
+	zlog.Info().Str("serviceType", service).Send()
+
+	return s, nil
 }
 
 func (s *Server) Start(ctx context.Context, address string, port int) error {
@@ -119,7 +124,7 @@ func (s *Server) Start(ctx context.Context, address string, port int) error {
 
 	defer func() {
 		if err := s.Shutdown(ctx); err != nil {
-			// TODO: ログ出力
+			zlog.Error().Err(err).Send()
 		}
 	}()
 
@@ -143,7 +148,7 @@ func (s *Server) StartExporter(ctx context.Context, address string, port int) er
 
 	defer func() {
 		if err := s.echoExporter.Shutdown(ctx); err != nil {
-			// TODO: ログ出力
+			zlog.Error().Err(err).Send()
 		}
 	}()
 

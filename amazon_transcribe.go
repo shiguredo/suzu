@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
-	zlog "github.com/rs/zerolog/log"
 )
 
 type TranscriptionResult struct {
@@ -29,43 +28,52 @@ type AmazonTranscribe struct {
 	EnablePartialResultsStabilization   bool
 	NumberOfChannels                    int64
 	EnableChannelIdentification         bool
+	PartialResultsStability             string
 	Region                              string
 	Debug                               bool
 	StartStreamTranscriptionEventStream *transcribestreamingservice.StartStreamTranscriptionEventStream
 	ResultCh                            chan TranscriptionResult
 }
 
-func NewAmazonTranscribe(region, languageCode string, sampleRateHertz, audioChannelCount int64, enablePartialResultsStabilization, enableChannelIdentification bool) *AmazonTranscribe {
+func NewAmazonTranscribe(config Config, languageCode string, sampleRateHertz, audioChannelCount int64) *AmazonTranscribe {
 	return &AmazonTranscribe{
-		Region:                            region,
+		Region:                            config.AwsRegion,
 		LanguageCode:                      languageCode,
 		MediaEncoding:                     transcribestreamingservice.MediaEncodingOggOpus,
 		MediaSampleRateHertz:              sampleRateHertz,
-		EnablePartialResultsStabilization: enablePartialResultsStabilization,
+		EnablePartialResultsStabilization: config.AwsEnablePartialResultsStabilization,
+		PartialResultsStability:           config.AwsPartialResultsStability,
 		NumberOfChannels:                  audioChannelCount,
-		EnableChannelIdentification:       enableChannelIdentification,
+		EnableChannelIdentification:       config.AwsEnableChannelIdentification,
 		ResultCh:                          make(chan TranscriptionResult),
 	}
 }
 
-func NewStartStreamTranscriptionInput(languageCode string, sampleRateHertz, audioChannelCount int64, enablePartialResultsStabilization, enableChannelIdentification bool) transcribestreamingservice.StartStreamTranscriptionInput {
+func NewStartStreamTranscriptionInput(at *AmazonTranscribe) transcribestreamingservice.StartStreamTranscriptionInput {
 	var numberOfChannels *int64
-	if enableChannelIdentification {
-		numberOfChannels = aws.Int64(audioChannelCount)
+	if at.EnableChannelIdentification {
+		numberOfChannels = aws.Int64(at.NumberOfChannels)
+	}
+	var partialResultsStability *string
+	if !at.EnablePartialResultsStabilization {
+		partialResultsStability = nil
+	} else {
+		partialResultsStability = &at.PartialResultsStability
 	}
 
 	return transcribestreamingservice.StartStreamTranscriptionInput{
-		LanguageCode:                      aws.String(languageCode),
+		LanguageCode:                      aws.String(at.LanguageCode),
 		MediaEncoding:                     aws.String(transcribestreamingservice.MediaEncodingOggOpus),
-		MediaSampleRateHertz:              aws.Int64(sampleRateHertz),
-		EnablePartialResultsStabilization: aws.Bool(enablePartialResultsStabilization),
+		MediaSampleRateHertz:              aws.Int64(at.MediaSampleRateHertz),
 		NumberOfChannels:                  numberOfChannels,
-		EnableChannelIdentification:       aws.Bool(enableChannelIdentification),
+		EnablePartialResultsStabilization: aws.Bool(at.EnablePartialResultsStabilization),
+		PartialResultsStability:           partialResultsStability,
+		EnableChannelIdentification:       aws.Bool(at.EnableChannelIdentification),
 	}
 }
 
-func (at *AmazonTranscribe) NewAmazonTranscribeClient(config Config) *transcribestreamingservice.TranscribeStreamingService {
-	cfg := aws.NewConfig().WithRegion(at.Region)
+func NewAmazonTranscribeClient(config Config) *transcribestreamingservice.TranscribeStreamingService {
+	cfg := aws.NewConfig().WithRegion(config.AwsRegion)
 
 	if config.Debug {
 		cfg = cfg.WithLogLevel(aws.LogDebug)
@@ -93,7 +101,6 @@ func (at *AmazonTranscribe) NewAmazonTranscribeClient(config Config) *transcribe
 }
 
 func (at *AmazonTranscribe) Start(ctx context.Context, config Config, r io.Reader) error {
-	// return at.startTranscribeService(ctx, credentials, config)
 	if err := at.startTranscribeService(ctx, config); err != nil {
 		return err
 	}
@@ -106,8 +113,9 @@ func (at *AmazonTranscribe) Start(ctx context.Context, config Config, r io.Reade
 }
 
 func (at *AmazonTranscribe) startTranscribeService(ctx context.Context, config Config) error {
-	client := at.NewAmazonTranscribeClient(config)
-	input := NewStartStreamTranscriptionInput(at.LanguageCode, at.MediaSampleRateHertz, at.NumberOfChannels, config.AwsEnablePartialResultsStabilization, config.AwsEnableChannelIdentification)
+
+	client := NewAmazonTranscribeClient(config)
+	input := NewStartStreamTranscriptionInput(at)
 
 	resp, err := client.StartStreamTranscriptionWithContext(ctx, &input)
 	if err != nil {
@@ -139,7 +147,8 @@ L:
 			switch e := event.(type) {
 			case *transcribestreamingservice.TranscriptEvent:
 				for _, res := range e.Transcript.Results {
-					if !aws.BoolValue(res.IsPartial) {
+					// TODO: debug == true では res.IsPartial == true 時の Transcript も取得する
+					if !*res.IsPartial {
 						for _, alt := range res.Alternatives {
 							var message []byte
 							if alt.Transcript != nil {
@@ -154,9 +163,6 @@ L:
 					}
 				}
 			default:
-				// TODO: エラーの場合は stream.Err() でとるため、不要そうであればここでのログ出力処理は削除する
-				err := fmt.Errorf("UNEXPECTED-STREAM-EVENT: %v", e)
-				zlog.Debug().Str("type", "transcribestreamingservice").Err(err).Send()
 				break L
 			}
 		}
@@ -170,11 +176,14 @@ L:
 		return
 	}
 
+	// io.EOF の場合は err は nil になるため明示的に io.EOF を送る
+	at.ResultCh <- TranscriptionResult{
+		Error: io.EOF,
+	}
 }
 
 func (at *AmazonTranscribe) streamAudioFromReader(ctx context.Context, r io.Reader, frameSize int) error {
 	if err := transcribestreamingservice.StreamAudioFromReader(ctx, at.StartStreamTranscriptionEventStream, frameSize, r); err != nil {
-		zlog.Debug().Err(err).Send()
 		return err
 	}
 	return nil

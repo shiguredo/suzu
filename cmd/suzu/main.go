@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/shiguredo/suzu"
 	"golang.org/x/sync/errgroup"
@@ -20,12 +22,16 @@ var (
 	serviceType    string
 )
 
-func main() {
+func init() {
 	// XXX(v): とりあえず 同じ場所にある config.toml を読みに行く実装
-	configFilePath := flag.String("C", "config.toml", "suzu の設定ファイルへのパス")
+	flag.StringVar(&configFilePath, "C", "config.toml", "suzu の設定ファイルへのパス")
+	flag.StringVar(&serviceType, "service", "aws", fmt.Sprintf("音声文字変換のサービス（%s）", strings.Join(suzu.ServiceHandlers.GetNames(), ", ")))
 	flag.Parse()
+}
 
-	buf, err := os.ReadFile(*configFilePath)
+func main() {
+
+	buf, err := os.ReadFile(configFilePath)
 	if err != nil {
 		// 読み込めない場合 Fatal で終了
 		log.Fatal("cannot open config file, err=", err)
@@ -48,7 +54,7 @@ func main() {
 		log.Fatal("cannot parse config file, err=", err)
 	}
 
-	server := suzu.NewServer(&config)
+	server, err := suzu.NewServer(&config, serviceType)
 	if err != nil {
 		log.Fatal("cannot create server:", err)
 	}

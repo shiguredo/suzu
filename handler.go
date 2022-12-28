@@ -2,12 +2,10 @@ package suzu
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -20,9 +18,8 @@ import (
 
 // https://github.com/herrberk/go-http2-streaming/blob/master/http2/server.go
 // 受信時はくるくるループを回す
-func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerArgs) (<-chan Response, error)) echo.HandlerFunc {
+func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerArgs) (*io.PipeReader, error)) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		// TODO: request-id を表示したい
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
 		if c.Request().ProtoMajor != 2 {
@@ -41,7 +38,7 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 		}{}
 		if err := (&echo.DefaultBinder{}).BindHeaders(c, &h); err != nil {
 			zlog.Error().Err(err).Msg("INVALID-HEADER")
-			return err
+			return echo.NewHTTPError(http.StatusBadRequest)
 		}
 		defer func() {
 			zlog.Debug().
@@ -56,7 +53,6 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
-		// TODO: request-id を表示したい
 		zlog.Debug().
 			Str("channel_id", h.SoraChannelID).
 			Str("connection_id", h.SoraConnectionID).
@@ -76,33 +72,36 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 
 		args := NewHandlerArgs(*s.config, sampleRate, channelCount, h.SoraChannelID, h.SoraConnectionID, languageCode)
 
-		// resultCh は関数内で閉じる想定
-		resultCh, err := f(ctx, c.Request().Body, args)
+		reader, err := f(ctx, c.Request().Body, args)
 		if err != nil {
 			zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
-			// TODO: status code
+			// TODO: エラー内容で status code を変更する
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
+		defer reader.Close()
 
-		enc := json.NewEncoder(c.Response())
-
-		for result := range resultCh {
-			if err := result.Error; err != nil {
+		for {
+			buf := make([]byte, FrameSize)
+			n, err := reader.Read(buf)
+			if err != nil {
 				if errors.Is(err, io.EOF) {
-					return c.NoContent(http.StatusOK)
-				} else if err.Error() == "client disconnected" {
+					break
+				} else if err.Error() == "failed to read audio, client disconnected" {
+					// TODO: エラーレベルを見直す
+					zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 					return echo.NewHTTPError(499)
 				}
 				zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 				return echo.NewHTTPError(http.StatusInternalServerError)
 			}
 
-			if err := enc.Encode(result); err != nil {
-				zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
-				return echo.NewHTTPError(http.StatusInternalServerError)
+			if n > 0 {
+				if _, err := c.Response().Write(buf[:n]); err != nil {
+					zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+					return echo.NewHTTPError(http.StatusInternalServerError)
+				}
+				c.Response().Flush()
 			}
-
-			c.Response().Flush()
 		}
 
 		return c.NoContent(http.StatusOK)
@@ -129,116 +128,50 @@ func NewHandlerArgs(config Config, sampleRate uint32, channelCount uint16, soraC
 	}
 }
 
-func AmazonTranscribeHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
-	ch := make(chan Response)
-	r, w := io.Pipe()
-
-	at := NewAmazonTranscribe(args.Config.AwsRegion, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount), args.Config.AwsEnablePartialResultsStabilization, args.Config.AwsEnableChannelIdentification)
-
-	go func() {
-		defer w.Close()
-		if err := opus2ogg(ctx, body, w, args.SampleRate, args.ChannelCount, args.Config); err != nil {
-			at.ResultCh <- TranscriptionResult{
-				Error: err,
-			}
-			return
-		}
-	}()
-
-	go func() {
-		defer at.Close()
-		if err := at.Start(ctx, args.Config, r); err != nil {
-			at.ResultCh <- TranscriptionResult{
-				Error: err,
-			}
-			return
-		}
-	}()
-
-	go func() {
-		defer close(ch)
-
-		for tr := range at.ResultCh {
-			if err := tr.Error; err != nil {
-				ch <- Response{
-					Error: err,
-				}
-				return
-			}
-			ch <- Response{
-				ChannelID: tr.ChannelID,
-				Message:   string(tr.Message),
-			}
-		}
-	}()
-
-	return ch, nil
-}
-
-func TestHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
-	ch := handleTest(ctx, body, args.Config)
-	return ch, nil
-}
-
-func PacketDumpHandler(ctx context.Context, body io.Reader, args HandlerArgs) (<-chan Response, error) {
-	ch := handlePacketDump(ctx, args.Config.DumpFile, body, args.SoraChannelID, args.SoraConnectionID, args.LanguageCode, args.SampleRate, args.ChannelCount)
-	return ch, nil
-}
-
 func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sampleRate uint32, channelCount uint16, c Config) error {
 	o, err := NewWith(oggWriter, sampleRate, channelCount)
 	if err != nil {
+		if w, ok := oggWriter.(*io.PipeWriter); ok {
+			w.CloseWithError(err)
+		}
 		return err
 	}
 	defer o.Close()
 
 	if err := o.writeHeaders(); err != nil {
+		if w, ok := oggWriter.(*io.PipeWriter); ok {
+			w.CloseWithError(err)
+		}
 		return err
 	}
 
-	ch := make(chan Response)
-
-	go func() {
-		defer close(ch)
-
-		t := time.Duration(c.TimeToWaitForOpusPacket) * time.Millisecond
-
-		reader := NewReaderWithTimer(opusReader)
-		resultCh := reader.Read(ctx, t)
-
-		for res := range resultCh {
-			if err := res.Error; err != nil {
-				ch <- Response{
-					Error: res.Error,
-				}
-				return
-			}
-			ch <- Response{
-				ChannelID: res.ChannelID,
-				Message:   res.Message,
-			}
-		}
-	}()
-
-	for response := range ch {
-		if err := response.Error; err != nil {
-			return err
-		}
-
-		opus := codecs.OpusPacket{}
-		_, err := opus.Unmarshal([]byte(response.Message))
+	for {
+		buf := make([]byte, FrameSize)
+		n, err := opusReader.Read(buf)
 		if err != nil {
-			// TODO: 停止または継続処理
+			if w, ok := oggWriter.(*io.PipeWriter); ok {
+				w.CloseWithError(err)
+			}
 			return err
 		}
+		if n > 0 {
+			opus := codecs.OpusPacket{}
+			_, err := opus.Unmarshal(buf[:n])
+			if err != nil {
+				if w, ok := oggWriter.(*io.PipeWriter); ok {
+					w.CloseWithError(err)
+				}
+				return err
+			}
 
-		if err := o.Write(&opus); err != nil {
-			// TODO: 停止または継続処理
-			return err
+			if err := o.Write(&opus); err != nil {
+				if w, ok := oggWriter.(*io.PipeWriter); ok {
+					w.CloseWithError(err)
+				}
+				return err
+			}
 		}
 	}
-
-	return nil
 }
 
 type Response struct {
@@ -247,201 +180,102 @@ type Response struct {
 	Error     error   `json:"error,omitempty"`
 }
 
-func handleTest(ctx context.Context, r io.Reader, c Config) <-chan Response {
-	ch := make(chan Response)
-
-	go func() {
-		defer close(ch)
-
-		t := time.Duration(c.TimeToWaitForOpusPacket) * time.Millisecond
-
-		reader := NewReaderWithTimer(r)
-		resultCh := reader.Read(ctx, t)
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case res := <-resultCh:
-				if err := res.Error; err != nil {
-					ch <- Response{
-						Error: res.Error,
-					}
-					return
-				}
-				ch <- Response{
-					ChannelID: &[]string{"ch_0"}[0],
-					Message:   fmt.Sprintf("n: %d", len(res.Message)),
-				}
-			}
-
-		}
-	}()
-
-	return ch
-}
-
-type dump struct {
-	Timestamp    int64  `json:"timestamp"`
-	ChannelID    string `json:"channel_id"`
-	ConnectionID string `json:"connection_id"`
-	LanguageCode string `json:"language_code"`
-	SampleRate   uint32 `json:"sample_rate"`
-	ChannelCount uint16 `json:"channel_count"`
-	Payload      []byte `json:"payload"`
-}
-
-func handlePacketDump(ctx context.Context, filename string, r io.Reader, channelID, connectionID, languageCode string, sampleRate uint32, channelCount uint16) <-chan Response {
-	ch := make(chan Response)
-
-	go func() {
-		defer close(ch)
-
-		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			select {
-			case <-ctx.Done():
-				return
-			case ch <- Response{
-				Error: err,
-			}:
-				return
-			}
-
-		}
-		defer f.Close()
-
-		enc := json.NewEncoder(f)
-
-		buf := make([]byte, 4*1024)
-
-		for {
-			n, err := r.Read(buf)
-			if err != nil {
-				select {
-				case <-ctx.Done():
-					return
-				case ch <- Response{
-					Error: err,
-				}:
-					return
-				}
-
-			}
-			if n > 0 {
-				p := make([]byte, n)
-				copy(p, buf[:n])
-				dump := dump{
-					Timestamp:    time.Now().UnixMilli(),
-					ChannelID:    channelID,
-					ConnectionID: connectionID,
-					LanguageCode: languageCode,
-					SampleRate:   sampleRate,
-					ChannelCount: channelCount,
-					Payload:      p,
-				}
-				if err := enc.Encode(dump); err != nil {
-					select {
-					case <-ctx.Done():
-						return
-					case ch <- Response{
-						Error: err,
-					}:
-						return
-					}
-				}
-				select {
-				case <-ctx.Done():
-					return
-				case ch <- Response{
-					ChannelID: &[]string{"ch_0"}[0],
-					Message:   fmt.Sprintf("n: %d", n),
-				}:
-				}
-			}
-		}
-	}()
-
-	return ch
-}
-
-func (s *Server) healthcheckHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"revision": s.config.Revision,
-	})
-}
-
-type ReaderWithTimer struct {
-	R io.Reader
-}
-
-func NewReaderWithTimer(r io.Reader) ReaderWithTimer {
-	return ReaderWithTimer{r}
-}
-
-func (r *ReaderWithTimer) Read(ctx context.Context, d time.Duration) <-chan Response {
-	type res struct {
-		Message []byte
+func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader) (io.Reader, error) {
+	type reqeust struct {
+		Payload []byte
 		Error   error
 	}
 
-	responseCh := make(chan Response)
-	resCh := make(chan res)
+	r, w := io.Pipe()
+	ch := make(chan reqeust)
 
 	go func() {
-		defer close(resCh)
-
-		buf := make([]byte, 4*1024)
-
 		for {
-			n, err := r.R.Read(buf)
+			buf := make([]byte, FrameSize)
+			n, err := opusReader.Read(buf)
 			if err != nil {
-				resCh <- res{
+				ch <- reqeust{
 					Error: err,
 				}
 				return
 			}
+
 			if n > 0 {
-				m := make([]byte, n)
-				copy(m, buf[:n])
-				resCh <- res{
-					Message: m,
+				ch <- reqeust{
+					Payload: buf[:n],
 				}
 			}
 		}
 	}()
 
 	timer := time.NewTimer(d)
-
 	go func() {
-		defer close(responseCh)
-		defer timer.Stop()
-
 		for {
 			select {
 			case <-timer.C:
-				responseCh <- Response{
-					Message: string(silentPacket()),
+				if _, err := w.Write(silentPacket()); err != nil {
+					w.CloseWithError(err)
+					return
 				}
-			case ret := <-resCh:
-				if err := ret.Error; err != nil {
-					responseCh <- Response{
-						Error: err,
+			case req := <-ch:
+				if err := req.Error; err != nil {
+					w.CloseWithError(err)
+					if !timer.Stop() {
+						<-timer.C
 					}
 					return
 				}
-				responseCh <- Response{
-					Message: string(ret.Message),
+				if _, err := w.Write(req.Payload); err != nil {
+					w.CloseWithError(err)
+					if !timer.Stop() {
+						<-timer.C
+					}
+					return
 				}
 			}
-
 			timer.Reset(d)
 		}
 	}()
 
-	return responseCh
+	return r, nil
 }
 
 func silentPacket() []byte {
 	return []byte{252, 255, 254}
+}
+
+type serviceHandler func(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error)
+
+type serviceHandlers struct {
+	Handlers map[string]serviceHandler
+}
+
+func NewServiceHandlers() serviceHandlers {
+	return serviceHandlers{
+		Handlers: make(map[string]serviceHandler),
+	}
+}
+
+var ServiceHandlers = NewServiceHandlers()
+
+func (sh *serviceHandlers) registerHandler(name string, handler serviceHandler) {
+	sh.Handlers[name] = handler
+}
+
+func (sh *serviceHandlers) getServiceHandler(name string) (serviceHandler, error) {
+	h, ok := sh.Handlers[name]
+	if !ok {
+		return nil, fmt.Errorf("UNREGISTERED-SERVICE: %s", name)
+	}
+
+	return h, nil
+}
+
+func (sh *serviceHandlers) GetNames() []string {
+	var names []string
+	for name := range sh.Handlers {
+		names = append(names, name)
+	}
+
+	return names
 }
