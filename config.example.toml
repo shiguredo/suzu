@@ -48,9 +48,15 @@ aws_credential_file = "./credentials"
 # 認証情報に AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY を使用する場合は、下記のプロファイルの指定行をコメントアウトします
 aws_profile = "default"
 
+
+# https://cloud.google.com/speech-to-text/docs/reference/rpc/google.cloud.speech.v1#streamingrecognitionconfig
+# https://cloud.google.com/speech-to-text/docs/reference/rpc/google.cloud.speech.v1#recognitionconfig
 # [gcp]
+# 1 つだけの発話を検出するかの設定です。ture にした場合は 1 つの発話を検出すると、それ以降の発話をテキスト化した結果は返ってきません
 gcp_single_utterance = false
-gcp_interim_results = false
+# テキスト化の中間結果を返すかの設定です
+gcp_interim_results = true
+# GCP の認証情報ファイル（JSON）の指定です。GOOGLE_APPLICATION_CREDENTIALS で認証情報ファイルを指定する場合は下記のファイルの指定行をコメントアウトします
 gcp_credential_file = ""
 # gcp_enable_separate_recognition_per_channel = false
 # gcp_alternative_language_codes = []
