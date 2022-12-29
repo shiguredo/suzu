@@ -36,11 +36,7 @@ Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを H
 
 ## 使ってみる
 
-TBD
-
-<!---
 Suzu を使ってみたい人は [USE.md](doc/USE.md) をお読みください。
--->
 
 ## 対応サービス
 
