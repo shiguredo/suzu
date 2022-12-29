@@ -85,6 +85,7 @@ func readDumpFile(t *testing.T, filename string, d time.Duration) *io.PipeReader
 func TestSpeechHandler(t *testing.T) {
 	handler := AmazonTranscribeHandler
 	path := "/speech"
+	serviceType := "aws"
 	if testing.Short() {
 		handler = TestHandler
 		path = "/test"
@@ -111,7 +112,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(handler)
+		h := s.createSpeechHandler(serviceType, handler)
 		err := h(c)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
@@ -164,7 +165,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(handler)
+		h := s.createSpeechHandler(serviceType, handler)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusBadRequest, err.(*echo.HTTPError).Code)
@@ -206,7 +207,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(handler)
+		h := s.createSpeechHandler(serviceType, handler)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
@@ -249,7 +250,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(handler)
+		h := s.createSpeechHandler(serviceType, handler)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
@@ -262,7 +263,7 @@ func TestSpeechHandler(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		assert.Contains(t, buf.String()[:n], "UNSUPPORTED-LANGUAGE-CODE: en-JP")
+		assert.Contains(t, buf.String()[:n], "UNSUPPORTED-LANGUAGE-CODE: aws, en-JP")
 	})
 
 	t.Run("packet read error", func(t *testing.T) {
@@ -291,7 +292,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(handler)
+		h := s.createSpeechHandler(serviceType, handler)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
@@ -339,7 +340,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req2, rec)
 
-		h := s.createSpeechHandler(handler)
+		h := s.createSpeechHandler(serviceType, handler)
 		err = h(c)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
