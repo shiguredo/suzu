@@ -18,7 +18,7 @@ import (
 
 // https://github.com/herrberk/go-http2-streaming/blob/master/http2/server.go
 // 受信時はくるくるループを回す
-func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerArgs) (*io.PipeReader, error)) echo.HandlerFunc {
+func (s *Server) createSpeechHandler(serviceType string, f func(context.Context, io.Reader, HandlerArgs) (*io.PipeReader, error)) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
@@ -47,7 +47,7 @@ func (s *Server) createSpeechHandler(f func(context.Context, io.Reader, HandlerA
 				Msg("DISCONNECTED")
 		}()
 
-		languageCode, err := GetLanguageCode(h.SoraAudioStreamingLanguageCode, nil)
+		languageCode, err := GetLanguageCode(serviceType, h.SoraAudioStreamingLanguageCode, nil)
 		if err != nil {
 			zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 			return echo.NewHTTPError(http.StatusInternalServerError)

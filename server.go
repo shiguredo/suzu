@@ -83,9 +83,9 @@ func NewServer(c *Config, service string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	e.POST("/speech", s.createSpeechHandler(serviceHandler))
-	e.POST("/test", s.createSpeechHandler(TestHandler))
-	e.POST("/dump", s.createSpeechHandler(PacketDumpHandler))
+	e.POST("/speech", s.createSpeechHandler(service, serviceHandler))
+	e.POST("/test", s.createSpeechHandler(service, TestHandler))
+	e.POST("/dump", s.createSpeechHandler(service, PacketDumpHandler))
 
 	echoExporter := echo.New()
 	echoExporter.HideBanner = true
