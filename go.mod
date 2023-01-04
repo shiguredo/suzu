@@ -16,7 +16,7 @@ require (
 )
 
 require (
-	cloud.google.com/go/speech v1.9.0
+	cloud.google.com/go/speech v1.10.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/goleak v1.2.0
 	google.golang.org/api v0.105.0
@@ -24,7 +24,7 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.105.0 // indirect
+	cloud.google.com/go v0.107.0 // indirect
 	cloud.google.com/go/compute v1.13.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.2 // indirect
 	cloud.google.com/go/longrunning v0.3.0 // indirect
