@@ -47,8 +47,8 @@ Suzu を使ってみたい人は [USE.md](doc/USE.md) をお読みください�
 ## ライセンス
 
 ```
-Copyright 2022-2022, Hiroshi Yoshida (Original Author)
-Copyright 2022-2022, Shiguredo Inc.
+Copyright 2022-2023, Hiroshi Yoshida (Original Author)
+Copyright 2022-2023, Shiguredo Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
