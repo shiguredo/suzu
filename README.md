@@ -1,8 +1,5 @@
 # Audio Streaming Gateway Suzu
 
-
-**現在リリースに向けて開発中です**
-
 [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/shiguredo/suzu.svg)](https://github.com/shiguredo/suzu)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
