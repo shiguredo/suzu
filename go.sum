@@ -51,6 +51,8 @@ cloud.google.com/go/speech v1.10.0 h1:JkIr9yM9VTZd18wmGZfpJOEjmyGBZRWYOvlVgMacPw
 cloud.google.com/go/speech v1.10.0/go.mod h1:npp8kblozKIgig2NPZ9Pk53A6N0EqKpH0liU+bzGms4=
 cloud.google.com/go/speech v1.11.0 h1:PDet2Im+tzrHpwsSJbI7vy8rITH9UlOqzvwaA0ySnOI=
 cloud.google.com/go/speech v1.11.0/go.mod h1:npp8kblozKIgig2NPZ9Pk53A6N0EqKpH0liU+bzGms4=
+cloud.google.com/go/speech v1.12.0 h1:P/jAORdVu0nxnVhHPFSG4ekOQE0katoFOsAgA96R5q4=
+cloud.google.com/go/speech v1.12.0/go.mod h1:Tl42br4u5i7g7bmHgp+6wxMIn4+1P9N7wNrIByVsgYA=
 cloud.google.com/go/storage v1.0.0/go.mod h1:IhtSnM/ZTZV8YYJWCY8RULGVqBDmpoyjwiyrjsg+URw=
 cloud.google.com/go/storage v1.5.0/go.mod h1:tpKbwo567HUNpVclU5sGELwQWBDZ8gh0ZeosJ0Rtdos=
 cloud.google.com/go/storage v1.6.0/go.mod h1:N7U0C8pVQ/+NIKOBQyamJIeKQKkZ+mxpohlUTyfDhBk=
@@ -600,6 +602,8 @@ google.golang.org/genproto v0.0.0-20221206210731-b1a01be3a5f6 h1:AGXp12e/9rItf6/
 google.golang.org/genproto v0.0.0-20221206210731-b1a01be3a5f6/go.mod h1:1dOng4TWOomJrDGhpXjfCD35wQC6jnC7HpRmOFRqEV0=
 google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef h1:uQ2vjV/sHTsWSqdKeLqmwitzgvjMl7o4IdtHwUDXSJY=
 google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef/go.mod h1:RGgjbofJ8xD9Sq1VVhDM1Vok1vRONV+rg+CjzG4SZKM=
+google.golang.org/genproto v0.0.0-20230109162033-3c3c17ce83e6 h1:uUn6GsgKK2eCI0bWeRMgRCcqDaQXYDuB+5tXA5Xeg/8=
+google.golang.org/genproto v0.0.0-20230109162033-3c3c17ce83e6/go.mod h1:RGgjbofJ8xD9Sq1VVhDM1Vok1vRONV+rg+CjzG4SZKM=
 google.golang.org/grpc v1.19.0/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
 google.golang.org/grpc v1.20.1/go.mod h1:10oTOabMzJvdu6/UiuZezV6QK5dSlG84ov/aaiqXj38=
 google.golang.org/grpc v1.21.1/go.mod h1:oYelfM1adQP15Ek0mdvEgi9Df8B9CZIaU1084ijfRaM=
