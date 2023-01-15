@@ -19,7 +19,7 @@ require (
 	cloud.google.com/go/speech v1.12.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/goleak v1.2.0
-	google.golang.org/api v0.106.0
+	google.golang.org/api v0.107.0
 	google.golang.org/protobuf v1.28.1
 )
 
