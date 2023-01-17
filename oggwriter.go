@@ -183,9 +183,6 @@ func (i *OggWriter) WriteRTP(packet *rtp.Packet) error {
 	if i.previousTimestamp != 1 {
 		increment := packet.Timestamp - i.previousTimestamp
 		i.previousGranulePosition += uint64(increment)
-	} else {
-		// TODO: 取得・計算したサンプル数を設定する
-		i.previousGranulePosition = 960
 	}
 	i.previousTimestamp = packet.Timestamp
 
