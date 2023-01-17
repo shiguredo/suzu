@@ -32,6 +32,7 @@ log_dir = "."
 log_name = "suzu.jsonl"
 log_debug = false
 # ログを標準出力に出力可否の指定です
+# true にした場合はファイルにログは出力されません
 log_stdout = true
 
 # [aws]
