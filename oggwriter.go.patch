@@ -1,5 +1,5 @@
---- oggwriter.go.org	2022-01-21 17:05:42.000000000 +0900
-+++ oggwriter.go	2022-01-25 12:25:33.000000000 +0900
+--- oggwriter.go.org	2023-01-17 12:52:08
++++ oggwriter.go	2023-01-17 16:18:23
 @@ -1,5 +1,4 @@
 -// Package oggwriter implements OGG media container writer
 -package oggwriter
@@ -58,12 +58,3 @@
  
  	// RFC specifies that the page where the CommentHeader completes should have a granule position of 0
  	data = i.createPage(oggCommentHeader, pageHeaderTypeContinuationOfStream, 0, i.pageIndex)
-@@ -188,6 +183,9 @@
- 	if i.previousTimestamp != 1 {
- 		increment := packet.Timestamp - i.previousTimestamp
- 		i.previousGranulePosition += uint64(increment)
-+	} else {
-+		// TODO: 取得・計算したサンプル数を設定する
-+		i.previousGranulePosition = 960
- 	}
- 	i.previousTimestamp = packet.Timestamp
