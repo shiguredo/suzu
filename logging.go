@@ -2,7 +2,6 @@ package suzu
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"time"
@@ -29,24 +28,12 @@ func InitLogger(config Config) error {
 
 	logPath := fmt.Sprintf("%s/%s", config.LogDir, config.LogName)
 
-	writer := &lumberjack.Logger{
-		Filename:   logPath,
-		MaxSize:    logRotateMaxSize,
-		MaxBackups: logRotateMaxBackups,
-		MaxAge:     logRotateMaxAge,
-		Compress:   false,
-	}
-
 	// https://github.com/rs/zerolog/issues/77
 	zerolog.TimestampFunc = func() time.Time {
 		return time.Now().UTC()
 	}
 
 	zerolog.TimeFieldFormat = time.RFC3339Nano
-
-	var writers io.Writer
-	// lumberjack を登録
-	writers = zerolog.MultiLevelWriter(writer)
 
 	if config.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -55,12 +42,19 @@ func InitLogger(config Config) error {
 	}
 	// log_stdout: true の時はコンソールにもだす
 	if config.LogStdout {
-		consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05.000000Z"}
-		format(&consoleWriter)
-		writers = zerolog.MultiLevelWriter(writers, consoleWriter)
+		writer := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05.000000Z"}
+		format(&writer)
+		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
+	} else {
+		writer := &lumberjack.Logger{
+			Filename:   logPath,
+			MaxSize:    logRotateMaxSize,
+			MaxBackups: logRotateMaxBackups,
+			MaxAge:     logRotateMaxAge,
+			Compress:   false,
+		}
+		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
 	}
-
-	log.Logger = zerolog.New(writers).With().Caller().Timestamp().Logger()
 
 	return nil
 }
