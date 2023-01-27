@@ -35,6 +35,60 @@ Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを H
 
 Suzu を使ってみたい人は [USE.md](doc/USE.md) をお読みください。
 
+## シーケンス図 (GCP Speech to Text)
+
+```mermaid
+sequenceDiagram
+    participant client1 as クライアント1<br>sendrecv
+    participant client2 as クライアント2<br>recvonly
+    participant sora as WebRTC SFU Sora
+    participant suzu as Audio Streaming Gateway Suzu
+    participant app as アプリケーションサーバー
+    participant gcp as GCP Speech to Text
+    client1->>+sora: "type": "connect"
+    sora->>+app: 認証ウェブフック
+    note over app: 認証成功
+    app-->>-sora: 200 OK<br>"allowed": true
+    sora->>+app: セッションウェブフック
+    app-->>-sora: 200 OK<br>"audio_streaimng": true
+    sora->>-client1: "type": "offer"
+    client1->>sora: "type": "answer"
+    note over client1, sora: WebRTC 確立
+    sora-)client1: "type": "switched"
+    note over client1, sora: DataChannel 確立
+    par
+        client1-)sora: Opus over SRTP
+        sora-)suzu: Opus over HTTP/2
+        suzu-)gcp: Ogg over HTTP/2
+        client1-)sora: Opus over SRTP
+        sora-)suzu: Opus over HTTP/2
+        suzu-)gcp: Ogg over HTTP/2
+    and
+        client2->>+sora: "type": "connect"
+        sora->>+app: 認証ウェブフック
+        note over app: 認証成功
+        app-->>-sora: 200 OK<br>"allowed": true
+        sora->>+app: セッションウェブフック
+        app-->>-sora: 200 OK<br>"audio_streaimng": true
+        sora->>-client2: "type": "offer"
+        client2->>sora: "type": "answer"
+        note over client2, sora: WebRTC 確立
+        sora-)client2: "type": "switched"
+        note over client2, sora: DataChannel 確立
+    end
+    client1-)sora: Opus over SRTP
+    sora-)suzu: Opus over HTTP/2
+    note over suzu: Opus を Ogg コンテナに詰める
+    suzu-)gcp: Ogg over HTTP/2
+    gcp-)suzu: 音声解析結果<br>JSON over HTTP/2
+    suzu-)sora: 音声解析結果<br>JSON over HTTP/2
+    par
+        sora-)client1: プッシュ通知<br>音声解析結果<br>JSON over DataChannel
+    and
+        sora-)client2: プッシュ通知<br>音声解析結果<br>JSON over DataChannel
+    end
+```
+
 ## 対応サービス
 
 - [x] [Amazon Transcribe](https://aws.amazon.com/jp/transcribe/)
