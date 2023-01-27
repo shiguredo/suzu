@@ -35,7 +35,7 @@ Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを H
 
 Suzu を使ってみたい人は [USE.md](doc/USE.md) をお読みください。
 
-## シーケンス図 (GCP Speech to Text)
+## Suzu と GCP Speech to Text
 
 ```mermaid
 sequenceDiagram
