@@ -15,12 +15,13 @@ Please read https://github.com/shiguredo/oss/blob/master/README.en.md before use
 
 ## Audio Streaming Gateway Suzu について
 
-Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを HTTP/2 経由で受け取り、
-音声解析サービスへ送信し解析結果を Sora 経由で DataChannel でクライアントへ通知するゲートウェイです。
+Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) 専用の音声解析用ゲートウェイです。
+Suzu は Sora から送られてくる音声ストリーミングを HTTP/2 経由で受け取り、音声解析サービスに転送し、その解析結果を Sora に送ります。
+Sora は Suzu から送られてきた解析結果を、プッシュ API を経由してリアルタイムにクライアントへ通知します。
 
 ## 目的
 
-リアルタイム通話で気軽に音声解析サービスを利用できる仕組みを提供する事です。
+リアルタイム通話で気軽に音声解析サービスを利用できる仕組みを提供することです。
 
 ## 特徴
 
@@ -28,7 +29,7 @@ Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを H
 - 音声解析サービスの解析結果を HTTP/2 レスポンスで Sora に戻します
 - Sora は受け取った解析結果をクライアントへプッシュで送信します
     - [DataChannel 経由のシグナリング](https://sora-doc.shiguredo.jp/DATA_CHANNEL_SIGNALING) の利用を推奨します
-- 音声解析に必要とされる言語コードをクライアント事に指定可能です
+- 音声解析に必要とされる言語コードをクライアントごとに指定できます
 - mTLS 対応
 
 ## 使ってみる
@@ -121,6 +122,6 @@ limitations under the License.
 - [Deepgram](https://deepgram.com/) 対応
 - [AmiVoice Cloud Platform](https://acp.amivoice.com/amivoice/) 対応
 - [ggerganov/whisper\.cpp: Port of OpenAI's Whisper model in C/C\+\+](https://github.com/ggerganov/whisper.cpp) 対応
-    - Suzu から利用できるようになる Whisper サーバを開発し、OSS として公開します
+    - Suzu から利用できるようになる Whisper サーバーを開発し、OSS として公開します
 - ウェブフック機能対応
-    - クライアント事に接続先サービスを変更できるようになる
+    - クライアントごとに接続先サービスを変更できるようになる
