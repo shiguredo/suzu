@@ -9,7 +9,7 @@ require (
 	github.com/labstack/echo/v4 v4.10.0
 	github.com/pion/randutil v0.1.0
 	github.com/pion/rtp v1.7.13
-	github.com/rs/zerolog v1.28.0
+	github.com/rs/zerolog v1.29.0
 	github.com/shiguredo/lumberjack/v3 v3.0.0
 	golang.org/x/net v0.5.0
 	golang.org/x/sync v0.1.0
