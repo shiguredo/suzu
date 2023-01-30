@@ -54,6 +54,8 @@ func AmazonTranscribeHandler(ctx context.Context, conn io.Reader, args HandlerAr
 			res := Response{
 				ChannelID: tr.ChannelID,
 				Message:   string(tr.Message),
+				Result:    &tr.Result,
+				Type:      tr.Type,
 			}
 			if err := encoder.Encode(res); err != nil {
 				w.CloseWithError(err)

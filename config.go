@@ -51,6 +51,7 @@ type Config struct {
 	AwsEnablePartialResultsStabilization bool   `toml:"aws_enable_partial_results_stabilization"`
 	AwsPartialResultsStability           string `toml:"aws_partial_results_stability"`
 	AwsEnableChannelIdentification       bool   `toml:"aws_enable_channel_identification"`
+	AwsResultIsPartial                   bool   `toml:"aws_result_is_partial"`
 
 	// Google Cloud Platform
 	GcpCredentialFile                      string   `toml:"gcp_credential_file"`

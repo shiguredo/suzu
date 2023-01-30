@@ -12,9 +12,11 @@ import (
 )
 
 type TranscriptionResult struct {
-	ChannelID *string `json:"channel_id"`
-	Message   []byte  `json:"message"`
-	Error     error   `json:"error,omitempty"`
+	ChannelID *string     `json:"channel_id"`
+	Message   []byte      `json:"message"`
+	Error     error       `json:"error,omitempty"`
+	Result    interface{} `json:"resutl,omitempty"`
+	Type      string      `json:"type"`
 }
 
 const (
@@ -33,6 +35,7 @@ type AmazonTranscribe struct {
 	Debug                               bool
 	StartStreamTranscriptionEventStream *transcribestreamingservice.StartStreamTranscriptionEventStream
 	ResultCh                            chan TranscriptionResult
+	Config                              Config
 }
 
 func NewAmazonTranscribe(config Config, languageCode string, sampleRateHertz, audioChannelCount int64) *AmazonTranscribe {
@@ -46,6 +49,7 @@ func NewAmazonTranscribe(config Config, languageCode string, sampleRateHertz, au
 		NumberOfChannels:                  audioChannelCount,
 		EnableChannelIdentification:       config.AwsEnableChannelIdentification,
 		ResultCh:                          make(chan TranscriptionResult),
+		Config:                            config,
 	}
 }
 
@@ -137,6 +141,15 @@ func (at *AmazonTranscribe) Close() error {
 	return nil
 }
 
+type AwsResult struct {
+	IsPartial *bool `json:"is_partial,omitempty"`
+}
+
+func (ar *AwsResult) WithIsPartial(isPartial bool) *AwsResult {
+	ar.IsPartial = &isPartial
+	return ar
+}
+
 func (at *AmazonTranscribe) ReceiveResults(ctx context.Context) {
 L:
 	for {
@@ -147,18 +160,22 @@ L:
 			switch e := event.(type) {
 			case *transcribestreamingservice.TranscriptEvent:
 				for _, res := range e.Transcript.Results {
-					// TODO: debug == true では res.IsPartial == true 時の Transcript も取得する
-					if !*res.IsPartial {
-						for _, alt := range res.Alternatives {
-							var message []byte
-							if alt.Transcript != nil {
-								message = []byte(*alt.Transcript)
-							}
-							// TODO: 他に必要なフィールドも送信する
-							at.ResultCh <- TranscriptionResult{
-								ChannelID: res.ChannelId,
-								Message:   message,
-							}
+					for _, alt := range res.Alternatives {
+						var message []byte
+						if alt.Transcript != nil {
+							message = []byte(*alt.Transcript)
+						}
+						var awsResult AwsResult
+						if at.Config.AwsResultIsPartial {
+							awsResult.WithIsPartial(*res.IsPartial)
+						}
+
+						// TODO: 他に必要なフィールドも送信する
+						at.ResultCh <- TranscriptionResult{
+							Type:      "aws",
+							ChannelID: res.ChannelId,
+							Message:   message,
+							Result:    awsResult,
 						}
 					}
 				}
