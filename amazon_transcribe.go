@@ -160,14 +160,14 @@ L:
 			switch e := event.(type) {
 			case *transcribestreamingservice.TranscriptEvent:
 				for _, res := range e.Transcript.Results {
+					var awsResult AwsResult
+					if at.Config.AwsResultIsPartial {
+						awsResult.WithIsPartial(*res.IsPartial)
+					}
 					for _, alt := range res.Alternatives {
 						var message []byte
 						if alt.Transcript != nil {
 							message = []byte(*alt.Transcript)
-						}
-						var awsResult AwsResult
-						if at.Config.AwsResultIsPartial {
-							awsResult.WithIsPartial(*res.IsPartial)
 						}
 
 						// TODO: 他に必要なフィールドも送信する
