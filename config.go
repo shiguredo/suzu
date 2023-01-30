@@ -68,6 +68,8 @@ type Config struct {
 	GcpUseEnhanced                         bool     `toml:"gcp_use_enhanced"`
 	GcpSingleUtterance                     bool     `toml:"gcp_single_utterance"`
 	GcpInterimResults                      bool     `toml:"gcp_interim_results"`
+	GcpResultIsFinal                       bool     `toml:"gcp_result_is_final"`
+	GcpResultStability                     bool     `toml:"gcp_result_stability"`
 }
 
 func InitConfig(data []byte, config *Config) error {

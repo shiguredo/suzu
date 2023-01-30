@@ -13,6 +13,21 @@ func init() {
 	ServiceHandlers.registerHandler("gcp", SpeechToTextHandler)
 }
 
+type GcpResult struct {
+	IsFinal   *bool    `json:"is_final,omitempty"`
+	Stability *float32 `json:"stability,omitempty"`
+}
+
+func (gr *GcpResult) WithIsFinal(isFinal bool) *GcpResult {
+	gr.IsFinal = &isFinal
+	return gr
+}
+
+func (gr *GcpResult) WithStability(stability float32) *GcpResult {
+	gr.Stability = &stability
+	return gr
+}
+
 func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 
 	d := time.Duration(args.Config.TimeToWaitForOpusPacketMs) * time.Millisecond
@@ -32,7 +47,7 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 		}
 	}()
 
-	stt := NewSpeechToText()
+	stt := NewSpeechToText(args.Config)
 	stream, err := stt.Start(ctx, args.Config, args, oggReader)
 	if err != nil {
 		oggWriter.CloseWithError(err)
@@ -65,6 +80,14 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 			}
 
 			for _, result := range resp.Results {
+				var gcpResult GcpResult
+				if stt.Config.GcpResultIsFinal {
+					gcpResult.WithIsFinal(result.IsFinal)
+				}
+				if stt.Config.GcpResultStability {
+					gcpResult.WithStability(result.Stability)
+				}
+
 				for _, alternative := range result.Alternatives {
 					if args.Config.GcpEnableWordConfidence {
 						for _, word := range alternative.Words {
@@ -81,6 +104,8 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 					transcript := alternative.Transcript
 					resp := Response{
 						Message: transcript,
+						Result:  gcpResult,
+						Type:    "gcp",
 					}
 					if err := encoder.Encode(resp); err != nil {
 						w.CloseWithError(err)

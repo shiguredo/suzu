@@ -12,10 +12,14 @@ import (
 	speechpb "cloud.google.com/go/speech/apiv1/speechpb"
 )
 
-type SpeechToText struct{}
+type SpeechToText struct {
+	Config Config
+}
 
-func NewSpeechToText() SpeechToText {
-	return SpeechToText{}
+func NewSpeechToText(config Config) SpeechToText {
+	return SpeechToText{
+		Config: config,
+	}
 }
 
 func (stt SpeechToText) Start(ctx context.Context, config Config, args HandlerArgs, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
