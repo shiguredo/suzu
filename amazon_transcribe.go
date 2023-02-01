@@ -12,11 +12,10 @@ import (
 )
 
 type TranscriptionResult struct {
-	ChannelID *string     `json:"channel_id"`
-	Message   []byte      `json:"message"`
-	Error     error       `json:"error,omitempty"`
-	Result    interface{} `json:"resutl,omitempty"`
-	Type      string      `json:"type"`
+	Message []byte      `json:"message"`
+	Error   error       `json:"error,omitempty"`
+	Result  interface{} `json:"resutl,omitempty"`
+	Type    string      `json:"type"`
 }
 
 const (
@@ -142,7 +141,13 @@ func (at *AmazonTranscribe) Close() error {
 }
 
 type AwsResult struct {
-	IsPartial *bool `json:"is_partial,omitempty"`
+	ChannelID *string `json:"channel_id,omitempty"`
+	IsPartial *bool   `json:"is_partial,omitempty"`
+}
+
+func (ar *AwsResult) WithChannelID(channelID string) *AwsResult {
+	ar.ChannelID = &channelID
+	return ar
 }
 
 func (ar *AwsResult) WithIsPartial(isPartial bool) *AwsResult {
@@ -164,6 +169,9 @@ L:
 					if at.Config.AwsResultIsPartial {
 						awsResult.WithIsPartial(*res.IsPartial)
 					}
+					if at.Config.AwsResultChannelID {
+						awsResult.WithChannelID(*res.ChannelId)
+					}
 					for _, alt := range res.Alternatives {
 						var message []byte
 						if alt.Transcript != nil {
@@ -172,10 +180,9 @@ L:
 
 						// TODO: 他に必要なフィールドも送信する
 						at.ResultCh <- TranscriptionResult{
-							Type:      "aws",
-							ChannelID: res.ChannelId,
-							Message:   message,
-							Result:    awsResult,
+							Type:    "aws",
+							Message: message,
+							Result:  awsResult,
 						}
 					}
 				}

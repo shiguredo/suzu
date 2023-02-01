@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+type TestResult struct {
+	ChannelID *string `json:"channel_id,omitempty"`
+}
+
 func TestHandler(ctx context.Context, opusReader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	c := args.Config
 
@@ -44,8 +48,10 @@ func TestHandler(ctx context.Context, opusReader io.Reader, args HandlerArgs) (*
 
 			if n > 0 {
 				res := Response{
-					ChannelID: &[]string{"ch_0"}[0],
-					Message:   fmt.Sprintf("n: %d", n),
+					Message: fmt.Sprintf("n: %d", n),
+					Result: TestResult{
+						ChannelID: &[]string{"ch_0"}[0],
+					},
 				}
 				if err := encoder.Encode(res); err != nil {
 					w.CloseWithError(err)
