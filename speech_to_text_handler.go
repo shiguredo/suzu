@@ -79,16 +79,16 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 				return
 			}
 
-			for _, result := range resp.Results {
-				var gcpResult GcpResult
+			for _, res := range resp.Results {
+				var result GcpResult
 				if stt.Config.GcpResultIsFinal {
-					gcpResult.WithIsFinal(result.IsFinal)
+					result.WithIsFinal(res.IsFinal)
 				}
 				if stt.Config.GcpResultStability {
-					gcpResult.WithStability(result.Stability)
+					result.WithStability(res.Stability)
 				}
 
-				for _, alternative := range result.Alternatives {
+				for _, alternative := range res.Alternatives {
 					if args.Config.GcpEnableWordConfidence {
 						for _, word := range alternative.Words {
 							zlog.Debug().
@@ -104,7 +104,7 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 					transcript := alternative.Transcript
 					resp := Response{
 						Message: transcript,
-						Result:  gcpResult,
+						Result:  result,
 						Type:    "gcp",
 					}
 					if err := encoder.Encode(resp); err != nil {

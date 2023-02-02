@@ -165,12 +165,12 @@ L:
 			switch e := event.(type) {
 			case *transcribestreamingservice.TranscriptEvent:
 				for _, res := range e.Transcript.Results {
-					var awsResult AwsResult
+					var result AwsResult
 					if at.Config.AwsResultIsPartial {
-						awsResult.WithIsPartial(*res.IsPartial)
+						result.WithIsPartial(*res.IsPartial)
 					}
 					if at.Config.AwsResultChannelID {
-						awsResult.WithChannelID(*res.ChannelId)
+						result.WithChannelID(*res.ChannelId)
 					}
 					for _, alt := range res.Alternatives {
 						var message []byte
@@ -182,7 +182,7 @@ L:
 						at.ResultCh <- TranscriptionResult{
 							Type:    "aws",
 							Message: message,
-							Result:  awsResult,
+							Result:  result,
 						}
 					}
 				}
