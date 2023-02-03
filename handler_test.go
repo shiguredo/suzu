@@ -131,7 +131,7 @@ func TestSpeechHandler(t *testing.T) {
 					t.Error(err)
 				}
 
-				assert.NotNil(t, response.Result)
+				assert.NotNil(t, response.ServiceResult)
 				assert.NotEmpty(t, response.Message)
 			}
 		}
@@ -359,7 +359,7 @@ func TestSpeechHandler(t *testing.T) {
 					t.Error(err)
 				}
 
-				assert.NotNil(t, response.Result)
+				assert.NotNil(t, response.ServiceResult)
 				assert.NotEmpty(t, response.Message)
 			}
 		}
