@@ -49,7 +49,7 @@ func TestHandler(ctx context.Context, opusReader io.Reader, args HandlerArgs) (*
 			if n > 0 {
 				res := Response{
 					Message: fmt.Sprintf("n: %d", n),
-					Result: TestResult{
+					ServiceResult: TestResult{
 						ChannelID: &[]string{"ch_0"}[0],
 					},
 				}

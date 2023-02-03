@@ -103,9 +103,9 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 					}
 					transcript := alternative.Transcript
 					resp := Response{
-						Message: transcript,
-						Result:  result,
-						Type:    "gcp",
+						Message:       transcript,
+						ServiceResult: result,
+						Type:          "gcp",
 					}
 					if err := encoder.Encode(resp); err != nil {
 						w.CloseWithError(err)
