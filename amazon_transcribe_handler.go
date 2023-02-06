@@ -34,9 +34,7 @@ func AmazonTranscribeHandler(ctx context.Context, conn io.Reader, args HandlerAr
 		defer at.Close()
 
 		if err := at.Start(ctx, args.Config, oggReader); err != nil {
-			at.ResultCh <- TranscriptionResult{
-				Error: err,
-			}
+			at.ResultCh <- AwsErrorResult(err)
 			return
 		}
 	}()
@@ -45,18 +43,13 @@ func AmazonTranscribeHandler(ctx context.Context, conn io.Reader, args HandlerAr
 	go func() {
 		encoder := json.NewEncoder(w)
 
-		for tr := range at.ResultCh {
-			if err := tr.Error; err != nil {
+		for result := range at.ResultCh {
+			if err := result.Error; err != nil {
 				w.CloseWithError(err)
 				return
 			}
 
-			res := Response{
-				Message:       string(tr.Message),
-				ServiceResult: &tr.Result,
-				Type:          tr.Type,
-			}
-			if err := encoder.Encode(res); err != nil {
+			if err := encoder.Encode(result); err != nil {
 				w.CloseWithError(err)
 				return
 			}

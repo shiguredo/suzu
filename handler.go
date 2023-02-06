@@ -174,13 +174,6 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 	}
 }
 
-type Response struct {
-	Message       string      `json:"message"`
-	Error         error       `json:"error,omitempty"`
-	ServiceResult interface{} `json:"service_result,omitempty"`
-	Type          string      `json:"type"`
-}
-
 func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader) (io.Reader, error) {
 	type reqeust struct {
 		Payload []byte

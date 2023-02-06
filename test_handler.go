@@ -10,6 +10,17 @@ import (
 
 type TestResult struct {
 	ChannelID *string `json:"channel_id,omitempty"`
+	TranscriptionResult
+}
+
+func TestErrorResult(err error) TestResult {
+	return TestResult{
+		TranscriptionResult: TranscriptionResult{
+			Type:         "test",
+			Error:        err,
+			ErrorMessage: err.Error(),
+		},
+	}
 }
 
 func TestHandler(ctx context.Context, opusReader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
@@ -47,13 +58,11 @@ func TestHandler(ctx context.Context, opusReader io.Reader, args HandlerArgs) (*
 			}
 
 			if n > 0 {
-				res := Response{
-					Message: fmt.Sprintf("n: %d", n),
-					ServiceResult: TestResult{
-						ChannelID: &[]string{"ch_0"}[0],
-					},
-				}
-				if err := encoder.Encode(res); err != nil {
+				var result TestResult
+				result.Type = "test"
+				result.Message = fmt.Sprintf("n: %d", n)
+				result.ChannelID = &[]string{"ch_0"}[0]
+				if err := encoder.Encode(result); err != nil {
 					w.CloseWithError(err)
 					return
 				}

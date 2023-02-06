@@ -16,6 +16,17 @@ func init() {
 type GcpResult struct {
 	IsFinal   *bool    `json:"is_final,omitempty"`
 	Stability *float32 `json:"stability,omitempty"`
+	TranscriptionResult
+}
+
+func GcpErrorResult(err error) GcpResult {
+	return GcpResult{
+		TranscriptionResult: TranscriptionResult{
+			Type:         "gcp",
+			Error:        err,
+			ErrorMessage: err.Error(),
+		},
+	}
 }
 
 func (gr *GcpResult) WithIsFinal(isFinal bool) *GcpResult {
@@ -81,6 +92,7 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 
 			for _, res := range resp.Results {
 				var result GcpResult
+				result.Type = "gcp"
 				if stt.Config.GcpResultIsFinal {
 					result.WithIsFinal(res.IsFinal)
 				}
@@ -102,12 +114,8 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 						}
 					}
 					transcript := alternative.Transcript
-					resp := Response{
-						Message:       transcript,
-						ServiceResult: result,
-						Type:          "gcp",
-					}
-					if err := encoder.Encode(resp); err != nil {
+					result.Message = transcript
+					if err := encoder.Encode(result); err != nil {
 						w.CloseWithError(err)
 						return
 					}
