@@ -16,9 +16,8 @@ type TestResult struct {
 func TestErrorResult(err error) TestResult {
 	return TestResult{
 		TranscriptionResult: TranscriptionResult{
-			Type:         "test",
-			Error:        err,
-			ErrorMessage: err.Error(),
+			Type:  "test",
+			Error: err,
 		},
 	}
 }

@@ -12,10 +12,9 @@ import (
 )
 
 type TranscriptionResult struct {
-	Message      string `json:"message,omitempty"`
-	Error        error  `json:"-"`
-	ErrorMessage string `json:"error,omitempty"`
-	Type         string `json:"type"`
+	Message string `json:"message,omitempty"`
+	Error   error  `json:"error,omitempty"`
+	Type    string `json:"type"`
 }
 
 const (
@@ -149,9 +148,8 @@ type AwsResult struct {
 func AwsErrorResult(err error) AwsResult {
 	return AwsResult{
 		TranscriptionResult: TranscriptionResult{
-			Type:         "aws",
-			Error:        err,
-			ErrorMessage: err.Error(),
+			Type:  "aws",
+			Error: err,
 		},
 	}
 }

@@ -22,9 +22,8 @@ type GcpResult struct {
 func GcpErrorResult(err error) GcpResult {
 	return GcpResult{
 		TranscriptionResult: TranscriptionResult{
-			Type:         "gcp",
-			Error:        err,
-			ErrorMessage: err.Error(),
+			Type:  "gcp",
+			Error: err,
 		},
 	}
 }
