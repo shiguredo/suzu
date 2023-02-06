@@ -15,6 +15,13 @@
     - @Hexa
 - [UPDATE] パッチで変更していた使用していないメソッド内の変更を削除する
     - @Hexa
+- [CHANGE] GCP を使用する場合のクライアントに送信される結果から channel_id の項目を削除する
+    - @Hexa
+- [CHANGE] 設定ファイルで指定されている音声解析サービスからの結果項目をクライアントへ送信する結果に含める
+    - 現在設定ファイルで指定可能な項目は下記の通り
+        - AWS: channel_id, is_partial
+        - GCP: is_final, stability
+    - @Hexa
 
 ## 2023.1.0
 
