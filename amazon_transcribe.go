@@ -12,9 +12,9 @@ import (
 )
 
 type TranscriptionResult struct {
-	ChannelID *string `json:"channel_id"`
-	Message   []byte  `json:"message"`
-	Error     error   `json:"error,omitempty"`
+	Message string `json:"message,omitempty"`
+	Error   error  `json:"error,omitempty"`
+	Type    string `json:"type"`
 }
 
 const (
@@ -32,7 +32,8 @@ type AmazonTranscribe struct {
 	Region                              string
 	Debug                               bool
 	StartStreamTranscriptionEventStream *transcribestreamingservice.StartStreamTranscriptionEventStream
-	ResultCh                            chan TranscriptionResult
+	ResultCh                            chan AwsResult
+	Config                              Config
 }
 
 func NewAmazonTranscribe(config Config, languageCode string, sampleRateHertz, audioChannelCount int64) *AmazonTranscribe {
@@ -45,7 +46,8 @@ func NewAmazonTranscribe(config Config, languageCode string, sampleRateHertz, au
 		PartialResultsStability:           config.AwsPartialResultsStability,
 		NumberOfChannels:                  audioChannelCount,
 		EnableChannelIdentification:       config.AwsEnableChannelIdentification,
-		ResultCh:                          make(chan TranscriptionResult),
+		ResultCh:                          make(chan AwsResult),
+		Config:                            config,
 	}
 }
 
@@ -137,6 +139,31 @@ func (at *AmazonTranscribe) Close() error {
 	return nil
 }
 
+type AwsResult struct {
+	ChannelID *string `json:"channel_id,omitempty"`
+	IsPartial *bool   `json:"is_partial,omitempty"`
+	TranscriptionResult
+}
+
+func AwsErrorResult(err error) AwsResult {
+	return AwsResult{
+		TranscriptionResult: TranscriptionResult{
+			Type:  "aws",
+			Error: err,
+		},
+	}
+}
+
+func (ar *AwsResult) WithChannelID(channelID string) *AwsResult {
+	ar.ChannelID = &channelID
+	return ar
+}
+
+func (ar *AwsResult) WithIsPartial(isPartial bool) *AwsResult {
+	ar.IsPartial = &isPartial
+	return ar
+}
+
 func (at *AmazonTranscribe) ReceiveResults(ctx context.Context) {
 L:
 	for {
@@ -147,19 +174,22 @@ L:
 			switch e := event.(type) {
 			case *transcribestreamingservice.TranscriptEvent:
 				for _, res := range e.Transcript.Results {
-					// TODO: debug == true では res.IsPartial == true 時の Transcript も取得する
-					if !*res.IsPartial {
-						for _, alt := range res.Alternatives {
-							var message []byte
-							if alt.Transcript != nil {
-								message = []byte(*alt.Transcript)
-							}
-							// TODO: 他に必要なフィールドも送信する
-							at.ResultCh <- TranscriptionResult{
-								ChannelID: res.ChannelId,
-								Message:   message,
-							}
+					var result AwsResult
+					result.Type = "aws"
+					if at.Config.AwsResultIsPartial {
+						result.WithIsPartial(*res.IsPartial)
+					}
+					if at.Config.AwsResultChannelID {
+						result.WithChannelID(*res.ChannelId)
+					}
+					for _, alt := range res.Alternatives {
+						var message string
+						if alt.Transcript != nil {
+							message = *alt.Transcript
 						}
+						result.Message = message
+
+						at.ResultCh <- result
 					}
 				}
 			default:
@@ -170,16 +200,13 @@ L:
 
 	if err := at.StartStreamTranscriptionEventStream.Err(); err != nil {
 		err := fmt.Errorf("UNEXPECTED-STREAM-EVENT: %w", err)
-		at.ResultCh <- TranscriptionResult{
-			Error: err,
-		}
+		at.ResultCh <- AwsErrorResult(err)
 		return
 	}
 
 	// io.EOF の場合は err は nil になるため明示的に io.EOF を送る
-	at.ResultCh <- TranscriptionResult{
-		Error: io.EOF,
-	}
+	at.ResultCh <- AwsErrorResult(io.EOF)
+
 }
 
 func (at *AmazonTranscribe) streamAudioFromReader(ctx context.Context, r io.Reader, frameSize int) error {

@@ -49,6 +49,10 @@ aws_credential_file = "./credentials"
 # 認証情報に AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY を使用する場合は、下記のプロファイルの指定行をコメントアウトします
 aws_profile = "default"
 
+# クライアントに送る変換結果の情報に付与する項目
+aws_result_channel_id = true
+# aws_result_is_partial = true
+
 
 # https://cloud.google.com/speech-to-text/docs/reference/rpc/google.cloud.speech.v1#streamingrecognitionconfig
 # https://cloud.google.com/speech-to-text/docs/reference/rpc/google.cloud.speech.v1#recognitionconfig
@@ -69,3 +73,6 @@ gcp_credential_file = ""
 # gcp_enable_spoken_punctuation = false
 # gcp_model = "default"
 # gcp_use_enhanced = false
+# クライアントに送る変換結果の情報に付与する項目
+# gcp_result_is_final = true
+# gcp_result_stability = true

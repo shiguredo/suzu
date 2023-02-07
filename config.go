@@ -51,6 +51,9 @@ type Config struct {
 	AwsEnablePartialResultsStabilization bool   `toml:"aws_enable_partial_results_stabilization"`
 	AwsPartialResultsStability           string `toml:"aws_partial_results_stability"`
 	AwsEnableChannelIdentification       bool   `toml:"aws_enable_channel_identification"`
+	// 変換結果に含める項目の有無の指定
+	AwsResultChannelID bool `toml:"aws_result_channel_id"`
+	AwsResultIsPartial bool `toml:"aws_result_is_partial"`
 
 	// Google Cloud Platform
 	GcpCredentialFile                      string   `toml:"gcp_credential_file"`
@@ -67,6 +70,9 @@ type Config struct {
 	GcpUseEnhanced                         bool     `toml:"gcp_use_enhanced"`
 	GcpSingleUtterance                     bool     `toml:"gcp_single_utterance"`
 	GcpInterimResults                      bool     `toml:"gcp_interim_results"`
+	// 変換結果に含める項目の有無の指定
+	GcpResultIsFinal   bool `toml:"gcp_result_is_final"`
+	GcpResultStability bool `toml:"gcp_result_stability"`
 }
 
 func InitConfig(data []byte, config *Config) error {

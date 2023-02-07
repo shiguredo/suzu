@@ -126,13 +126,13 @@ func TestSpeechHandler(t *testing.T) {
 					}
 					break
 				}
-				response := Response{}
-				if err := json.Unmarshal(line, &response); err != nil {
+				var result TranscriptionResult
+				if err := json.Unmarshal(line, &result); err != nil {
 					t.Error(err)
 				}
 
-				assert.NotEmpty(t, response.ChannelID)
-				assert.NotEmpty(t, response.Message)
+				assert.Equal(t, "test", result.Type)
+				assert.NotEmpty(t, result.Message)
 			}
 		}
 
@@ -354,13 +354,13 @@ func TestSpeechHandler(t *testing.T) {
 					}
 					break
 				}
-				response := Response{}
-				if err := json.Unmarshal(line, &response); err != nil {
+				var result TranscriptionResult
+				if err := json.Unmarshal(line, &result); err != nil {
 					t.Error(err)
 				}
 
-				assert.NotEmpty(t, response.ChannelID)
-				assert.NotEmpty(t, response.Message)
+				assert.Equal(t, "test", result.Type)
+				assert.NotEmpty(t, result.Message)
 			}
 		}
 

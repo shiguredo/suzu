@@ -13,6 +13,31 @@ func init() {
 	ServiceHandlers.registerHandler("gcp", SpeechToTextHandler)
 }
 
+type GcpResult struct {
+	IsFinal   *bool    `json:"is_final,omitempty"`
+	Stability *float32 `json:"stability,omitempty"`
+	TranscriptionResult
+}
+
+func GcpErrorResult(err error) GcpResult {
+	return GcpResult{
+		TranscriptionResult: TranscriptionResult{
+			Type:  "gcp",
+			Error: err,
+		},
+	}
+}
+
+func (gr *GcpResult) WithIsFinal(isFinal bool) *GcpResult {
+	gr.IsFinal = &isFinal
+	return gr
+}
+
+func (gr *GcpResult) WithStability(stability float32) *GcpResult {
+	gr.Stability = &stability
+	return gr
+}
+
 func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 
 	d := time.Duration(args.Config.TimeToWaitForOpusPacketMs) * time.Millisecond
@@ -32,7 +57,7 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 		}
 	}()
 
-	stt := NewSpeechToText()
+	stt := NewSpeechToText(args.Config)
 	stream, err := stt.Start(ctx, args.Config, args, oggReader)
 	if err != nil {
 		oggWriter.CloseWithError(err)
@@ -64,8 +89,17 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 				return
 			}
 
-			for _, result := range resp.Results {
-				for _, alternative := range result.Alternatives {
+			for _, res := range resp.Results {
+				var result GcpResult
+				result.Type = "gcp"
+				if stt.Config.GcpResultIsFinal {
+					result.WithIsFinal(res.IsFinal)
+				}
+				if stt.Config.GcpResultStability {
+					result.WithStability(res.Stability)
+				}
+
+				for _, alternative := range res.Alternatives {
 					if args.Config.GcpEnableWordConfidence {
 						for _, word := range alternative.Words {
 							zlog.Debug().
@@ -79,10 +113,8 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 						}
 					}
 					transcript := alternative.Transcript
-					resp := Response{
-						Message: transcript,
-					}
-					if err := encoder.Encode(resp); err != nil {
+					result.Message = transcript
+					if err := encoder.Encode(result); err != nil {
 						w.CloseWithError(err)
 						return
 					}
