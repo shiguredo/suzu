@@ -11,16 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 )
 
-type TranscriptionResult struct {
-	Message string `json:"message,omitempty"`
-	Error   error  `json:"error,omitempty"`
-	Type    string `json:"type"`
-}
-
-const (
-	FrameSize = 1024 * 10
-)
-
 type AmazonTranscribe struct {
 	LanguageCode                        string
 	MediaEncoding                       string

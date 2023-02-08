@@ -13,6 +13,16 @@ import (
 	zlog "github.com/rs/zerolog/log"
 )
 
+const (
+	FrameSize = 1024 * 10
+)
+
+type TranscriptionResult struct {
+	Message string `json:"message,omitempty"`
+	Error   error  `json:"error,omitempty"`
+	Type    string `json:"type"`
+}
+
 // https://echo.labstack.com/cookbook/streaming-response/
 // TODO(v): http/2 の streaming を使ってレスポンスを戻す方法を調べる
 
