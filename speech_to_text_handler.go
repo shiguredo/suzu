@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"time"
 
 	zlog "github.com/rs/zerolog/log"
 )
@@ -38,15 +37,7 @@ func (gr *GcpResult) WithStability(stability float32) *GcpResult {
 	return gr
 }
 
-func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-
-	d := time.Duration(args.Config.TimeToWaitForOpusPacketMs) * time.Millisecond
-
-	reader, err := readerWithSilentPacketFromOpusReader(d, conn)
-	if err != nil {
-		return nil, err
-	}
-
+func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	oggReader, oggWriter := io.Pipe()
 
 	go func() {

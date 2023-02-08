@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"time"
 )
 
 type TestResult struct {
@@ -22,16 +21,7 @@ func TestErrorResult(err error) TestResult {
 	}
 }
 
-func TestHandler(ctx context.Context, opusReader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-	c := args.Config
-
-	d := time.Duration(c.TimeToWaitForOpusPacketMs) * time.Millisecond
-
-	reader, err := readerWithSilentPacketFromOpusReader(d, opusReader)
-	if err != nil {
-		return nil, err
-	}
-
+func TestHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	oggReader, oggWriter := io.Pipe()
 
 	go func() {

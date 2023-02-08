@@ -4,22 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"time"
 )
 
 func init() {
 	ServiceHandlers.registerHandler("aws", AmazonTranscribeHandler)
 }
 
-func AmazonTranscribeHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
+func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(args.Config, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount))
-
-	d := time.Duration(args.Config.TimeToWaitForOpusPacketMs) * time.Millisecond
-
-	reader, err := readerWithSilentPacketFromOpusReader(d, conn)
-	if err != nil {
-		return nil, err
-	}
 
 	oggReader, oggWriter := io.Pipe()
 	go func() {

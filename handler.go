@@ -72,7 +72,13 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 
 		args := NewHandlerArgs(*s.config, sampleRate, channelCount, h.SoraChannelID, h.SoraConnectionID, languageCode)
 
-		reader, err := f(ctx, c.Request().Body, args)
+		d := time.Duration(args.Config.TimeToWaitForOpusPacketMs) * time.Millisecond
+		r, err := readerWithSilentPacketFromOpusReader(d, c.Request().Body)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+
+		reader, err := f(ctx, r, args)
 		if err != nil {
 			zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 			// TODO: エラー内容で status code を変更する
