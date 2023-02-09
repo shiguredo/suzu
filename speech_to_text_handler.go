@@ -48,8 +48,8 @@ func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs
 		}
 	}()
 
-	stt := NewSpeechToText(args.Config)
-	stream, err := stt.Start(ctx, args.Config, args, oggReader)
+	stt := NewSpeechToText(args.Config, args.LanguageCode, int32(args.SampleRate), int32(args.ChannelCount))
+	stream, err := stt.Start(ctx, args.Config, oggReader)
 	if err != nil {
 		oggWriter.CloseWithError(err)
 		return nil, err
