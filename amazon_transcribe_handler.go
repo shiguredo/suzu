@@ -3,7 +3,6 @@ package suzu
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
@@ -39,7 +38,7 @@ func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args Handler
 		for {
 			select {
 			case <-ctx.Done():
-				return
+				break L
 			case event := <-stream.Events():
 				switch e := event.(type) {
 				case *transcribestreamingservice.TranscriptEvent:
@@ -71,10 +70,11 @@ func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args Handler
 		}
 
 		if err := stream.Err(); err != nil {
-			err := fmt.Errorf("UNEXPECTED-STREAM-EVENT: %w", err)
 			w.CloseWithError(err)
 			return
 		}
+
+		w.Close()
 	}()
 
 	return r, nil
