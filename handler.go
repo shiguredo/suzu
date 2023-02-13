@@ -200,6 +200,8 @@ func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader)
 	ch := make(chan reqeust)
 
 	go func() {
+		defer close(ch)
+
 		for {
 			buf := make([]byte, FrameSize)
 			n, err := opusReader.Read(buf)
@@ -220,28 +222,28 @@ func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader)
 
 	timer := time.NewTimer(d)
 	go func() {
+		defer func() {
+			if !timer.Stop() {
+				<-timer.C
+			}
+		}()
+
+		var payload []byte
 		for {
 			select {
 			case <-timer.C:
-				if _, err := w.Write(silentPacket()); err != nil {
-					w.CloseWithError(err)
-					return
-				}
+				payload = silentPacket()
 			case req := <-ch:
 				if err := req.Error; err != nil {
 					w.CloseWithError(err)
-					if !timer.Stop() {
-						<-timer.C
-					}
 					return
 				}
-				if _, err := w.Write(req.Payload); err != nil {
-					w.CloseWithError(err)
-					if !timer.Stop() {
-						<-timer.C
-					}
-					return
-				}
+				payload = req.Payload
+			}
+
+			if _, err := w.Write(payload); err != nil {
+				w.CloseWithError(err)
+				return
 			}
 			timer.Reset(d)
 		}
