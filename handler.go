@@ -15,6 +15,12 @@ import (
 
 const (
 	FrameSize = 1024 * 10
+	// TODO: 設定ファイルで指定する
+	MaxRetryCount = 2
+)
+
+var (
+	ErrServerDisconnected = fmt.Errorf("SERVER-DISCONNECTED")
 )
 
 type TranscriptionResult struct {
@@ -88,35 +94,58 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
-		reader, err := f(ctx, r, args)
-		if err != nil {
-			zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
-			// TODO: エラー内容で status code を変更する
-			return echo.NewHTTPError(http.StatusInternalServerError)
-		}
-		defer reader.Close()
+		retryCount := 0
 
 		for {
-			buf := make([]byte, FrameSize)
-			n, err := reader.Read(buf)
+			reader, err := f(ctx, r, args)
 			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				} else if err.Error() == "failed to read audio, client disconnected" {
-					// TODO: エラーレベルを見直す
-					zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
-					return echo.NewHTTPError(499)
-				}
 				zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+				// TODO: エラー内容で status code を変更する
 				return echo.NewHTTPError(http.StatusInternalServerError)
 			}
+			defer reader.Close()
 
-			if n > 0 {
-				if _, err := c.Response().Write(buf[:n]); err != nil {
+			for {
+				buf := make([]byte, FrameSize)
+				n, err := reader.Read(buf)
+				if err != nil {
+					if errors.Is(err, io.EOF) {
+						break
+					} else if err.Error() == "failed to read audio, client disconnected" {
+						// TODO: エラーレベルを見直す
+						zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+						return echo.NewHTTPError(499)
+					} else if errors.Is(err, ErrServerDisconnected) {
+						if retryCount < MaxRetryCount {
+							retryCount += 1
+
+							zlog.Error().
+								Err(err).
+								Str("CHANNEL-ID", h.SoraChannelID).
+								Str("CONNECTION-ID", h.SoraConnectionID).
+								Int("RETRY-COUNT", retryCount).
+								Send()
+							break
+						} else {
+							zlog.Error().
+								Err(err).
+								Str("CHANNEL-ID", h.SoraChannelID).
+								Str("CONNECTION-ID", h.SoraConnectionID).
+								Msg("EXCEEDED-MAXIMUM-RETRY-COUNT")
+							return echo.NewHTTPError(http.StatusInternalServerError)
+						}
+					}
 					zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 					return echo.NewHTTPError(http.StatusInternalServerError)
 				}
-				c.Response().Flush()
+
+				if n > 0 {
+					if _, err := c.Response().Write(buf[:n]); err != nil {
+						zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+						return echo.NewHTTPError(http.StatusInternalServerError)
+					}
+					c.Response().Flush()
+				}
 			}
 		}
 

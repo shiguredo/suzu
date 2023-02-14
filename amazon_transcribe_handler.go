@@ -3,6 +3,7 @@ package suzu
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
@@ -70,6 +71,12 @@ func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args Handler
 		}
 
 		if err := stream.Err(); err != nil {
+			if errors.Is(err, &transcribestreamingservice.LimitExceededException{}) {
+				// TODO ログ
+				err := ErrServerDisconnected
+				w.CloseWithError(err)
+				return
+			}
 			w.CloseWithError(err)
 			return
 		}
