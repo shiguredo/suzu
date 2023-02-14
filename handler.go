@@ -13,6 +13,16 @@ import (
 	zlog "github.com/rs/zerolog/log"
 )
 
+const (
+	FrameSize = 1024 * 10
+)
+
+type TranscriptionResult struct {
+	Message string `json:"message,omitempty"`
+	Error   error  `json:"error,omitempty"`
+	Type    string `json:"type"`
+}
+
 // https://echo.labstack.com/cookbook/streaming-response/
 // TODO(v): http/2 の streaming を使ってレスポンスを戻す方法を調べる
 
@@ -72,7 +82,13 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 
 		args := NewHandlerArgs(*s.config, sampleRate, channelCount, h.SoraChannelID, h.SoraConnectionID, languageCode)
 
-		reader, err := f(ctx, c.Request().Body, args)
+		d := time.Duration(args.Config.TimeToWaitForOpusPacketMs) * time.Millisecond
+		r, err := readerWithSilentPacketFromOpusReader(d, c.Request().Body)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+
+		reader, err := f(ctx, r, args)
 		if err != nil {
 			zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 			// TODO: エラー内容で status code を変更する
@@ -184,6 +200,8 @@ func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader)
 	ch := make(chan reqeust)
 
 	go func() {
+		defer close(ch)
+
 		for {
 			buf := make([]byte, FrameSize)
 			n, err := opusReader.Read(buf)
@@ -204,28 +222,28 @@ func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader)
 
 	timer := time.NewTimer(d)
 	go func() {
+		defer func() {
+			if !timer.Stop() {
+				<-timer.C
+			}
+		}()
+
+		var payload []byte
 		for {
 			select {
 			case <-timer.C:
-				if _, err := w.Write(silentPacket()); err != nil {
-					w.CloseWithError(err)
-					return
-				}
+				payload = silentPacket()
 			case req := <-ch:
 				if err := req.Error; err != nil {
 					w.CloseWithError(err)
-					if !timer.Stop() {
-						<-timer.C
-					}
 					return
 				}
-				if _, err := w.Write(req.Payload); err != nil {
-					w.CloseWithError(err)
-					if !timer.Stop() {
-						<-timer.C
-					}
-					return
-				}
+				payload = req.Payload
+			}
+
+			if _, err := w.Write(payload); err != nil {
+				w.CloseWithError(err)
+				return
 			}
 			timer.Reset(d)
 		}

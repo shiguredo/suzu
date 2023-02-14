@@ -13,17 +13,23 @@ import (
 )
 
 type SpeechToText struct {
-	Config Config
+	SampleReate  int32
+	ChannelCount int32
+	LanguageCode string
+	Config       Config
 }
 
-func NewSpeechToText(config Config) SpeechToText {
+func NewSpeechToText(config Config, languageCode string, sampleRate, channelCount int32) SpeechToText {
 	return SpeechToText{
-		Config: config,
+		LanguageCode: languageCode,
+		SampleReate:  sampleRate,
+		ChannelCount: channelCount,
+		Config:       config,
 	}
 }
 
-func (stt SpeechToText) Start(ctx context.Context, config Config, args HandlerArgs, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
-	recognitionConfig := NewRecognitionConfig(config, args)
+func (stt SpeechToText) Start(ctx context.Context, config Config, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
+	recognitionConfig := NewRecognitionConfig(config, stt.LanguageCode, int32(config.SampleRate), int32(config.ChannelCount))
 	speechpbRecognitionConfig := NewSpeechpbRecognitionConfig(recognitionConfig)
 	streamingRecognitionConfig := NewStreamingRecognitionConfig(speechpbRecognitionConfig, config.GcpSingleUtterance, config.GcpInterimResults)
 
@@ -97,13 +103,13 @@ type RecognitionConfig struct {
 	UseEnhanced                         bool
 }
 
-func NewRecognitionConfig(c Config, args HandlerArgs) RecognitionConfig {
+func NewRecognitionConfig(c Config, languageCode string, sampleRate, channelCount int32) RecognitionConfig {
 	return RecognitionConfig{
 		Encoding:                            speechpb.RecognitionConfig_OGG_OPUS,
-		SampleRateHertz:                     int32(args.SampleRate),
-		AudioChannelCount:                   int32(args.ChannelCount),
+		SampleRateHertz:                     sampleRate,
+		AudioChannelCount:                   channelCount,
 		EnableSeparateRecognitionPerChannel: c.GcpEnableSeparateRecognitionPerChannel,
-		LanguageCode:                        args.LanguageCode,
+		LanguageCode:                        languageCode,
 		AlternativeLanguageCodes:            c.GcpAlternativeLanguageCodes,
 		MaxAlternatives:                     c.GcpMaxAlternatives,
 		ProfanityFilter:                     c.GcpProfanityFilter,

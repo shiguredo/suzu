@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"time"
 
 	zlog "github.com/rs/zerolog/log"
 )
@@ -38,15 +37,7 @@ func (gr *GcpResult) WithStability(stability float32) *GcpResult {
 	return gr
 }
 
-func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-
-	d := time.Duration(args.Config.TimeToWaitForOpusPacketMs) * time.Millisecond
-
-	reader, err := readerWithSilentPacketFromOpusReader(d, conn)
-	if err != nil {
-		return nil, err
-	}
-
+func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	oggReader, oggWriter := io.Pipe()
 
 	go func() {
@@ -57,8 +48,8 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 		}
 	}()
 
-	stt := NewSpeechToText(args.Config)
-	stream, err := stt.Start(ctx, args.Config, args, oggReader)
+	stt := NewSpeechToText(args.Config, args.LanguageCode, int32(args.SampleRate), int32(args.ChannelCount))
+	stream, err := stt.Start(ctx, args.Config, oggReader)
 	if err != nil {
 		oggWriter.CloseWithError(err)
 		return nil, err
@@ -75,15 +66,15 @@ func SpeechToTextHandler(ctx context.Context, conn io.Reader, args HandlerArgs) 
 				w.CloseWithError(err)
 				return
 			}
-			if err := resp.Error; err != nil {
+			if status := resp.Error; err != nil {
 				// TODO: 音声の長さの上限値に達した場合の処理の追加
 				// if err.Code == 3 || err.Code == 11 {
 				// }
 				zlog.Error().
 					Str("CHANNEL-ID", args.SoraChannelID).
 					Str("CONNECTION-ID", args.SoraConnectionID).
-					Str("MESSAGE", err.GetMessage()).
-					Int32("CODE", err.GetCode()).
+					Str("MESSAGE", status.GetMessage()).
+					Int32("CODE", status.GetCode()).
 					Send()
 				w.Close()
 				return
