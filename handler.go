@@ -110,7 +110,7 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 				n, err := reader.Read(buf)
 				if err != nil {
 					if errors.Is(err, io.EOF) {
-						break
+						return c.NoContent(http.StatusOK)
 					} else if err.Error() == "failed to read audio, client disconnected" {
 						// TODO: エラーレベルを見直す
 						zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
@@ -119,7 +119,7 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 						if retryCount < MaxRetryCount {
 							retryCount += 1
 
-							zlog.Error().
+							zlog.Warn().
 								Err(err).
 								Str("CHANNEL-ID", h.SoraChannelID).
 								Str("CONNECTION-ID", h.SoraConnectionID).
@@ -148,8 +148,6 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 				}
 			}
 		}
-
-		return c.NoContent(http.StatusOK)
 	}
 }
 

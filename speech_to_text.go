@@ -2,6 +2,7 @@ package suzu
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	speech "cloud.google.com/go/speech/apiv1"
@@ -60,7 +61,7 @@ func (stt SpeechToText) Start(ctx context.Context, config Config, r io.Reader) (
 			buf := make([]byte, FrameSize)
 			n, err := r.Read(buf)
 			if err != nil {
-				if err != io.EOF {
+				if errors.Is(err, io.EOF) {
 					// TODO: エラー処理
 					zlog.Error().Err(err).Send()
 				}
@@ -73,8 +74,10 @@ func (stt SpeechToText) Start(ctx context.Context, config Config, r io.Reader) (
 						AudioContent: audioContent,
 					},
 				}); err != nil {
-					// TODO: エラー処理
-					zlog.Error().Err(err).Send()
+					if errors.Is(err, io.EOF) {
+						// TODO: エラー処理
+						zlog.Error().Err(err).Send()
+					}
 					return
 				}
 			}
