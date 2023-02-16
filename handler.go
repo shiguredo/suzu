@@ -15,8 +15,6 @@ import (
 
 const (
 	FrameSize = 1024 * 10
-	// TODO: 設定ファイルで指定する
-	MaxRetryCount = 2
 )
 
 var (
@@ -116,24 +114,15 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 						zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 						return echo.NewHTTPError(499)
 					} else if errors.Is(err, ErrServerDisconnected) {
-						if retryCount < MaxRetryCount {
-							retryCount += 1
+						retryCount += 1
 
-							zlog.Warn().
-								Err(err).
-								Str("CHANNEL-ID", h.SoraChannelID).
-								Str("CONNECTION-ID", h.SoraConnectionID).
-								Int("RETRY-COUNT", retryCount).
-								Send()
-							break
-						} else {
-							zlog.Error().
-								Err(err).
-								Str("CHANNEL-ID", h.SoraChannelID).
-								Str("CONNECTION-ID", h.SoraConnectionID).
-								Msg("EXCEEDED-MAXIMUM-RETRY-COUNT")
-							return echo.NewHTTPError(http.StatusInternalServerError)
-						}
+						zlog.Warn().
+							Err(err).
+							Str("CHANNEL-ID", h.SoraChannelID).
+							Str("CONNECTION-ID", h.SoraConnectionID).
+							Int("RETRY-COUNT", retryCount).
+							Send()
+						break
 					}
 					zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
 					return echo.NewHTTPError(http.StatusInternalServerError)
