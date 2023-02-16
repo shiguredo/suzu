@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
+	zlog "github.com/rs/zerolog/log"
 )
 
 func init() {
@@ -71,8 +72,13 @@ func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args Handler
 		}
 
 		if err := stream.Err(); err != nil {
+			// TODO: 再接続させるエラーコードを確認する
 			if errors.Is(err, &transcribestreamingservice.LimitExceededException{}) {
-				// TODO ログ
+				zlog.Error().
+					Err(err).
+					Str("ChannelID", args.SoraChannelID).
+					Str("ConnectionID", args.SoraConnectionID).
+					Send()
 				err := ErrServerDisconnected
 				w.CloseWithError(err)
 				return
