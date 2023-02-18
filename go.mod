@@ -11,7 +11,7 @@ require (
 	github.com/pion/rtp v1.7.13
 	github.com/rs/zerolog v1.29.0
 	github.com/shiguredo/lumberjack/v3 v3.0.0
-	golang.org/x/net v0.6.0
+	golang.org/x/net v0.7.0
 	golang.org/x/sync v0.1.0
 )
 
