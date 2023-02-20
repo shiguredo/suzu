@@ -72,8 +72,9 @@ func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args Handler
 		}
 
 		if err := stream.Err(); err != nil {
-			// TODO: 再接続させるエラーコードを確認する
-			if errors.Is(err, &transcribestreamingservice.LimitExceededException{}) {
+			// 復帰が不可能なエラー以外は再接続を試みる
+			if errors.Is(err, &transcribestreamingservice.LimitExceededException{}) ||
+				errors.Is(err, &transcribestreamingservice.InternalFailureException{}) {
 				zlog.Error().
 					Err(err).
 					Str("ChannelID", args.SoraChannelID).
