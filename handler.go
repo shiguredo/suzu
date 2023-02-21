@@ -18,6 +18,8 @@ const (
 )
 
 var (
+	// TODO: 分かりにくい場合はエラー名を変更する
+	// このエラーの場合は再接続を試みる
 	ErrServerDisconnected = fmt.Errorf("SERVER-DISCONNECTED")
 )
 
@@ -37,7 +39,8 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
 		if c.Request().ProtoMajor != 2 {
-			zlog.Error().Msg("INVALID-HTTP-PROTOCOL")
+			zlog.Error().
+				Msg("INVALID-HTTP-PROTOCOL")
 			return echo.NewHTTPError(http.StatusBadRequest)
 		}
 
@@ -51,7 +54,9 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 			SoraAudioStreamingLanguageCode string `header:"sora-audio-streaming-language-code"`
 		}{}
 		if err := (&echo.DefaultBinder{}).BindHeaders(c, &h); err != nil {
-			zlog.Error().Err(err).Msg("INVALID-HEADER")
+			zlog.Error().
+				Err(err).
+				Msg("INVALID-HEADER")
 			return echo.NewHTTPError(http.StatusBadRequest)
 		}
 		defer func() {
@@ -63,7 +68,11 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 
 		languageCode, err := GetLanguageCode(serviceType, h.SoraAudioStreamingLanguageCode, nil)
 		if err != nil {
-			zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+			zlog.Error().
+				Err(err).
+				Str("CHANNEL-ID", h.SoraChannelID).
+				Str("CONNECTION-ID", h.SoraConnectionID).
+				Send()
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
@@ -77,6 +86,7 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 		c.Response().WriteHeader(http.StatusOK)
 
 		ctx := c.Request().Context()
+		// TODO: context.WithCancelCause(ctx) に変更する
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
@@ -95,9 +105,18 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 		retryCount := 0
 
 		for {
+			zlog.Info().
+				Str("CHANNEL-ID", h.SoraChannelID).
+				Str("CONNECTION-ID", h.SoraConnectionID).
+				Msg("NEW-REQUEST")
+
 			reader, err := f(ctx, r, args)
 			if err != nil {
-				zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+				zlog.Error().
+					Err(err).
+					Str("CHANNEL-ID", h.SoraChannelID).
+					Str("CONNECTION-ID", h.SoraConnectionID).
+					Send()
 				// TODO: エラー内容で status code を変更する
 				return echo.NewHTTPError(http.StatusInternalServerError)
 			}
@@ -111,12 +130,16 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 						return c.NoContent(http.StatusOK)
 					} else if err.Error() == "failed to read audio, client disconnected" {
 						// TODO: エラーレベルを見直す
-						zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+						zlog.Error().
+							Err(err).
+							Str("CHANNEL-ID", h.SoraChannelID).
+							Str("CONNECTION-ID", h.SoraConnectionID).
+							Send()
 						return echo.NewHTTPError(499)
 					} else if errors.Is(err, ErrServerDisconnected) {
 						retryCount += 1
 
-						zlog.Warn().
+						zlog.Debug().
 							Err(err).
 							Str("CHANNEL-ID", h.SoraChannelID).
 							Str("CONNECTION-ID", h.SoraConnectionID).
@@ -124,13 +147,21 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 							Send()
 						break
 					}
-					zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+					zlog.Error().
+						Err(err).
+						Str("CHANNEL-ID", h.SoraChannelID).
+						Str("CONNECTION-ID", h.SoraConnectionID).
+						Send()
 					return echo.NewHTTPError(http.StatusInternalServerError)
 				}
 
 				if n > 0 {
 					if _, err := c.Response().Write(buf[:n]); err != nil {
-						zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+						zlog.Error().
+							Err(err).
+							Str("CHANNEL-ID", h.SoraChannelID).
+							Str("CONNECTION-ID", h.SoraConnectionID).
+							Send()
 						return echo.NewHTTPError(http.StatusInternalServerError)
 					}
 					c.Response().Flush()
