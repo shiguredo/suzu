@@ -63,22 +63,18 @@ func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs
 		for {
 			resp, err := stream.Recv()
 			if err != nil {
-				// TODO: INVALID_ARGUMENT エラーの場合も ErrServerDisconnected にする
-				if err.Error() == "rpc error: code = OutOfRange desc = Exceeded maximum allowed stream duration of 305 seconds." {
-					zlog.Error().
-						Err(err).
-						Str("CHANNEL-ID", args.SoraChannelID).
-						Str("CONNECTION-ID", args.SoraConnectionID).
-						Send()
-					err := ErrServerDisconnected
-					w.CloseWithError(err)
-					return
-				}
 				zlog.Error().
 					Err(err).
 					Str("CHANNEL-ID", args.SoraChannelID).
 					Str("CONNECTION-ID", args.SoraConnectionID).
 					Send()
+
+				// TODO: INVALID_ARGUMENT エラーの場合も ErrServerDisconnected にする
+				if err.Error() == "rpc error: code = OutOfRange desc = Exceeded maximum allowed stream duration of 305 seconds." {
+					w.CloseWithError(ErrServerDisconnected)
+					return
+				}
+
 				w.CloseWithError(err)
 				return
 			}
