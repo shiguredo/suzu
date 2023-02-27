@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"strings"
 
 	zlog "github.com/rs/zerolog/log"
 )
@@ -69,8 +70,8 @@ func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs
 					Str("CONNECTION-ID", args.SoraConnectionID).
 					Send()
 
-				// TODO: INVALID_ARGUMENT エラーの場合も ErrServerDisconnected にする
-				if err.Error() == "rpc error: code = OutOfRange desc = Exceeded maximum allowed stream duration of 305 seconds." {
+				if (strings.Contains(err.Error(), "code = OutOfRange")) ||
+					(strings.Contains(err.Error(), "code = InvalidArgument")) {
 					w.CloseWithError(ErrServerDisconnected)
 					return
 				}
