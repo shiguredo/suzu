@@ -60,7 +60,8 @@ func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs
 					Send()
 
 				if (strings.Contains(err.Error(), "code = OutOfRange")) ||
-					(strings.Contains(err.Error(), "code = InvalidArgument")) {
+					(strings.Contains(err.Error(), "code = InvalidArgument")) ||
+					(strings.Contains(err.Error(), "code = ResourceExhausted")) {
 					w.CloseWithError(ErrServerDisconnected)
 					return
 				}
@@ -70,7 +71,7 @@ func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs
 			}
 			if status := resp.Error; err != nil {
 				// 音声の長さの上限値に達した場合
-				if status.Code == 3 || status.Code == 11 {
+				if status.Code == 3 || status.Code == 11 || status.Code == 8 {
 					zlog.Error().
 						Err(err).
 						Str("CHANNEL-ID", args.SoraChannelID).
