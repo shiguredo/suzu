@@ -22,6 +22,10 @@
         - AWS: channel_id, is_partial
         - GCP: is_final, stability
     - @Hexa
+- [UPDATE] go.mod, Github Actions で使用する Go のバージョンを 1.20 にあげる
+    - @Hexa
+- [UPDATE] Github Actions で使用する staticcheck のバージョンを 2023.1.2 にあげる
+    - @Hexa
 
 ## 2023.1.0
 
