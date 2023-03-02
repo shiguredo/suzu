@@ -34,7 +34,7 @@ type TranscriptionResult struct {
 
 // https://github.com/herrberk/go-http2-streaming/blob/master/http2/server.go
 // 受信時はくるくるループを回す
-func (s *Server) createSpeechHandler(serviceType string, f func(context.Context, io.Reader, HandlerArgs) (*io.PipeReader, error)) echo.HandlerFunc {
+func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
