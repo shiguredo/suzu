@@ -110,7 +110,17 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 				Str("CONNECTION-ID", h.SoraConnectionID).
 				Msg("NEW-REQUEST")
 
-			reader, err := f(ctx, r, args)
+			oggReader, oggWriter := io.Pipe()
+
+			go func() {
+				defer oggWriter.Close()
+				if err := opus2ogg(ctx, r, oggWriter, sampleRate, channelCount, *s.config); err != nil {
+					oggWriter.CloseWithError(err)
+					return
+				}
+			}()
+
+			reader, err := f(ctx, oggReader, args)
 			if err != nil {
 				zlog.Error().
 					Err(err).

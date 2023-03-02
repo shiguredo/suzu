@@ -15,19 +15,9 @@ func init() {
 }
 
 func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-	oggReader, oggWriter := io.Pipe()
-	go func() {
-		defer oggWriter.Close()
-		if err := opus2ogg(ctx, reader, oggWriter, args.SampleRate, args.ChannelCount, args.Config); err != nil {
-			oggWriter.CloseWithError(err)
-			return
-		}
-	}()
-
 	at := NewAmazonTranscribe(args.Config, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount))
-	stream, err := at.Start(ctx, args.Config, oggReader)
+	stream, err := at.Start(ctx, args.Config, reader)
 	if err != nil {
-		oggWriter.CloseWithError(err)
 		return nil, err
 	}
 

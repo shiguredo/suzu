@@ -39,20 +39,9 @@ func (gr *GcpResult) WithStability(stability float32) *GcpResult {
 }
 
 func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-	oggReader, oggWriter := io.Pipe()
-
-	go func() {
-		defer oggWriter.Close()
-		if err := opus2ogg(ctx, reader, oggWriter, args.SampleRate, args.ChannelCount, args.Config); err != nil {
-			oggWriter.CloseWithError(err)
-			return
-		}
-	}()
-
 	stt := NewSpeechToText(args.Config, args.LanguageCode, int32(args.SampleRate), int32(args.ChannelCount))
-	stream, err := stt.Start(ctx, args.Config, oggReader)
+	stream, err := stt.Start(ctx, args.Config, reader)
 	if err != nil {
-		oggWriter.CloseWithError(err)
 		return nil, err
 	}
 
