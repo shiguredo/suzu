@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 	zlog "github.com/rs/zerolog/log"
@@ -63,17 +62,19 @@ func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args Handler
 
 		if err := stream.Err(); err != nil {
 			// 復帰が不可能なエラー以外は再接続を試みる
-			if (strings.Contains(err.Error(), transcribestreamingservice.ErrCodeLimitExceededException)) ||
-				(strings.Contains(err.Error(), transcribestreamingservice.ErrCodeInternalFailureException)) {
+			switch err.(type) {
+			case *transcribestreamingservice.LimitExceededException,
+				*transcribestreamingservice.InternalFailureException:
 				zlog.Error().
 					Err(err).
 					Str("ChannelID", args.SoraChannelID).
 					Str("ConnectionID", args.SoraConnectionID).
 					Send()
-				err := ErrServerDisconnected
-				w.CloseWithError(err)
-				return
+
+				err = ErrServerDisconnected
+			default:
 			}
+
 			w.CloseWithError(err)
 			return
 		}
