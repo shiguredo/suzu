@@ -3,8 +3,8 @@ package suzu
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 	zlog "github.com/rs/zerolog/log"
@@ -63,8 +63,8 @@ func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args Handler
 
 		if err := stream.Err(); err != nil {
 			// 復帰が不可能なエラー以外は再接続を試みる
-			if errors.Is(err, &transcribestreamingservice.LimitExceededException{}) ||
-				errors.Is(err, &transcribestreamingservice.InternalFailureException{}) {
+			if (strings.Contains(err.Error(), transcribestreamingservice.ErrCodeLimitExceededException)) ||
+				(strings.Contains(err.Error(), transcribestreamingservice.ErrCodeInternalFailureException)) {
 				zlog.Error().
 					Err(err).
 					Str("ChannelID", args.SoraChannelID).
