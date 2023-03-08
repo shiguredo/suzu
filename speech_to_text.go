@@ -29,7 +29,8 @@ func NewSpeechToText(config Config, languageCode string, sampleRate, channelCoun
 	}
 }
 
-func (stt SpeechToText) Start(ctx context.Context, config Config, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
+func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
+	config := stt.Config
 	recognitionConfig := NewRecognitionConfig(config, stt.LanguageCode, int32(config.SampleRate), int32(config.ChannelCount))
 	speechpbRecognitionConfig := NewSpeechpbRecognitionConfig(recognitionConfig)
 	streamingRecognitionConfig := NewStreamingRecognitionConfig(speechpbRecognitionConfig, config.GcpSingleUtterance, config.GcpInterimResults)

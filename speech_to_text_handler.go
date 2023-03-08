@@ -40,7 +40,7 @@ func (gr *GcpResult) WithStability(stability float32) *GcpResult {
 
 func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	stt := NewSpeechToText(args.Config, args.LanguageCode, int32(args.SampleRate), int32(args.ChannelCount))
-	stream, err := stt.Start(ctx, args.Config, reader)
+	stream, err := stt.Start(ctx, reader)
 	if err != nil {
 		return nil, err
 	}

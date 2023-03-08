@@ -15,7 +15,7 @@ func init() {
 
 func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(args.Config, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount))
-	stream, err := at.Start(ctx, args.Config, reader)
+	stream, err := at.Start(ctx, reader)
 	if err != nil {
 		return nil, err
 	}
