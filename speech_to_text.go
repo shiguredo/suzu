@@ -64,8 +64,10 @@ func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					// TODO: エラー処理
-					zlog.Error().Err(err).Send()
+					zlog.Info().Err(err).Send()
+					return
 				}
+				zlog.Error().Err(err).Send()
 				return
 			}
 			if n > 0 {
@@ -77,8 +79,10 @@ func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech
 				}); err != nil {
 					if errors.Is(err, io.EOF) {
 						// TODO: エラー処理
-						zlog.Error().Err(err).Send()
+						zlog.Info().Err(err).Send()
+						return
 					}
+					zlog.Error().Err(err).Send()
 					return
 				}
 			}
