@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	zlog "github.com/rs/zerolog/log"
+
+	"google.golang.org/grpc/codes"
 )
 
 func init() {
@@ -71,7 +73,11 @@ func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs
 			}
 			if status := resp.Error; err != nil {
 				// 音声の長さの上限値に達した場合
-				if status.Code == 3 || status.Code == 11 || status.Code == 8 {
+				code := codes.Code(status.GetCode())
+				if code == codes.OutOfRange ||
+					code == codes.InvalidArgument ||
+					code == codes.ResourceExhausted {
+
 					zlog.Error().
 						Err(err).
 						Str("CHANNEL-ID", args.SoraChannelID).
