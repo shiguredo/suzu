@@ -112,6 +112,7 @@ func TestSpeechHandler(t *testing.T) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 
 			delim := []byte("\n")[0]
+			var lastMessage string
 			for {
 				line, err := rec.Body.ReadBytes(delim)
 				if err != nil {
@@ -127,7 +128,10 @@ func TestSpeechHandler(t *testing.T) {
 
 				assert.Equal(t, "test", result.Type)
 				assert.NotEmpty(t, result.Message)
+				lastMessage = result.Message
 			}
+			// TODO: テストデータは固定のため、すべてのメッセージを確認する
+			assert.Equal(t, lastMessage, "n: 31")
 		}
 
 	})
