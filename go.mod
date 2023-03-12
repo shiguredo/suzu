@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/BurntSushi/toml v1.2.1
-	github.com/aws/aws-sdk-go v1.44.214
+	github.com/aws/aws-sdk-go v1.44.219
 	github.com/labstack/echo-contrib v0.14.1
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/pion/randutil v0.1.0
@@ -19,15 +19,15 @@ require (
 	cloud.google.com/go/speech v1.14.1
 	github.com/stretchr/testify v1.8.2
 	go.uber.org/goleak v1.2.1
-	google.golang.org/api v0.111.0
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/api v0.112.0
+	google.golang.org/protobuf v1.29.0
 )
 
 require (
-	cloud.google.com/go v0.107.0 // indirect
+	cloud.google.com/go v0.110.0 // indirect
 	cloud.google.com/go/compute v1.18.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	cloud.google.com/go/longrunning v0.3.0 // indirect
+	cloud.google.com/go/longrunning v0.4.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -56,12 +56,12 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
-	golang.org/x/oauth2 v0.5.0 // indirect
+	golang.org/x/oauth2 v0.6.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230223222841-637eb2293923 // indirect
+	google.golang.org/genproto v0.0.0-20230303212802-e74f57abe488 // indirect
 	google.golang.org/grpc v1.53.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
