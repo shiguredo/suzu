@@ -105,6 +105,7 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 
 		retryCount := 0
 
+		// サーバへの再接続が期待できる限りは、再接続を試みる
 		for {
 			zlog.Info().
 				Str("CHANNEL-ID", h.SoraChannelID).
@@ -114,6 +115,7 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 			var transcriptionTargetReader io.Reader
 			if c.Request().URL.Path == "/test" ||
 				c.Request().URL.Path == "/dump" {
+				// /test, /dump の場合は受信したパケットをそのまま使用する
 				transcriptionTargetReader = r
 			} else {
 				oggReader, oggWriter := io.Pipe()
@@ -122,6 +124,11 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 				go func() {
 					defer oggWriter.Close()
 					if err := opus2ogg(ctx, r, oggWriter, sampleRate, channelCount, *s.config); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("CHANNEL-ID", h.SoraChannelID).
+							Str("CONNECTION-ID", h.SoraConnectionID).
+							Send()
 						oggWriter.CloseWithError(err)
 						return
 					}
@@ -174,6 +181,7 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 					return echo.NewHTTPError(http.StatusInternalServerError)
 				}
 
+				// メッセージが空でない場合はクライアントに結果を送信する
 				if n > 0 {
 					if _, err := c.Response().Write(buf[:n]); err != nil {
 						zlog.Error().
