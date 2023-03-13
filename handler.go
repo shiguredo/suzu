@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -145,7 +146,8 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 				if err != nil {
 					if errors.Is(err, io.EOF) {
 						return c.NoContent(http.StatusOK)
-					} else if err.Error() == "failed to read audio, client disconnected" {
+					} else if strings.Contains(err.Error(), "client disconnected") {
+						// http.http2errClientDisconnected を使用したエラーの場合
 						// TODO: エラーレベルを見直す
 						zlog.Error().
 							Err(err).
