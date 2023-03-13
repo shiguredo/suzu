@@ -105,6 +105,7 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 
 		retryCount := 0
 
+		// サーバへの接続・結果の送信処理
 		// サーバへの再接続が期待できる限りは、再接続を試みる
 		for {
 			zlog.Info().
@@ -154,7 +155,7 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 					if errors.Is(err, io.EOF) {
 						return c.NoContent(http.StatusOK)
 					} else if strings.Contains(err.Error(), "client disconnected") {
-						// http.http2errClientDisconnected を使用したエラーの場合
+						// http.http2errClientDisconnected を使用したエラーの場合は、クライアントから切断されたため終了
 						// TODO: エラーレベルを見直す
 						zlog.Error().
 							Err(err).
@@ -163,6 +164,7 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 							Send()
 						return echo.NewHTTPError(499)
 					} else if errors.Is(err, ErrServerDisconnected) {
+						// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
 						retryCount += 1
 
 						zlog.Debug().
@@ -173,11 +175,13 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 							Send()
 						break
 					}
+
 					zlog.Error().
 						Err(err).
 						Str("CHANNEL-ID", h.SoraChannelID).
 						Str("CONNECTION-ID", h.SoraConnectionID).
 						Send()
+					// サーバから切断されたが再度の接続が期待できない場合、または、想定外のエラーの場合は InternalServerError
 					return echo.NewHTTPError(http.StatusInternalServerError)
 				}
 
