@@ -2,6 +2,7 @@ package suzu
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	speech "cloud.google.com/go/speech/apiv1"
@@ -28,7 +29,8 @@ func NewSpeechToText(config Config, languageCode string, sampleRate, channelCoun
 	}
 }
 
-func (stt SpeechToText) Start(ctx context.Context, config Config, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
+func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
+	config := stt.Config
 	recognitionConfig := NewRecognitionConfig(config, stt.LanguageCode, int32(config.SampleRate), int32(config.ChannelCount))
 	speechpbRecognitionConfig := NewSpeechpbRecognitionConfig(recognitionConfig)
 	streamingRecognitionConfig := NewStreamingRecognitionConfig(speechpbRecognitionConfig, config.GcpSingleUtterance, config.GcpInterimResults)
@@ -60,10 +62,12 @@ func (stt SpeechToText) Start(ctx context.Context, config Config, r io.Reader) (
 			buf := make([]byte, FrameSize)
 			n, err := r.Read(buf)
 			if err != nil {
-				if err != io.EOF {
+				if errors.Is(err, io.EOF) {
 					// TODO: エラー処理
-					zlog.Error().Err(err).Send()
+					zlog.Info().Err(err).Send()
+					return
 				}
+				zlog.Error().Err(err).Send()
 				return
 			}
 			if n > 0 {
@@ -73,7 +77,11 @@ func (stt SpeechToText) Start(ctx context.Context, config Config, r io.Reader) (
 						AudioContent: audioContent,
 					},
 				}); err != nil {
-					// TODO: エラー処理
+					if errors.Is(err, io.EOF) {
+						// TODO: エラー処理
+						zlog.Info().Err(err).Send()
+						return
+					}
 					zlog.Error().Err(err).Send()
 					return
 				}

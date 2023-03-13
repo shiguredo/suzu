@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"strings"
 
 	zlog "github.com/rs/zerolog/log"
+
+	"google.golang.org/grpc/codes"
 )
 
 func init() {
@@ -38,20 +41,9 @@ func (gr *GcpResult) WithStability(stability float32) *GcpResult {
 }
 
 func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-	oggReader, oggWriter := io.Pipe()
-
-	go func() {
-		defer oggWriter.Close()
-		if err := opus2ogg(ctx, reader, oggWriter, args.SampleRate, args.ChannelCount, args.Config); err != nil {
-			oggWriter.CloseWithError(err)
-			return
-		}
-	}()
-
 	stt := NewSpeechToText(args.Config, args.LanguageCode, int32(args.SampleRate), int32(args.ChannelCount))
-	stream, err := stt.Start(ctx, args.Config, oggReader)
+	stream, err := stt.Start(ctx, reader)
 	if err != nil {
-		oggWriter.CloseWithError(err)
 		return nil, err
 	}
 
@@ -63,13 +55,40 @@ func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs
 		for {
 			resp, err := stream.Recv()
 			if err != nil {
+				zlog.Error().
+					Err(err).
+					Str("CHANNEL-ID", args.SoraChannelID).
+					Str("CONNECTION-ID", args.SoraConnectionID).
+					Send()
+
+				if (strings.Contains(err.Error(), "code = OutOfRange")) ||
+					(strings.Contains(err.Error(), "code = InvalidArgument")) ||
+					(strings.Contains(err.Error(), "code = ResourceExhausted")) {
+					w.CloseWithError(ErrServerDisconnected)
+					return
+				}
+
 				w.CloseWithError(err)
 				return
 			}
 			if status := resp.Error; err != nil {
-				// TODO: 音声の長さの上限値に達した場合の処理の追加
-				// if err.Code == 3 || err.Code == 11 {
-				// }
+				// 音声の長さの上限値に達した場合
+				code := codes.Code(status.GetCode())
+				if code == codes.OutOfRange ||
+					code == codes.InvalidArgument ||
+					code == codes.ResourceExhausted {
+
+					zlog.Error().
+						Err(err).
+						Str("CHANNEL-ID", args.SoraChannelID).
+						Str("CONNECTION-ID", args.SoraConnectionID).
+						Str("MESSAGE", status.GetMessage()).
+						Int32("CODE", status.GetCode()).
+						Send()
+					err := ErrServerDisconnected
+					w.CloseWithError(err)
+					return
+				}
 				zlog.Error().
 					Str("CHANNEL-ID", args.SoraChannelID).
 					Str("CONNECTION-ID", args.SoraConnectionID).

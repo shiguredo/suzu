@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
+	zlog "github.com/rs/zerolog/log"
 )
 
 func init() {
@@ -13,19 +14,9 @@ func init() {
 }
 
 func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-	oggReader, oggWriter := io.Pipe()
-	go func() {
-		defer oggWriter.Close()
-		if err := opus2ogg(ctx, reader, oggWriter, args.SampleRate, args.ChannelCount, args.Config); err != nil {
-			oggWriter.CloseWithError(err)
-			return
-		}
-	}()
-
 	at := NewAmazonTranscribe(args.Config, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount))
-	stream, err := at.Start(ctx, args.Config, oggReader)
+	stream, err := at.Start(ctx, reader)
 	if err != nil {
-		oggWriter.CloseWithError(err)
 		return nil, err
 	}
 
@@ -70,6 +61,20 @@ func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args Handler
 		}
 
 		if err := stream.Err(); err != nil {
+			// 復帰が不可能なエラー以外は再接続を試みる
+			switch err.(type) {
+			case *transcribestreamingservice.LimitExceededException,
+				*transcribestreamingservice.InternalFailureException:
+				zlog.Error().
+					Err(err).
+					Str("ChannelID", args.SoraChannelID).
+					Str("ConnectionID", args.SoraConnectionID).
+					Send()
+
+				err = ErrServerDisconnected
+			default:
+			}
+
 			w.CloseWithError(err)
 			return
 		}

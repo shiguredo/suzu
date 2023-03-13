@@ -88,7 +88,8 @@ func NewAmazonTranscribeClient(config Config) *transcribestreamingservice.Transc
 	return transcribestreamingservice.New(sess, cfg)
 }
 
-func (at *AmazonTranscribe) Start(ctx context.Context, config Config, r io.Reader) (*transcribestreamingservice.StartStreamTranscriptionEventStream, error) {
+func (at *AmazonTranscribe) Start(ctx context.Context, r io.Reader) (*transcribestreamingservice.StartStreamTranscriptionEventStream, error) {
+	config := at.Config
 	client := NewAmazonTranscribeClient(config)
 	input := NewStartStreamTranscriptionInput(at)
 
