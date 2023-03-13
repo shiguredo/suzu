@@ -26,6 +26,12 @@
     - @Hexa
 - [UPDATE] Github Actions で使用する staticcheck のバージョンを 2023.1.2 にあげる
     - @Hexa
+- [CHANGE] 特定のエラーでサーバから切断された際に再度接続する処理を追加する
+    - 再接続対象のエラーは下記の通り
+        - AWS: LimitExceededException, InternalFailureException
+        - GCP: OutOfRange, InvalidArgument, ResourceExhausted
+    - @Hexa
+
 
 ## 2023.1.0
 
