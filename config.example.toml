@@ -25,6 +25,9 @@ http2_privkey_file = ""
 # クライアント認証用の CA 証明書ファイルです
 http2_verify_cacert_path = ""
 
+# サーバからの切断時に再接続を試みます
+retry = true
+
 # [log]
 # ログの出力先ディレクトリです
 log_dir = "."

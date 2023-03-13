@@ -25,6 +25,8 @@ type Config struct {
 	HTTP2MaxReadFrameSize     uint32 `toml:"http2_max_read_frame_size"`
 	HTTP2IdleTimeout          uint32 `toml:"http2_idle_timeout"`
 
+	Retry bool `toml:"retry"`
+
 	ExporterIPAddress string `toml:"exporter_ip_address"`
 	ExporterPort      int    `toml:"exporter_port"`
 
