@@ -164,7 +164,7 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 							Send()
 						return echo.NewHTTPError(499)
 					} else if errors.Is(err, ErrServerDisconnected) {
-						if s.config.Retry {
+						if *s.config.Retry {
 							// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
 							retryCount += 1
 
