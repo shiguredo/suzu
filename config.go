@@ -25,6 +25,8 @@ type Config struct {
 	HTTP2MaxReadFrameSize     uint32 `toml:"http2_max_read_frame_size"`
 	HTTP2IdleTimeout          uint32 `toml:"http2_idle_timeout"`
 
+	Retry *bool `toml:"retry"`
+
 	ExporterIPAddress string `toml:"exporter_ip_address"`
 	ExporterPort      int    `toml:"exporter_port"`
 
@@ -83,6 +85,12 @@ func InitConfig(data []byte, config *Config) error {
 
 	if config.TimeToWaitForOpusPacketMs == 0 {
 		config.TimeToWaitForOpusPacketMs = DefaultTimeToWaitForOpusPacketMs
+	}
+
+	// 未指定の場合は true
+	if config.Retry == nil {
+		defaultRetry := true
+		config.Retry = &defaultRetry
 	}
 
 	// TODO(v): 初期値

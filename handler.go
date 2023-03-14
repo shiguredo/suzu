@@ -164,16 +164,26 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 							Send()
 						return echo.NewHTTPError(499)
 					} else if errors.Is(err, ErrServerDisconnected) {
-						// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
-						retryCount += 1
+						if *s.config.Retry {
+							// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
+							retryCount += 1
 
-						zlog.Debug().
-							Err(err).
-							Str("CHANNEL-ID", h.SoraChannelID).
-							Str("CONNECTION-ID", h.SoraConnectionID).
-							Int("RETRY-COUNT", retryCount).
-							Send()
-						break
+							zlog.Debug().
+								Err(err).
+								Str("CHANNEL-ID", h.SoraChannelID).
+								Str("CONNECTION-ID", h.SoraConnectionID).
+								Int("RETRY-COUNT", retryCount).
+								Send()
+							break
+						} else {
+							// サーバから切断されたが再接続させない設定の場合
+							zlog.Error().
+								Err(err).
+								Str("CHANNEL-ID", h.SoraChannelID).
+								Str("CONNECTION-ID", h.SoraConnectionID).
+								Send()
+							return echo.NewHTTPError(http.StatusInternalServerError)
+						}
 					}
 
 					zlog.Error().

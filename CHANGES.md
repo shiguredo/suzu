@@ -31,6 +31,8 @@
         - AWS: LimitExceededException, InternalFailureException
         - GCP: OutOfRange, InvalidArgument, ResourceExhausted
     - @Hexa
+- [ADD] サーバから切断された際に再度接続する処理の有無を指定する設定を追加する
+    - @Hexa
 
 
 ## 2023.1.0
