@@ -7,14 +7,14 @@ import (
 )
 
 var (
-	ErrMissinuAudioStreamingLanguageCode = fmt.Errorf("MISSING-SORA-AUDIO-STREAMING-LANGUAGE-CODE")
+	ErrMissingAudioStreamingLanguageCode = fmt.Errorf("MISSING-SORA-AUDIO-STREAMING-LANGUAGE-CODE")
 	ErrUnsupportedLanguageCode           = fmt.Errorf("UNSUPPORTED-LANGUAGE-CODE")
 	ErrUnsupportedService                = fmt.Errorf("UNSUPPORTED-SERVICE")
 )
 
 func GetLanguageCode(serviceType, lang string, f func(string) (string, error)) (string, error) {
 	if lang == "" {
-		return "", ErrMissinuAudioStreamingLanguageCode
+		return "", ErrMissingAudioStreamingLanguageCode
 	}
 
 	if f != nil {

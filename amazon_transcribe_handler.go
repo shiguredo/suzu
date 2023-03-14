@@ -4,62 +4,82 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"time"
+
+	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
+	zlog "github.com/rs/zerolog/log"
 )
 
 func init() {
 	ServiceHandlers.registerHandler("aws", AmazonTranscribeHandler)
 }
 
-func AmazonTranscribeHandler(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error) {
+func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(args.Config, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount))
-
-	d := time.Duration(args.Config.TimeToWaitForOpusPacketMs) * time.Millisecond
-
-	reader, err := readerWithSilentPacketFromOpusReader(d, conn)
+	stream, err := at.Start(ctx, reader)
 	if err != nil {
 		return nil, err
 	}
 
-	oggReader, oggWriter := io.Pipe()
-	go func() {
-		if err := opus2ogg(ctx, reader, oggWriter, args.SampleRate, args.ChannelCount, args.Config); err != nil {
-			oggWriter.CloseWithError(err)
-			return
-		}
-		oggWriter.Close()
-	}()
-
-	go func() {
-		defer at.Close()
-
-		if err := at.Start(ctx, args.Config, oggReader); err != nil {
-			at.ResultCh <- TranscriptionResult{
-				Error: err,
-			}
-			return
-		}
-	}()
-
 	r, w := io.Pipe()
+
 	go func() {
 		encoder := json.NewEncoder(w)
 
-		for tr := range at.ResultCh {
-			if err := tr.Error; err != nil {
-				w.CloseWithError(err)
-				return
-			}
-
-			res := Response{
-				ChannelID: tr.ChannelID,
-				Message:   string(tr.Message),
-			}
-			if err := encoder.Encode(res); err != nil {
-				w.CloseWithError(err)
-				return
+	L:
+		for {
+			select {
+			case <-ctx.Done():
+				break L
+			case event := <-stream.Events():
+				switch e := event.(type) {
+				case *transcribestreamingservice.TranscriptEvent:
+					for _, res := range e.Transcript.Results {
+						var result AwsResult
+						result.Type = "aws"
+						if at.Config.AwsResultIsPartial {
+							result.WithIsPartial(*res.IsPartial)
+						}
+						if at.Config.AwsResultChannelID {
+							result.WithChannelID(*res.ChannelId)
+						}
+						for _, alt := range res.Alternatives {
+							var message string
+							if alt.Transcript != nil {
+								message = *alt.Transcript
+							}
+							result.Message = message
+							if err := encoder.Encode(result); err != nil {
+								w.CloseWithError(err)
+								return
+							}
+						}
+					}
+				default:
+					break L
+				}
 			}
 		}
+
+		if err := stream.Err(); err != nil {
+			// 復帰が不可能なエラー以外は再接続を試みる
+			switch err.(type) {
+			case *transcribestreamingservice.LimitExceededException,
+				*transcribestreamingservice.InternalFailureException:
+				zlog.Error().
+					Err(err).
+					Str("ChannelID", args.SoraChannelID).
+					Str("ConnectionID", args.SoraConnectionID).
+					Send()
+
+				err = ErrServerDisconnected
+			default:
+			}
+
+			w.CloseWithError(err)
+			return
+		}
+
+		w.Close()
 	}()
 
 	return r, nil

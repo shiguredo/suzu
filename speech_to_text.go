@@ -2,6 +2,7 @@ package suzu
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	speech "cloud.google.com/go/speech/apiv1"
@@ -12,14 +13,25 @@ import (
 	speechpb "cloud.google.com/go/speech/apiv1/speechpb"
 )
 
-type SpeechToText struct{}
-
-func NewSpeechToText() SpeechToText {
-	return SpeechToText{}
+type SpeechToText struct {
+	SampleReate  int32
+	ChannelCount int32
+	LanguageCode string
+	Config       Config
 }
 
-func (stt SpeechToText) Start(ctx context.Context, config Config, args HandlerArgs, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
-	recognitionConfig := NewRecognitionConfig(config, args)
+func NewSpeechToText(config Config, languageCode string, sampleRate, channelCount int32) SpeechToText {
+	return SpeechToText{
+		LanguageCode: languageCode,
+		SampleReate:  sampleRate,
+		ChannelCount: channelCount,
+		Config:       config,
+	}
+}
+
+func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
+	config := stt.Config
+	recognitionConfig := NewRecognitionConfig(config, stt.LanguageCode, int32(config.SampleRate), int32(config.ChannelCount))
 	speechpbRecognitionConfig := NewSpeechpbRecognitionConfig(recognitionConfig)
 	streamingRecognitionConfig := NewStreamingRecognitionConfig(speechpbRecognitionConfig, config.GcpSingleUtterance, config.GcpInterimResults)
 
@@ -50,10 +62,12 @@ func (stt SpeechToText) Start(ctx context.Context, config Config, args HandlerAr
 			buf := make([]byte, FrameSize)
 			n, err := r.Read(buf)
 			if err != nil {
-				if err != io.EOF {
+				if errors.Is(err, io.EOF) {
 					// TODO: エラー処理
-					zlog.Error().Err(err).Send()
+					zlog.Info().Err(err).Send()
+					return
 				}
+				zlog.Error().Err(err).Send()
 				return
 			}
 			if n > 0 {
@@ -63,7 +77,11 @@ func (stt SpeechToText) Start(ctx context.Context, config Config, args HandlerAr
 						AudioContent: audioContent,
 					},
 				}); err != nil {
-					// TODO: エラー処理
+					if errors.Is(err, io.EOF) {
+						// TODO: エラー処理
+						zlog.Info().Err(err).Send()
+						return
+					}
 					zlog.Error().Err(err).Send()
 					return
 				}
@@ -93,13 +111,13 @@ type RecognitionConfig struct {
 	UseEnhanced                         bool
 }
 
-func NewRecognitionConfig(c Config, args HandlerArgs) RecognitionConfig {
+func NewRecognitionConfig(c Config, languageCode string, sampleRate, channelCount int32) RecognitionConfig {
 	return RecognitionConfig{
 		Encoding:                            speechpb.RecognitionConfig_OGG_OPUS,
-		SampleRateHertz:                     int32(args.SampleRate),
-		AudioChannelCount:                   int32(args.ChannelCount),
+		SampleRateHertz:                     sampleRate,
+		AudioChannelCount:                   channelCount,
 		EnableSeparateRecognitionPerChannel: c.GcpEnableSeparateRecognitionPerChannel,
-		LanguageCode:                        args.LanguageCode,
+		LanguageCode:                        languageCode,
 		AlternativeLanguageCodes:            c.GcpAlternativeLanguageCodes,
 		MaxAlternatives:                     c.GcpMaxAlternatives,
 		ProfanityFilter:                     c.GcpProfanityFilter,

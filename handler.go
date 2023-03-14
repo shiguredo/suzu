@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -13,17 +14,34 @@ import (
 	zlog "github.com/rs/zerolog/log"
 )
 
+const (
+	FrameSize = 1024 * 10
+)
+
+var (
+	// TODO: 分かりにくい場合はエラー名を変更する
+	// このエラーの場合は再接続を試みる
+	ErrServerDisconnected = fmt.Errorf("SERVER-DISCONNECTED")
+)
+
+type TranscriptionResult struct {
+	Message string `json:"message,omitempty"`
+	Error   error  `json:"error,omitempty"`
+	Type    string `json:"type"`
+}
+
 // https://echo.labstack.com/cookbook/streaming-response/
 // TODO(v): http/2 の streaming を使ってレスポンスを戻す方法を調べる
 
 // https://github.com/herrberk/go-http2-streaming/blob/master/http2/server.go
 // 受信時はくるくるループを回す
-func (s *Server) createSpeechHandler(serviceType string, f func(context.Context, io.Reader, HandlerArgs) (*io.PipeReader, error)) echo.HandlerFunc {
+func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
 		if c.Request().ProtoMajor != 2 {
-			zlog.Error().Msg("INVALID-HTTP-PROTOCOL")
+			zlog.Error().
+				Msg("INVALID-HTTP-PROTOCOL")
 			return echo.NewHTTPError(http.StatusBadRequest)
 		}
 
@@ -37,7 +55,9 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 			SoraAudioStreamingLanguageCode string `header:"sora-audio-streaming-language-code"`
 		}{}
 		if err := (&echo.DefaultBinder{}).BindHeaders(c, &h); err != nil {
-			zlog.Error().Err(err).Msg("INVALID-HEADER")
+			zlog.Error().
+				Err(err).
+				Msg("INVALID-HEADER")
 			return echo.NewHTTPError(http.StatusBadRequest)
 		}
 		defer func() {
@@ -49,7 +69,11 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 
 		languageCode, err := GetLanguageCode(serviceType, h.SoraAudioStreamingLanguageCode, nil)
 		if err != nil {
-			zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+			zlog.Error().
+				Err(err).
+				Str("CHANNEL-ID", h.SoraChannelID).
+				Str("CONNECTION-ID", h.SoraConnectionID).
+				Send()
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
@@ -63,6 +87,7 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 		c.Response().WriteHeader(http.StatusOK)
 
 		ctx := c.Request().Context()
+		// TODO: context.WithCancelCause(ctx) に変更する
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
@@ -72,39 +97,118 @@ func (s *Server) createSpeechHandler(serviceType string, f func(context.Context,
 
 		args := NewHandlerArgs(*s.config, sampleRate, channelCount, h.SoraChannelID, h.SoraConnectionID, languageCode)
 
-		reader, err := f(ctx, c.Request().Body, args)
+		d := time.Duration(args.Config.TimeToWaitForOpusPacketMs) * time.Millisecond
+		r, err := readerWithSilentPacketFromOpusReader(d, c.Request().Body)
 		if err != nil {
-			zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
-			// TODO: エラー内容で status code を変更する
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
-		defer reader.Close()
 
+		retryCount := 0
+
+		// サーバへの接続・結果の送信処理
+		// サーバへの再接続が期待できる限りは、再接続を試みる
 		for {
-			buf := make([]byte, FrameSize)
-			n, err := reader.Read(buf)
+			zlog.Info().
+				Str("CHANNEL-ID", h.SoraChannelID).
+				Str("CONNECTION-ID", h.SoraConnectionID).
+				Msg("NEW-REQUEST")
+
+			var transcriptionTargetReader io.Reader
+			if c.Request().URL.Path == "/test" ||
+				c.Request().URL.Path == "/dump" {
+				// /test, /dump の場合は受信したパケットをそのまま使用する
+				transcriptionTargetReader = r
+			} else {
+				oggReader, oggWriter := io.Pipe()
+				transcriptionTargetReader = oggReader
+
+				go func() {
+					defer oggWriter.Close()
+					if err := opus2ogg(ctx, r, oggWriter, sampleRate, channelCount, *s.config); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("CHANNEL-ID", h.SoraChannelID).
+							Str("CONNECTION-ID", h.SoraConnectionID).
+							Send()
+						oggWriter.CloseWithError(err)
+						return
+					}
+				}()
+			}
+
+			reader, err := f(ctx, transcriptionTargetReader, args)
 			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				} else if err.Error() == "failed to read audio, client disconnected" {
-					// TODO: エラーレベルを見直す
-					zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
-					return echo.NewHTTPError(499)
-				}
-				zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+				zlog.Error().
+					Err(err).
+					Str("CHANNEL-ID", h.SoraChannelID).
+					Str("CONNECTION-ID", h.SoraConnectionID).
+					Send()
+				// TODO: エラー内容で status code を変更する
 				return echo.NewHTTPError(http.StatusInternalServerError)
 			}
+			defer reader.Close()
 
-			if n > 0 {
-				if _, err := c.Response().Write(buf[:n]); err != nil {
-					zlog.Error().Err(err).Str("CHANNEL-ID", h.SoraChannelID).Str("CONNECTION-ID", h.SoraConnectionID).Send()
+			for {
+				buf := make([]byte, FrameSize)
+				n, err := reader.Read(buf)
+				if err != nil {
+					if errors.Is(err, io.EOF) {
+						return c.NoContent(http.StatusOK)
+					} else if strings.Contains(err.Error(), "client disconnected") {
+						// http.http2errClientDisconnected を使用したエラーの場合は、クライアントから切断されたため終了
+						// TODO: エラーレベルを見直す
+						zlog.Error().
+							Err(err).
+							Str("CHANNEL-ID", h.SoraChannelID).
+							Str("CONNECTION-ID", h.SoraConnectionID).
+							Send()
+						return echo.NewHTTPError(499)
+					} else if errors.Is(err, ErrServerDisconnected) {
+						if *s.config.Retry {
+							// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
+							retryCount += 1
+
+							zlog.Debug().
+								Err(err).
+								Str("CHANNEL-ID", h.SoraChannelID).
+								Str("CONNECTION-ID", h.SoraConnectionID).
+								Int("RETRY-COUNT", retryCount).
+								Send()
+							break
+						} else {
+							// サーバから切断されたが再接続させない設定の場合
+							zlog.Error().
+								Err(err).
+								Str("CHANNEL-ID", h.SoraChannelID).
+								Str("CONNECTION-ID", h.SoraConnectionID).
+								Send()
+							return echo.NewHTTPError(http.StatusInternalServerError)
+						}
+					}
+
+					zlog.Error().
+						Err(err).
+						Str("CHANNEL-ID", h.SoraChannelID).
+						Str("CONNECTION-ID", h.SoraConnectionID).
+						Send()
+					// サーバから切断されたが再度の接続が期待できない場合、または、想定外のエラーの場合は InternalServerError
 					return echo.NewHTTPError(http.StatusInternalServerError)
 				}
-				c.Response().Flush()
+
+				// メッセージが空でない場合はクライアントに結果を送信する
+				if n > 0 {
+					if _, err := c.Response().Write(buf[:n]); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("CHANNEL-ID", h.SoraChannelID).
+							Str("CONNECTION-ID", h.SoraConnectionID).
+							Send()
+						return echo.NewHTTPError(http.StatusInternalServerError)
+					}
+					c.Response().Flush()
+				}
 			}
 		}
-
-		return c.NoContent(http.StatusOK)
 	}
 }
 
@@ -174,12 +278,6 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 	}
 }
 
-type Response struct {
-	ChannelID *string `json:"channel_id"`
-	Message   string  `json:"message"`
-	Error     error   `json:"error,omitempty"`
-}
-
 func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader) (io.Reader, error) {
 	type reqeust struct {
 		Payload []byte
@@ -190,6 +288,8 @@ func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader)
 	ch := make(chan reqeust)
 
 	go func() {
+		defer close(ch)
+
 		for {
 			buf := make([]byte, FrameSize)
 			n, err := opusReader.Read(buf)
@@ -210,28 +310,28 @@ func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader)
 
 	timer := time.NewTimer(d)
 	go func() {
+		defer func() {
+			if !timer.Stop() {
+				<-timer.C
+			}
+		}()
+
+		var payload []byte
 		for {
 			select {
 			case <-timer.C:
-				if _, err := w.Write(silentPacket()); err != nil {
-					w.CloseWithError(err)
-					return
-				}
+				payload = silentPacket()
 			case req := <-ch:
 				if err := req.Error; err != nil {
 					w.CloseWithError(err)
-					if !timer.Stop() {
-						<-timer.C
-					}
 					return
 				}
-				if _, err := w.Write(req.Payload); err != nil {
-					w.CloseWithError(err)
-					if !timer.Stop() {
-						<-timer.C
-					}
-					return
-				}
+				payload = req.Payload
+			}
+
+			if _, err := w.Write(payload); err != nil {
+				w.CloseWithError(err)
+				return
 			}
 			timer.Reset(d)
 		}
@@ -242,40 +342,4 @@ func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader)
 
 func silentPacket() []byte {
 	return []byte{252, 255, 254}
-}
-
-type serviceHandler func(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error)
-
-type serviceHandlers struct {
-	Handlers map[string]serviceHandler
-}
-
-func NewServiceHandlers() serviceHandlers {
-	return serviceHandlers{
-		Handlers: make(map[string]serviceHandler),
-	}
-}
-
-var ServiceHandlers = NewServiceHandlers()
-
-func (sh *serviceHandlers) registerHandler(name string, handler serviceHandler) {
-	sh.Handlers[name] = handler
-}
-
-func (sh *serviceHandlers) getServiceHandler(name string) (serviceHandler, error) {
-	h, ok := sh.Handlers[name]
-	if !ok {
-		return nil, fmt.Errorf("UNREGISTERED-SERVICE: %s", name)
-	}
-
-	return h, nil
-}
-
-func (sh *serviceHandlers) GetNames() []string {
-	var names []string
-	for name := range sh.Handlers {
-		names = append(names, name)
-	}
-
-	return names
 }

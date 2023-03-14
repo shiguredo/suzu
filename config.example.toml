@@ -25,6 +25,9 @@ http2_privkey_file = ""
 # クライアント認証用の CA 証明書ファイルです
 http2_verify_cacert_path = ""
 
+# サーバからの切断時に再接続を試みます
+retry = true
+
 # [log]
 # ログの出力先ディレクトリです
 log_dir = "."
@@ -32,6 +35,7 @@ log_dir = "."
 log_name = "suzu.jsonl"
 log_debug = false
 # ログを標準出力に出力可否の指定です
+# true にした場合はファイルにログは出力されません
 log_stdout = true
 
 # [aws]
@@ -47,6 +51,10 @@ aws_credential_file = "./credentials"
 # プロファイルの指定です
 # 認証情報に AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY を使用する場合は、下記のプロファイルの指定行をコメントアウトします
 aws_profile = "default"
+
+# クライアントに送る変換結果の情報に付与する項目
+aws_result_channel_id = true
+# aws_result_is_partial = true
 
 
 # https://cloud.google.com/speech-to-text/docs/reference/rpc/google.cloud.speech.v1#streamingrecognitionconfig
@@ -68,3 +76,6 @@ gcp_credential_file = ""
 # gcp_enable_spoken_punctuation = false
 # gcp_model = "default"
 # gcp_use_enhanced = false
+# クライアントに送る変換結果の情報に付与する項目
+# gcp_result_is_final = true
+# gcp_result_stability = true

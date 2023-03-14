@@ -1,8 +1,5 @@
 # Audio Streaming Gateway Suzu
 
-
-**現在リリースに向けて開発中です**
-
 [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/shiguredo/suzu.svg)](https://github.com/shiguredo/suzu)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -18,12 +15,13 @@ Please read https://github.com/shiguredo/oss/blob/master/README.en.md before use
 
 ## Audio Streaming Gateway Suzu について
 
-Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを HTTP/2 経由で受け取り、
-音声解析サービスへ送信し解析結果を Sora 経由で DataChannel でクライアントへ通知するゲートウェイです。
+Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) 専用の音声解析用ゲートウェイです。
+Suzu は Sora から送られてくる音声ストリーミングを HTTP/2 経由で受け取り、音声解析サービスに転送し、その解析結果を Sora に送ります。
+Sora は Suzu から送られてきた解析結果を、プッシュ API を経由してリアルタイムにクライアントへ通知します。
 
 ## 目的
 
-リアルタイム通話で気軽に音声解析サービスを利用できる仕組みを提供する事です。
+リアルタイム通話で気軽に音声解析サービスを利用できる仕組みを提供することです。
 
 ## 特徴
 
@@ -31,17 +29,63 @@ Suzu は [WebRTC SFU Sora](https://sora.shiguredo.jp) から音声データを H
 - 音声解析サービスの解析結果を HTTP/2 レスポンスで Sora に戻します
 - Sora は受け取った解析結果をクライアントへプッシュで送信します
     - [DataChannel 経由のシグナリング](https://sora-doc.shiguredo.jp/DATA_CHANNEL_SIGNALING) の利用を推奨します
-- 音声解析に必要とされる言語コードをクライアント事に指定可能です
+- 音声解析に必要とされる言語コードをクライアントごとに指定できます
 - mTLS 対応
 
 ## 使ってみる
 
 Suzu を使ってみたい人は [USE.md](doc/USE.md) をお読みください。
 
+## Suzu と GCP Speech to Text
+
+```mermaid
+sequenceDiagram
+    participant client1 as クライアント1<br>sendrecv
+    participant client2 as クライアント2<br>recvonly
+    participant sora as WebRTC SFU Sora
+    participant suzu as Audio Streaming Gateway Suzu
+    participant app as アプリケーションサーバー
+    participant gcp as GCP Speech to Text
+    note over client1, sora: WebRTC 確立
+    sora-)client1: "type": "switched"
+    note over client1, sora: DataChannel 確立
+    par
+        client1-)sora: Opus over SRTP
+        sora-)suzu: Opus over HTTP/2
+        note over suzu: Opus を Ogg コンテナに詰める
+        suzu-)gcp: Ogg over HTTP/2
+        note over gcp: 音声データが十分ではないためまだ解析結果が返せない       
+    and
+        client1-)sora: Opus over SRTP
+        sora-)suzu: Opus over HTTP/2
+        suzu-)gcp: Ogg over HTTP/2
+        gcp-)suzu: 音声解析結果<br>JSON over HTTP/2
+        suzu-)sora: 音声解析結果<br>JSON over HTTP/2
+        sora-)client1: プッシュ通知<br>音声解析結果<br>JSON over DataChannel
+    end
+    par
+        note over client2, sora: WebRTC 確立
+        sora-)client2: "type": "switched"
+        note over client2, sora: DataChannel 確立
+    and
+        client1-)sora: Opus over SRTP
+        sora-)suzu: Opus over HTTP/2
+        suzu-)gcp: Ogg over HTTP/2
+        gcp-)suzu: 音声解析結果<br>JSON over HTTP/2
+        suzu-)sora: 音声解析結果<br>JSON over HTTP/2
+    end
+    par
+        sora-)client1: プッシュ通知<br>音声解析結果<br>JSON over DataChannel
+    and
+        sora-)client2: プッシュ通知<br>音声解析結果<br>JSON over DataChannel
+    end
+```
+
 ## 対応サービス
 
 - [x] [Amazon Transcribe](https://aws.amazon.com/jp/transcribe/)
 - [x] [Google Cloud Speech-to-Text](https://cloud.google.com/speech-to-text)
+- [ ] [Google Cloud Media Translation](https://cloud.google.com/media-translation)
 - [ ] [Microsoft Azure Speech to Text](https://azure.microsoft.com/ja-jp/products/cognitive-services/speech-to-text/)
 - [ ] [Microsoft Azure Speech Translation](https://azure.microsoft.com/ja-jp/products/cognitive-services/speech-translation/)
 - [ ] [Deepgram](https://deepgram.com/)
@@ -50,8 +94,8 @@ Suzu を使ってみたい人は [USE.md](doc/USE.md) をお読みください�
 ## ライセンス
 
 ```
-Copyright 2022-2022, Hiroshi Yoshida (Original Author)
-Copyright 2022-2022, Shiguredo Inc.
+Copyright 2022-2023, Hiroshi Yoshida (Original Author)
+Copyright 2022-2023, Shiguredo Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -74,11 +118,12 @@ limitations under the License.
 
 詳細は Discord やメールなどでお気軽にお問い合わせください。
 
+- [Google Cloud Media Translation](https://cloud.google.com/media-translation)
 - [Microsoft Azure Speech to Text](https://azure.microsoft.com/ja-jp/products/cognitive-services/speech-to-text/) 対応
 - [Microsoft Azure Speech Translation](https://azure.microsoft.com/ja-jp/products/cognitive-services/speech-translation/) 対応
 - [Deepgram](https://deepgram.com/) 対応
 - [AmiVoice Cloud Platform](https://acp.amivoice.com/amivoice/) 対応
 - [ggerganov/whisper\.cpp: Port of OpenAI's Whisper model in C/C\+\+](https://github.com/ggerganov/whisper.cpp) 対応
-    - Suzu から利用できるようになる Whisper サーバを開発し、OSS として公開します
+    - Suzu から利用できるようになる Whisper サーバーを開発し、OSS として公開します
 - ウェブフック機能対応
-    - クライアント事に接続先サービスを変更できるようになる
+    - クライアントごとに接続先サービスを変更できるようになる

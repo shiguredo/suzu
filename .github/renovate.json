@@ -1,13 +1,16 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base"
+    "config:base",
+    ":timezone(Asia/Tokyo)",
+    ":combinePatchMinorReleases",
+    ":prHourlyLimitNone",
+    ":prConcurrentLimit10",
+    "group:recommended",
+    "group:allNonMajor",
+    "schedule:weekly"
   ],
   "dependencyDashboard": false,
-  "timezone": "Asia/Tokyo",
-  "schedule": [
-    "before 10am on Monday"
-  ],
   "packageRules": [
     {
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],

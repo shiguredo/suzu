@@ -8,4 +8,4 @@ init:
 	patch < oggwriter.go.patch
 
 test:
-	@go test -v -short --race
+	@go test -v --race
