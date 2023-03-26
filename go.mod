@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/BurntSushi/toml v1.2.1
-	github.com/aws/aws-sdk-go v1.44.224
+	github.com/aws/aws-sdk-go v1.44.229
 	github.com/labstack/echo-contrib v0.14.1
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/pion/randutil v0.1.0
@@ -16,11 +16,11 @@ require (
 )
 
 require (
-	cloud.google.com/go/speech v1.14.1
+	cloud.google.com/go/speech v1.15.0
 	github.com/stretchr/testify v1.8.2
 	go.uber.org/goleak v1.2.1
 	google.golang.org/api v0.114.0
-	google.golang.org/grpc v1.53.0
+	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.30.0
 )
 
@@ -62,6 +62,6 @@ require (
 	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
+	google.golang.org/genproto v0.0.0-20230320184635-7606e756e683 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
