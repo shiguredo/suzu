@@ -30,6 +30,7 @@ Sora は Suzu から送られてきた解析結果を、プッシュ API を経�
 - Sora は受け取った解析結果をクライアントへプッシュで送信します
     - [DataChannel 経由のシグナリング](https://sora-doc.shiguredo.jp/DATA_CHANNEL_SIGNALING) の利用を推奨します
 - 音声解析に必要とされる言語コードをクライアントごとに指定できます
+- 無限リトライ対応
 - mTLS 対応
 
 ## 使ってみる
