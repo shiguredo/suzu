@@ -12,7 +12,28 @@ import (
 )
 
 func init() {
-	ServiceHandlers.registerHandler("gcp", SpeechToTextHandler)
+	ServiceHandlerNames.register("gcp")
+}
+
+type SpeechToTextHandler struct {
+	Config Config
+
+	ChannelID    string
+	ConnectionID string
+	SampleRate   uint32
+	ChannelCount uint16
+	LanguageCode string
+}
+
+func NewSpeechToTextHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) *SpeechToTextHandler {
+	return &SpeechToTextHandler{
+		Config:       config,
+		ChannelID:    channelID,
+		ConnectionID: connectionID,
+		SampleRate:   sampleRate,
+		ChannelCount: channelCount,
+		LanguageCode: languageCode,
+	}
 }
 
 type GcpResult struct {
@@ -40,8 +61,8 @@ func (gr *GcpResult) WithStability(stability float32) *GcpResult {
 	return gr
 }
 
-func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-	stt := NewSpeechToText(args.Config, args.LanguageCode, int32(args.SampleRate), int32(args.ChannelCount))
+func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
+	stt := NewSpeechToText(h.Config, h.LanguageCode, int32(h.SampleRate), int32(h.ChannelCount))
 	stream, err := stt.Start(ctx, reader)
 	if err != nil {
 		return nil, err
@@ -57,8 +78,8 @@ func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs
 			if err != nil {
 				zlog.Error().
 					Err(err).
-					Str("CHANNEL-ID", args.SoraChannelID).
-					Str("CONNECTION-ID", args.SoraConnectionID).
+					Str("CHANNEL-ID", h.ChannelID).
+					Str("CONNECTION-ID", h.ConnectionID).
 					Send()
 
 				if (strings.Contains(err.Error(), "code = OutOfRange")) ||
@@ -80,8 +101,8 @@ func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs
 
 					zlog.Error().
 						Err(err).
-						Str("CHANNEL-ID", args.SoraChannelID).
-						Str("CONNECTION-ID", args.SoraConnectionID).
+						Str("CHANNEL-ID", h.ChannelID).
+						Str("CONNECTION-ID", h.ConnectionID).
 						Str("MESSAGE", status.GetMessage()).
 						Int32("CODE", status.GetCode()).
 						Send()
@@ -90,8 +111,8 @@ func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs
 					return
 				}
 				zlog.Error().
-					Str("CHANNEL-ID", args.SoraChannelID).
-					Str("CONNECTION-ID", args.SoraConnectionID).
+					Str("CHANNEL-ID", h.ChannelID).
+					Str("CONNECTION-ID", h.ConnectionID).
 					Str("MESSAGE", status.GetMessage()).
 					Int32("CODE", status.GetCode()).
 					Send()
@@ -110,11 +131,11 @@ func SpeechToTextHandler(ctx context.Context, reader io.Reader, args HandlerArgs
 				}
 
 				for _, alternative := range res.Alternatives {
-					if args.Config.GcpEnableWordConfidence {
+					if h.Config.GcpEnableWordConfidence {
 						for _, word := range alternative.Words {
 							zlog.Debug().
-								Str("CHANNEL-ID", args.SoraChannelID).
-								Str("CONNECTION-ID", args.SoraConnectionID).
+								Str("CHANNEL-ID", h.ChannelID).
+								Str("CONNECTION-ID", h.ConnectionID).
 								Str("Wrod", word.Word).
 								Float32("Confidence", word.Confidence).
 								Str("StartTime", word.StartTime.String()).

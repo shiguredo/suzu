@@ -35,7 +35,7 @@ type TranscriptionResult struct {
 
 // https://github.com/herrberk/go-http2-streaming/blob/master/http2/server.go
 // 受信時はくるくるループを回す
-func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.HandlerFunc {
+func (s *Server) createSpeechHandler(serviceType string) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
@@ -78,9 +78,9 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 		}
 
 		zlog.Debug().
-			Str("channel_id", h.SoraChannelID).
-			Str("connection_id", h.SoraConnectionID).
-			Str("language_code", h.SoraAudioStreamingLanguageCode).
+			Str("CHANNEL-ID", h.SoraChannelID).
+			Str("CONNECTION-ID", h.SoraConnectionID).
+			Str("LANGUAGE-CODE", h.SoraAudioStreamingLanguageCode).
 			Msg("CONNECTED")
 
 		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -95,11 +95,25 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 		sampleRate := uint32(s.config.SampleRate)
 		channelCount := uint16(s.config.ChannelCount)
 
-		args := NewHandlerArgs(*s.config, sampleRate, channelCount, h.SoraChannelID, h.SoraConnectionID, languageCode)
-
-		d := time.Duration(args.Config.TimeToWaitForOpusPacketMs) * time.Millisecond
+		d := time.Duration(s.config.TimeToWaitForOpusPacketMs) * time.Millisecond
 		r, err := readerWithSilentPacketFromOpusReader(d, c.Request().Body)
 		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+
+		var serviceHandler serviceHandlerInterface
+		switch serviceType {
+		case "test":
+			serviceHandler = NewTestHandler(*s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode)
+		case "dump":
+			serviceHandler = NewPacketDumpHandler(*s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode)
+		case "aws":
+			serviceHandler = NewAmazonTranscribeHandler(*s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode)
+		case "gcp":
+			serviceHandler = NewSpeechToTextHandler(*s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode)
+		default:
+			err := errors.New("INVALID-SERVICE-TYPE")
+			zlog.Error().Err(err).Send()
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
@@ -114,8 +128,8 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 				Msg("NEW-REQUEST")
 
 			var transcriptionTargetReader io.Reader
-			if c.Request().URL.Path == "/test" ||
-				c.Request().URL.Path == "/dump" {
+			if serviceType == "test" ||
+				serviceType == "dump" {
 				// /test, /dump の場合は受信したパケットをそのまま使用する
 				transcriptionTargetReader = r
 			} else {
@@ -136,7 +150,7 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 				}()
 			}
 
-			reader, err := f(ctx, transcriptionTargetReader, args)
+			reader, err := serviceHandler.Handle(ctx, transcriptionTargetReader)
 			if err != nil {
 				zlog.Error().
 					Err(err).

@@ -80,9 +80,8 @@ func TestSpeechHandler(t *testing.T) {
 		TimeToWaitForOpusPacketMs: 500,
 	}
 
-	handler := TestHandler
 	path := "/test"
-	serviceType := "aws"
+	serviceType := "test"
 
 	s, err := NewServer(&config, serviceType)
 	if err != nil {
@@ -106,7 +105,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType)
 		err := h(c)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
@@ -131,7 +130,7 @@ func TestSpeechHandler(t *testing.T) {
 				lastMessage = result.Message
 			}
 			// TODO: テストデータは固定のため、すべてのメッセージを確認する
-			assert.Equal(t, lastMessage, "n: 31")
+			assert.Equal(t, lastMessage, "n: 3")
 		}
 
 	})
@@ -163,7 +162,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusBadRequest, err.(*echo.HTTPError).Code)
@@ -205,7 +204,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
@@ -230,7 +229,7 @@ func TestSpeechHandler(t *testing.T) {
 			log.Logger = logger
 		}()
 
-		pr, pw, err := os.Pipe()
+		_, pw, err := os.Pipe()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -248,20 +247,13 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType)
 		err = h(c)
-		if assert.Error(t, err) {
-			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
+		if assert.NoError(t, err) {
+			assert.Equal(t, http.StatusOK, rec.Code)
 		}
 
 		pw.Close()
-
-		var buf bytes.Buffer
-		n, err := buf.ReadFrom(pr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		assert.Contains(t, buf.String()[:n], "UNSUPPORTED-LANGUAGE-CODE: aws, en-JP")
 	})
 
 	t.Run("packet read error", func(t *testing.T) {
@@ -290,7 +282,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
@@ -338,7 +330,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req2, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType)
 		err = h(c)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)

@@ -79,13 +79,9 @@ func NewServer(c *Config, service string) (*Server, error) {
 	// LB からのヘルスチェック専用 API
 	e.GET("/.ok", s.healthcheckHandler)
 
-	serviceHandler, err := ServiceHandlers.getServiceHandler(service)
-	if err != nil {
-		return nil, err
-	}
-	e.POST("/speech", s.createSpeechHandler(service, serviceHandler))
-	e.POST("/test", s.createSpeechHandler(service, TestHandler))
-	e.POST("/dump", s.createSpeechHandler(service, PacketDumpHandler))
+	e.POST("/speech", s.createSpeechHandler(service))
+	e.POST("/test", s.createSpeechHandler("test"))
+	e.POST("/dump", s.createSpeechHandler("dump"))
 
 	echoExporter := echo.New()
 	echoExporter.HideBanner = true

@@ -10,11 +10,32 @@ import (
 )
 
 func init() {
-	ServiceHandlers.registerHandler("aws", AmazonTranscribeHandler)
+	ServiceHandlerNames.register("aws")
 }
 
-func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-	at := NewAmazonTranscribe(args.Config, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount))
+type AmazonTranscribeHandler struct {
+	Config Config
+
+	ChannelID    string
+	ConnectionID string
+	SampleRate   uint32
+	ChannelCount uint16
+	LanguageCode string
+}
+
+func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) *AmazonTranscribeHandler {
+	return &AmazonTranscribeHandler{
+		Config:       config,
+		ChannelID:    channelID,
+		ConnectionID: connectionID,
+		SampleRate:   sampleRate,
+		ChannelCount: channelCount,
+		LanguageCode: languageCode,
+	}
+}
+
+func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
+	at := NewAmazonTranscribe(h.Config, h.LanguageCode, int64(h.SampleRate), int64(h.ChannelCount))
 	stream, err := at.Start(ctx, reader)
 	if err != nil {
 		return nil, err
@@ -67,8 +88,8 @@ func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args Handler
 				*transcribestreamingservice.InternalFailureException:
 				zlog.Error().
 					Err(err).
-					Str("ChannelID", args.SoraChannelID).
-					Str("ConnectionID", args.SoraConnectionID).
+					Str("ChannelID", h.ChannelID).
+					Str("ConnectionID", h.ConnectionID).
 					Send()
 
 				err = ErrServerDisconnected

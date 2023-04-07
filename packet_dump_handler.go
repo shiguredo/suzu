@@ -8,21 +8,34 @@ import (
 	"time"
 )
 
-type dump struct {
-	Timestamp    int64  `json:"timestamp"`
-	ChannelID    string `json:"channel_id"`
-	ConnectionID string `json:"connection_id"`
-	LanguageCode string `json:"language_code"`
-	SampleRate   uint32 `json:"sample_rate"`
-	ChannelCount uint16 `json:"channel_count"`
-	Payload      []byte `json:"payload"`
+func init() {}
+
+type PacketDumpHandler struct {
+	Config Config
+
+	ChannelID    string
+	ConnectionID string
+	SampleRate   uint32
+	ChannelCount uint16
+	LanguageCode string
 }
 
-func PacketDumpHandler(ctx context.Context, body io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-	c := args.Config
+func NewPacketDumpHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) *PacketDumpHandler {
+	return &PacketDumpHandler{
+		Config:       config,
+		ChannelID:    channelID,
+		ConnectionID: connectionID,
+		SampleRate:   sampleRate,
+		ChannelCount: channelCount,
+		LanguageCode: languageCode,
+	}
+}
+
+func (h *PacketDumpHandler) Handle(ctx context.Context, body io.Reader) (*io.PipeReader, error) {
+	c := h.Config
 	filename := c.DumpFile
-	channelID := args.SoraChannelID
-	connectionID := args.SoraConnectionID
+	channelID := h.ChannelID
+	connectionID := h.ConnectionID
 
 	r, w := io.Pipe()
 
@@ -35,8 +48,8 @@ func PacketDumpHandler(ctx context.Context, body io.Reader, args HandlerArgs) (*
 		defer f.Close()
 		defer w.Close()
 
-		mv := io.MultiWriter(f, w)
-		encoder := json.NewEncoder(mv)
+		mw := io.MultiWriter(f, w)
+		encoder := json.NewEncoder(mw)
 
 		for {
 			buf := make([]byte, FrameSize)
@@ -45,15 +58,25 @@ func PacketDumpHandler(ctx context.Context, body io.Reader, args HandlerArgs) (*
 				return
 			}
 			if n > 0 {
-				dump := dump{
+				dump := struct {
+					Timestamp    int64  `json:"timestamp"`
+					ChannelID    string `json:"channel_id"`
+					ConnectionID string `json:"connection_id"`
+					LanguageCode string `json:"language_code"`
+					SampleRate   uint32 `json:"sample_rate"`
+					ChannelCount uint16 `json:"channel_count"`
+					Payload      []byte `json:"payload"`
+				}{
+
 					Timestamp:    time.Now().UnixMilli(),
 					ChannelID:    channelID,
 					ConnectionID: connectionID,
-					LanguageCode: args.LanguageCode,
-					SampleRate:   args.SampleRate,
-					ChannelCount: args.ChannelCount,
+					LanguageCode: h.LanguageCode,
+					SampleRate:   h.SampleRate,
+					ChannelCount: h.ChannelCount,
 					Payload:      buf[:n],
 				}
+
 				if err := encoder.Encode(dump); err != nil {
 					w.CloseWithError(err)
 					return

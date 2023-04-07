@@ -7,6 +7,29 @@ import (
 	"io"
 )
 
+func init() {}
+
+type TestHandler struct {
+	Config Config
+
+	ChannelID    string
+	ConnectionID string
+	SampleRate   uint32
+	ChannelCount uint16
+	LanguageCode string
+}
+
+func NewTestHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) *TestHandler {
+	return &TestHandler{
+		Config:       config,
+		ChannelID:    channelID,
+		ConnectionID: connectionID,
+		SampleRate:   sampleRate,
+		ChannelCount: channelCount,
+		LanguageCode: languageCode,
+	}
+}
+
 type TestResult struct {
 	ChannelID *string `json:"channel_id,omitempty"`
 	TranscriptionResult
@@ -21,18 +44,7 @@ func TestErrorResult(err error) TestResult {
 	}
 }
 
-func TestHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-	oggReader, oggWriter := io.Pipe()
-
-	go func() {
-		if err := opus2ogg(ctx, reader, oggWriter, args.SampleRate, args.ChannelCount, args.Config); err != nil {
-			oggWriter.CloseWithError(err)
-			return
-		}
-
-		oggWriter.Close()
-	}()
-
+func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
 	r, w := io.Pipe()
 
 	go func() {
@@ -40,7 +52,7 @@ func TestHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.P
 
 		for {
 			buf := make([]byte, FrameSize)
-			n, err := oggReader.Read(buf)
+			n, err := reader.Read(buf)
 			if err != nil {
 				w.CloseWithError(err)
 				return
