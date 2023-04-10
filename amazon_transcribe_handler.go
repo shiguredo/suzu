@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	ServiceHandlerNames.register("aws")
+	ServiceHandlers.register("aws", NewAmazonTranscribeHandler)
 }
 
 type AmazonTranscribeHandler struct {
@@ -23,7 +23,7 @@ type AmazonTranscribeHandler struct {
 	LanguageCode string
 }
 
-func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) *AmazonTranscribeHandler {
+func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) serviceHandlerInterface {
 	return &AmazonTranscribeHandler{
 		Config:       config,
 		ChannelID:    channelID,

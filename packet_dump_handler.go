@@ -8,7 +8,9 @@ import (
 	"time"
 )
 
-func init() {}
+func init() {
+	ServiceHandlers.register("packet_dump", NewPacketDumpHandler)
+}
 
 type PacketDumpHandler struct {
 	Config Config
@@ -20,7 +22,7 @@ type PacketDumpHandler struct {
 	LanguageCode string
 }
 
-func NewPacketDumpHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) *PacketDumpHandler {
+func NewPacketDumpHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) serviceHandlerInterface {
 	return &PacketDumpHandler{
 		Config:       config,
 		ChannelID:    channelID,

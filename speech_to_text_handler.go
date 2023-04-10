@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	ServiceHandlerNames.register("gcp")
+	ServiceHandlers.register("gcp", NewSpeechToTextHandler)
 }
 
 type SpeechToTextHandler struct {
@@ -25,7 +25,7 @@ type SpeechToTextHandler struct {
 	LanguageCode string
 }
 
-func NewSpeechToTextHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) *SpeechToTextHandler {
+func NewSpeechToTextHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) serviceHandlerInterface {
 	return &SpeechToTextHandler{
 		Config:       config,
 		ChannelID:    channelID,

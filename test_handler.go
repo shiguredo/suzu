@@ -7,7 +7,9 @@ import (
 	"io"
 )
 
-func init() {}
+func init() {
+	ServiceHandlers.register("test", NewTestHandler)
+}
 
 type TestHandler struct {
 	Config Config
@@ -19,7 +21,7 @@ type TestHandler struct {
 	LanguageCode string
 }
 
-func NewTestHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) *TestHandler {
+func NewTestHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) serviceHandlerInterface {
 	return &TestHandler{
 		Config:       config,
 		ChannelID:    channelID,

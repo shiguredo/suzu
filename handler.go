@@ -30,6 +30,15 @@ type TranscriptionResult struct {
 	Type    string `json:"type"`
 }
 
+func getServiceHandler(serviceType string, config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) (serviceHandlerInterface, error) {
+	newHandlerFunc, err := ServiceHandlers.get(serviceType)
+	if err != nil {
+		return nil, err
+	}
+
+	return (*newHandlerFunc)(config, channelID, connectionID, sampleRate, channelCount, languageCode), nil
+}
+
 // https://echo.labstack.com/cookbook/streaming-response/
 // TODO(v): http/2 の streaming を使ってレスポンスを戻す方法を調べる
 
@@ -101,19 +110,13 @@ func (s *Server) createSpeechHandler(serviceType string) echo.HandlerFunc {
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
-		var serviceHandler serviceHandlerInterface
-		switch serviceType {
-		case "test":
-			serviceHandler = NewTestHandler(*s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode)
-		case "dump":
-			serviceHandler = NewPacketDumpHandler(*s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode)
-		case "aws":
-			serviceHandler = NewAmazonTranscribeHandler(*s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode)
-		case "gcp":
-			serviceHandler = NewSpeechToTextHandler(*s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode)
-		default:
-			err := errors.New("INVALID-SERVICE-TYPE")
-			zlog.Error().Err(err).Send()
+		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode)
+		if err != nil {
+			zlog.Error().
+				Err(err).
+				Str("CHANNEL-ID", h.SoraChannelID).
+				Str("CONNECTION-ID", h.SoraConnectionID).
+				Send()
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
