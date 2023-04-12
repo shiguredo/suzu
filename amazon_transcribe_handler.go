@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	ServiceHandlers.register("aws", NewAmazonTranscribeHandler)
+	NewServiceHandlerFuncs.register("aws", NewAmazonTranscribeHandler)
 }
 
 type AmazonTranscribeHandler struct {
@@ -21,9 +21,11 @@ type AmazonTranscribeHandler struct {
 	SampleRate   uint32
 	ChannelCount uint16
 	LanguageCode string
+
+	OnResultFunc func(context.Context, json.Encoder, any) error
 }
 
-func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) serviceHandlerInterface {
+func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
 	return &AmazonTranscribeHandler{
 		Config:       config,
 		ChannelID:    channelID,
@@ -31,6 +33,7 @@ func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, s
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
+		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, any) error),
 	}
 }
 
@@ -54,24 +57,31 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 			case event := <-stream.Events():
 				switch e := event.(type) {
 				case *transcribestreamingservice.TranscriptEvent:
-					for _, res := range e.Transcript.Results {
-						var result AwsResult
-						result.Type = "aws"
-						if at.Config.AwsResultIsPartial {
-							result.WithIsPartial(*res.IsPartial)
+					if h.OnResultFunc != nil {
+						if err := h.OnResultFunc(ctx, *encoder, e.Transcript.Results); err != nil {
+							w.CloseWithError(err)
+							return
 						}
-						if at.Config.AwsResultChannelID {
-							result.WithChannelID(*res.ChannelId)
-						}
-						for _, alt := range res.Alternatives {
-							var message string
-							if alt.Transcript != nil {
-								message = *alt.Transcript
+					} else {
+						for _, res := range e.Transcript.Results {
+							var result AwsResult
+							result.Type = "aws"
+							if at.Config.AwsResultIsPartial {
+								result.WithIsPartial(*res.IsPartial)
 							}
-							result.Message = message
-							if err := encoder.Encode(result); err != nil {
-								w.CloseWithError(err)
-								return
+							if at.Config.AwsResultChannelID {
+								result.WithChannelID(*res.ChannelId)
+							}
+							for _, alt := range res.Alternatives {
+								var message string
+								if alt.Transcript != nil {
+									message = *alt.Transcript
+								}
+								result.Message = message
+								if err := encoder.Encode(result); err != nil {
+									w.CloseWithError(err)
+									return
+								}
 							}
 						}
 					}

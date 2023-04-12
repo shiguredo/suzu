@@ -105,7 +105,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType)
+		h := s.createSpeechHandler(serviceType, nil)
 		err := h(c)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
@@ -162,7 +162,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType)
+		h := s.createSpeechHandler(serviceType, nil)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusBadRequest, err.(*echo.HTTPError).Code)
@@ -204,7 +204,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType)
+		h := s.createSpeechHandler(serviceType, nil)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
@@ -247,7 +247,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType)
+		h := s.createSpeechHandler(serviceType, nil)
 		err = h(c)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
@@ -282,7 +282,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType)
+		h := s.createSpeechHandler(serviceType, nil)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
@@ -330,7 +330,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req2, rec)
 
-		h := s.createSpeechHandler(serviceType)
+		h := s.createSpeechHandler(serviceType, nil)
 		err = h(c)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)

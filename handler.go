@@ -2,6 +2,7 @@ package suzu
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -30,13 +31,13 @@ type TranscriptionResult struct {
 	Type    string `json:"type"`
 }
 
-func getServiceHandler(serviceType string, config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) (serviceHandlerInterface, error) {
-	newHandlerFunc, err := ServiceHandlers.get(serviceType)
+func getServiceHandler(serviceType string, config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) (serviceHandlerInterface, error) {
+	newHandlerFunc, err := NewServiceHandlerFuncs.get(serviceType)
 	if err != nil {
 		return nil, err
 	}
 
-	return (*newHandlerFunc)(config, channelID, connectionID, sampleRate, channelCount, languageCode), nil
+	return (*newHandlerFunc)(config, channelID, connectionID, sampleRate, channelCount, languageCode, onResultFunc), nil
 }
 
 // https://echo.labstack.com/cookbook/streaming-response/
@@ -44,7 +45,7 @@ func getServiceHandler(serviceType string, config Config, channelID, connectionI
 
 // https://github.com/herrberk/go-http2-streaming/blob/master/http2/server.go
 // 受信時はくるくるループを回す
-func (s *Server) createSpeechHandler(serviceType string) echo.HandlerFunc {
+func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(context.Context, json.Encoder, any) error) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
@@ -110,7 +111,7 @@ func (s *Server) createSpeechHandler(serviceType string) echo.HandlerFunc {
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
-		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode)
+		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode, onResultFunc)
 		if err != nil {
 			zlog.Error().
 				Err(err).
@@ -226,26 +227,6 @@ func (s *Server) createSpeechHandler(serviceType string) echo.HandlerFunc {
 				}
 			}
 		}
-	}
-}
-
-type HandlerArgs struct {
-	Config           Config
-	SoraChannelID    string
-	SoraConnectionID string
-	SampleRate       uint32
-	ChannelCount     uint16
-	LanguageCode     string
-}
-
-func NewHandlerArgs(config Config, sampleRate uint32, channelCount uint16, soraChannelID, soraConnectionID, languageCode string) HandlerArgs {
-	return HandlerArgs{
-		Config:           config,
-		SampleRate:       sampleRate,
-		ChannelCount:     channelCount,
-		SoraChannelID:    soraChannelID,
-		SoraConnectionID: soraConnectionID,
-		LanguageCode:     languageCode,
 	}
 }
 

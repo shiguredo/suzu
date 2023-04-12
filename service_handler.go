@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	ServiceHandlers = make(serviceHandlerFuncs)
+	NewServiceHandlerFuncs = make(newServiceHandlerFuncs)
 
 	ErrServiceNotFound = fmt.Errorf("SERVICE-NOT-FOUND")
 )
@@ -18,15 +18,15 @@ type serviceHandlerInterface interface {
 	Handle(context.Context, io.Reader) (*io.PipeReader, error)
 }
 
-type serviceHandlerFunc func(Config, string, string, uint32, uint16, string) serviceHandlerInterface
+type newServiceHandlerFunc func(Config, string, string, uint32, uint16, string, any) serviceHandlerInterface
 
-type serviceHandlerFuncs map[string]serviceHandlerFunc
+type newServiceHandlerFuncs map[string]newServiceHandlerFunc
 
-func (sh *serviceHandlerFuncs) register(name string, f serviceHandlerFunc) {
+func (sh *newServiceHandlerFuncs) register(name string, f newServiceHandlerFunc) {
 	(*sh)[name] = f
 }
 
-func (sh *serviceHandlerFuncs) get(name string) (*serviceHandlerFunc, error) {
+func (sh *newServiceHandlerFuncs) get(name string) (*newServiceHandlerFunc, error) {
 	h, ok := (*sh)[name]
 	if !ok {
 		return nil, ErrServiceNotFound
@@ -34,7 +34,7 @@ func (sh *serviceHandlerFuncs) get(name string) (*serviceHandlerFunc, error) {
 	return &h, nil
 }
 
-func (sh *serviceHandlerFuncs) GetNames(exclude []string) []string {
+func (sh *newServiceHandlerFuncs) GetNames(exclude []string) []string {
 	names := make([]string, 0, len(*sh))
 	for name := range *sh {
 		if slices.Contains(exclude, name) {

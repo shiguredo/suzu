@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	ServiceHandlers.register("test", NewTestHandler)
+	NewServiceHandlerFuncs.register("test", NewTestHandler)
 }
 
 type TestHandler struct {
@@ -19,9 +19,11 @@ type TestHandler struct {
 	SampleRate   uint32
 	ChannelCount uint16
 	LanguageCode string
+
+	OnResultFunc func(context.Context, json.Encoder, any) error
 }
 
-func NewTestHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) serviceHandlerInterface {
+func NewTestHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
 	return &TestHandler{
 		Config:       config,
 		ChannelID:    channelID,
@@ -29,6 +31,7 @@ func NewTestHandler(config Config, channelID, connectionID string, sampleRate ui
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
+		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, any) error),
 	}
 }
 
@@ -65,9 +68,17 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 				result.Type = "test"
 				result.Message = fmt.Sprintf("n: %d", n)
 				result.ChannelID = &[]string{"ch_0"}[0]
-				if err := encoder.Encode(result); err != nil {
-					w.CloseWithError(err)
-					return
+
+				if h.OnResultFunc != nil {
+					if err := h.OnResultFunc(ctx, *encoder, result); err != nil {
+						w.CloseWithError(err)
+						return
+					}
+				} else {
+					if err := encoder.Encode(result); err != nil {
+						w.CloseWithError(err)
+						return
+					}
 				}
 			}
 		}

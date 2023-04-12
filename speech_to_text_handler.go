@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	ServiceHandlers.register("gcp", NewSpeechToTextHandler)
+	NewServiceHandlerFuncs.register("gcp", NewSpeechToTextHandler)
 }
 
 type SpeechToTextHandler struct {
@@ -23,9 +23,11 @@ type SpeechToTextHandler struct {
 	SampleRate   uint32
 	ChannelCount uint16
 	LanguageCode string
+
+	OnResultFunc func(context.Context, json.Encoder, any) error
 }
 
-func NewSpeechToTextHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) serviceHandlerInterface {
+func NewSpeechToTextHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
 	return &SpeechToTextHandler{
 		Config:       config,
 		ChannelID:    channelID,
@@ -33,6 +35,7 @@ func NewSpeechToTextHandler(config Config, channelID, connectionID string, sampl
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
+		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, any) error),
 	}
 }
 
@@ -119,35 +122,41 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 				w.Close()
 				return
 			}
-
-			for _, res := range resp.Results {
-				var result GcpResult
-				result.Type = "gcp"
-				if stt.Config.GcpResultIsFinal {
-					result.WithIsFinal(res.IsFinal)
+			if h.OnResultFunc != nil {
+				if err := h.OnResultFunc(ctx, *encoder, resp.Results); err != nil {
+					w.CloseWithError(err)
+					return
 				}
-				if stt.Config.GcpResultStability {
-					result.WithStability(res.Stability)
-				}
-
-				for _, alternative := range res.Alternatives {
-					if h.Config.GcpEnableWordConfidence {
-						for _, word := range alternative.Words {
-							zlog.Debug().
-								Str("CHANNEL-ID", h.ChannelID).
-								Str("CONNECTION-ID", h.ConnectionID).
-								Str("Wrod", word.Word).
-								Float32("Confidence", word.Confidence).
-								Str("StartTime", word.StartTime.String()).
-								Str("EndTime", word.EndTime.String()).
-								Send()
-						}
+			} else {
+				for _, res := range resp.Results {
+					var result GcpResult
+					result.Type = "gcp"
+					if stt.Config.GcpResultIsFinal {
+						result.WithIsFinal(res.IsFinal)
 					}
-					transcript := alternative.Transcript
-					result.Message = transcript
-					if err := encoder.Encode(result); err != nil {
-						w.CloseWithError(err)
-						return
+					if stt.Config.GcpResultStability {
+						result.WithStability(res.Stability)
+					}
+
+					for _, alternative := range res.Alternatives {
+						if h.Config.GcpEnableWordConfidence {
+							for _, word := range alternative.Words {
+								zlog.Debug().
+									Str("CHANNEL-ID", h.ChannelID).
+									Str("CONNECTION-ID", h.ConnectionID).
+									Str("Wrod", word.Word).
+									Float32("Confidence", word.Confidence).
+									Str("StartTime", word.StartTime.String()).
+									Str("EndTime", word.EndTime.String()).
+									Send()
+							}
+						}
+						transcript := alternative.Transcript
+						result.Message = transcript
+						if err := encoder.Encode(result); err != nil {
+							w.CloseWithError(err)
+							return
+						}
 					}
 				}
 			}

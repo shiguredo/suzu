@@ -79,9 +79,9 @@ func NewServer(c *Config, service string) (*Server, error) {
 	// LB からのヘルスチェック専用 API
 	e.GET("/.ok", s.healthcheckHandler)
 
-	e.POST("/speech", s.createSpeechHandler(service))
-	e.POST("/test", s.createSpeechHandler("test"))
-	e.POST("/dump", s.createSpeechHandler("dump"))
+	e.POST("/speech", s.createSpeechHandler(service, nil))
+	e.POST("/test", s.createSpeechHandler("test", nil))
+	e.POST("/dump", s.createSpeechHandler("dump", nil))
 
 	echoExporter := echo.New()
 	echoExporter.HideBanner = true

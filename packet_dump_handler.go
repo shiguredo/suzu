@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	ServiceHandlers.register("packet_dump", NewPacketDumpHandler)
+	NewServiceHandlerFuncs.register("dump", NewPacketDumpHandler)
 }
 
 type PacketDumpHandler struct {
@@ -20,9 +20,11 @@ type PacketDumpHandler struct {
 	SampleRate   uint32
 	ChannelCount uint16
 	LanguageCode string
+
+	OnResultFunc func(context.Context, json.Encoder, any) error
 }
 
-func NewPacketDumpHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string) serviceHandlerInterface {
+func NewPacketDumpHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
 	return &PacketDumpHandler{
 		Config:       config,
 		ChannelID:    channelID,
@@ -30,10 +32,21 @@ func NewPacketDumpHandler(config Config, channelID, connectionID string, sampleR
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
+		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, any) error),
 	}
 }
 
-func (h *PacketDumpHandler) Handle(ctx context.Context, body io.Reader) (*io.PipeReader, error) {
+type PacketDumpResult struct {
+	Timestamp    int64  `json:"timestamp"`
+	ChannelID    string `json:"channel_id"`
+	ConnectionID string `json:"connection_id"`
+	LanguageCode string `json:"language_code"`
+	SampleRate   uint32 `json:"sample_rate"`
+	ChannelCount uint16 `json:"channel_count"`
+	Payload      []byte `json:"payload"`
+}
+
+func (h *PacketDumpHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
 	c := h.Config
 	filename := c.DumpFile
 	channelID := h.ChannelID
@@ -55,21 +68,12 @@ func (h *PacketDumpHandler) Handle(ctx context.Context, body io.Reader) (*io.Pip
 
 		for {
 			buf := make([]byte, FrameSize)
-			n, err := r.Read(buf)
+			n, err := reader.Read(buf)
 			if err != nil {
 				return
 			}
 			if n > 0 {
-				dump := struct {
-					Timestamp    int64  `json:"timestamp"`
-					ChannelID    string `json:"channel_id"`
-					ConnectionID string `json:"connection_id"`
-					LanguageCode string `json:"language_code"`
-					SampleRate   uint32 `json:"sample_rate"`
-					ChannelCount uint16 `json:"channel_count"`
-					Payload      []byte `json:"payload"`
-				}{
-
+				dump := &PacketDumpResult{
 					Timestamp:    time.Now().UnixMilli(),
 					ChannelID:    channelID,
 					ConnectionID: connectionID,
@@ -79,9 +83,16 @@ func (h *PacketDumpHandler) Handle(ctx context.Context, body io.Reader) (*io.Pip
 					Payload:      buf[:n],
 				}
 
-				if err := encoder.Encode(dump); err != nil {
-					w.CloseWithError(err)
-					return
+				if h.OnResultFunc != nil {
+					if err := h.OnResultFunc(ctx, *encoder, dump); err != nil {
+						w.CloseWithError(err)
+						return
+					}
+				} else {
+					if err := encoder.Encode(dump); err != nil {
+						w.CloseWithError(err)
+						return
+					}
 				}
 			}
 		}
