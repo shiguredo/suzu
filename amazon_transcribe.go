@@ -110,36 +110,3 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.Reader) (*transcribe
 
 	return stream, nil
 }
-
-type AwsResult struct {
-	ChannelID *string `json:"channel_id,omitempty"`
-	IsPartial *bool   `json:"is_partial,omitempty"`
-	TranscriptionResult
-}
-
-func NewAwsResult() AwsResult {
-	return AwsResult{
-		TranscriptionResult: TranscriptionResult{
-			Type: "aws",
-		},
-	}
-}
-
-func AwsErrorResult(err error) AwsResult {
-	return AwsResult{
-		TranscriptionResult: TranscriptionResult{
-			Type:  "aws",
-			Error: err,
-		},
-	}
-}
-
-func (ar *AwsResult) WithChannelID(channelID string) *AwsResult {
-	ar.ChannelID = &channelID
-	return ar
-}
-
-func (ar *AwsResult) WithIsPartial(isPartial bool) *AwsResult {
-	ar.IsPartial = &isPartial
-	return ar
-}

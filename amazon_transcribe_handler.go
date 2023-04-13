@@ -37,6 +37,31 @@ func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, s
 	}
 }
 
+type AwsResult struct {
+	ChannelID *string `json:"channel_id,omitempty"`
+	IsPartial *bool   `json:"is_partial,omitempty"`
+	TranscriptionResult
+}
+
+func NewAwsResult(err error) AwsResult {
+	return AwsResult{
+		TranscriptionResult: TranscriptionResult{
+			Type:  "aws",
+			Error: err,
+		},
+	}
+}
+
+func (ar *AwsResult) WithChannelID(channelID string) *AwsResult {
+	ar.ChannelID = &channelID
+	return ar
+}
+
+func (ar *AwsResult) WithIsPartial(isPartial bool) *AwsResult {
+	ar.IsPartial = &isPartial
+	return ar
+}
+
 func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(h.Config, h.LanguageCode, int64(h.SampleRate), int64(h.ChannelCount))
 	stream, err := at.Start(ctx, reader)
@@ -71,7 +96,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 								}
 							}
 
-							result := NewAwsResult()
+							result := NewAwsResult(nil)
 							if at.Config.AwsResultIsPartial {
 								result.WithIsPartial(*res.IsPartial)
 							}

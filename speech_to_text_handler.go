@@ -45,15 +45,7 @@ type GcpResult struct {
 	TranscriptionResult
 }
 
-func NewGcpResult() GcpResult {
-	return GcpResult{
-		TranscriptionResult: TranscriptionResult{
-			Type: "gcp",
-		},
-	}
-}
-
-func GcpErrorResult(err error) GcpResult {
+func NewGcpResult(err error) GcpResult {
 	return GcpResult{
 		TranscriptionResult: TranscriptionResult{
 			Type:  "gcp",
@@ -144,7 +136,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 						}
 					}
 
-					result := NewGcpResult()
+					result := NewGcpResult(nil)
 					if stt.Config.GcpResultIsFinal {
 						result.WithIsFinal(res.IsFinal)
 					}
