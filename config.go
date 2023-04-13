@@ -46,6 +46,9 @@ type Config struct {
 
 	TimeToWaitForOpusPacketMs int `toml:"time_to_wait_for_opus_packet_ms"`
 
+	// aws の場合は IsPartial が false, gcp の場合は IsFinal が true の場合にのみ結果を返す指定
+	SendFinalResultOnly bool `toml:"send_final_result_only"`
+
 	// Amazon Web Services
 	AwsCredentialFile                    string `toml:"aws_credential_file"`
 	AwsProfile                           string `toml:"aws_profile"`
@@ -56,8 +59,6 @@ type Config struct {
 	// 変換結果に含める項目の有無の指定
 	AwsResultChannelID bool `toml:"aws_result_channel_id"`
 	AwsResultIsPartial bool `toml:"aws_result_is_partial"`
-	// IsPartial が false の場合にのみ結果を返す指定
-	AwsResultIsCompleteOnly bool `toml:"add_result_is_complete_only"`
 
 	// Google Cloud Platform
 	GcpCredentialFile                      string   `toml:"gcp_credential_file"`

@@ -28,6 +28,9 @@ http2_verify_cacert_path = ""
 # サーバからの切断時に再接続を試みます
 retry = true
 
+# aws の場合は IsPartial が false, gcp の場合は IsFinal が true の場合にのみ結果を返す指定
+send_last_result_only = true
+
 # [log]
 # ログの出力先ディレクトリです
 log_dir = "."
@@ -55,9 +58,6 @@ aws_profile = "default"
 # クライアントに送る変換結果の情報に付与する項目
 aws_result_channel_id = true
 # aws_result_is_partial = true
-
-# is_partial: false の場合のみ結果をします
-aws_result_is_complete_only = true
 
 
 # https://cloud.google.com/speech-to-text/docs/reference/rpc/google.cloud.speech.v1#streamingrecognitionconfig

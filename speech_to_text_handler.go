@@ -45,6 +45,14 @@ type GcpResult struct {
 	TranscriptionResult
 }
 
+func NewGcpResult() GcpResult {
+	return GcpResult{
+		TranscriptionResult: TranscriptionResult{
+			Type: "gcp",
+		},
+	}
+}
+
 func GcpErrorResult(err error) GcpResult {
 	return GcpResult{
 		TranscriptionResult: TranscriptionResult{
@@ -122,6 +130,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 				w.Close()
 				return
 			}
+
 			if h.OnResultFunc != nil {
 				if err := h.OnResultFunc(ctx, *encoder, h.ChannelID, h.ConnectionID, h.LanguageCode, resp.Results); err != nil {
 					w.CloseWithError(err)
@@ -129,8 +138,13 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 				}
 			} else {
 				for _, res := range resp.Results {
-					var result GcpResult
-					result.Type = "gcp"
+					if stt.Config.SendFinalResultOnly {
+						if !res.IsFinal {
+							continue
+						}
+					}
+
+					result := NewGcpResult()
 					if stt.Config.GcpResultIsFinal {
 						result.WithIsFinal(res.IsFinal)
 					}
