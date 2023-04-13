@@ -56,6 +56,9 @@ aws_profile = "default"
 aws_result_channel_id = true
 # aws_result_is_partial = true
 
+# is_partial: false の場合のみ結果をします
+aws_result_is_complete_only = true
+
 
 # https://cloud.google.com/speech-to-text/docs/reference/rpc/google.cloud.speech.v1#streamingrecognitionconfig
 # https://cloud.google.com/speech-to-text/docs/reference/rpc/google.cloud.speech.v1#recognitionconfig

@@ -117,6 +117,14 @@ type AwsResult struct {
 	TranscriptionResult
 }
 
+func NewAwsResult() AwsResult {
+	return AwsResult{
+		TranscriptionResult: TranscriptionResult{
+			Type: "aws",
+		},
+	}
+}
+
 func AwsErrorResult(err error) AwsResult {
 	return AwsResult{
 		TranscriptionResult: TranscriptionResult{

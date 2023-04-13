@@ -64,8 +64,14 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 						}
 					} else {
 						for _, res := range e.Transcript.Results {
-							var result AwsResult
-							result.Type = "aws"
+							if at.Config.AwsResultIsCompleteOnly {
+								// IsPartial: true の場合は結果を返さない
+								if *res.IsPartial {
+									continue
+								}
+							}
+
+							result := NewAwsResult()
 							if at.Config.AwsResultIsPartial {
 								result.WithIsPartial(*res.IsPartial)
 							}
