@@ -21,7 +21,7 @@ type PacketDumpHandler struct {
 	ChannelCount uint16
 	LanguageCode string
 
-	OnResultFunc func(context.Context, json.Encoder, any) error
+	OnResultFunc func(context.Context, json.Encoder, string, string, string, any) error
 }
 
 func NewPacketDumpHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
@@ -32,7 +32,7 @@ func NewPacketDumpHandler(config Config, channelID, connectionID string, sampleR
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
-		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, any) error),
+		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, string, string, string, any) error),
 	}
 }
 
@@ -84,7 +84,7 @@ func (h *PacketDumpHandler) Handle(ctx context.Context, reader io.Reader) (*io.P
 				}
 
 				if h.OnResultFunc != nil {
-					if err := h.OnResultFunc(ctx, *encoder, dump); err != nil {
+					if err := h.OnResultFunc(ctx, *encoder, h.ChannelID, h.ConnectionID, h.LanguageCode, dump); err != nil {
 						w.CloseWithError(err)
 						return
 					}

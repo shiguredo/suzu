@@ -22,7 +22,7 @@ type AmazonTranscribeHandler struct {
 	ChannelCount uint16
 	LanguageCode string
 
-	OnResultFunc func(context.Context, json.Encoder, any) error
+	OnResultFunc func(context.Context, json.Encoder, string, string, string, any) error
 }
 
 func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
@@ -33,7 +33,7 @@ func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, s
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
-		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, any) error),
+		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, string, string, string, any) error),
 	}
 }
 
@@ -58,7 +58,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 				switch e := event.(type) {
 				case *transcribestreamingservice.TranscriptEvent:
 					if h.OnResultFunc != nil {
-						if err := h.OnResultFunc(ctx, *encoder, e.Transcript.Results); err != nil {
+						if err := h.OnResultFunc(ctx, *encoder, h.ChannelID, h.ConnectionID, h.LanguageCode, e.Transcript.Results); err != nil {
 							w.CloseWithError(err)
 							return
 						}

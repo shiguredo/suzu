@@ -24,7 +24,7 @@ type SpeechToTextHandler struct {
 	ChannelCount uint16
 	LanguageCode string
 
-	OnResultFunc func(context.Context, json.Encoder, any) error
+	OnResultFunc func(context.Context, json.Encoder, string, string, string, any) error
 }
 
 func NewSpeechToTextHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
@@ -35,7 +35,7 @@ func NewSpeechToTextHandler(config Config, channelID, connectionID string, sampl
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
-		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, any) error),
+		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, string, string, string, any) error),
 	}
 }
 
@@ -123,7 +123,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 				return
 			}
 			if h.OnResultFunc != nil {
-				if err := h.OnResultFunc(ctx, *encoder, resp.Results); err != nil {
+				if err := h.OnResultFunc(ctx, *encoder, h.ChannelID, h.ConnectionID, h.LanguageCode, resp.Results); err != nil {
 					w.CloseWithError(err)
 					return
 				}

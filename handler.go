@@ -45,7 +45,7 @@ func getServiceHandler(serviceType string, config Config, channelID, connectionI
 
 // https://github.com/herrberk/go-http2-streaming/blob/master/http2/server.go
 // 受信時はくるくるループを回す
-func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(context.Context, json.Encoder, any) error) echo.HandlerFunc {
+func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(context.Context, json.Encoder, string, string, string, any) error) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
