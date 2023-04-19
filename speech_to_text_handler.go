@@ -130,7 +130,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 				}
 			} else {
 				for _, res := range resp.Results {
-					if stt.Config.SendFinalResultOnly {
+					if stt.Config.FinalResultOnly {
 						if !res.IsFinal {
 							continue
 						}

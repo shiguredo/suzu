@@ -89,7 +89,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 						}
 					} else {
 						for _, res := range e.Transcript.Results {
-							if at.Config.SendFinalResultOnly {
+							if at.Config.FinalResultOnly {
 								// IsPartial: true の場合は結果を返さない
 								if *res.IsPartial {
 									continue

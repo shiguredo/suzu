@@ -47,7 +47,7 @@ type Config struct {
 	TimeToWaitForOpusPacketMs int `toml:"time_to_wait_for_opus_packet_ms"`
 
 	// aws の場合は IsPartial が false, gcp の場合は IsFinal が true の場合にのみ結果を返す指定
-	SendFinalResultOnly bool `toml:"send_final_result_only"`
+	FinalResultOnly bool `toml:"final_result_only"`
 
 	// Amazon Web Services
 	AwsCredentialFile                    string `toml:"aws_credential_file"`
