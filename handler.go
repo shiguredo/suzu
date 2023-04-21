@@ -2,7 +2,6 @@ package suzu
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -45,7 +44,7 @@ func getServiceHandler(serviceType string, config Config, channelID, connectionI
 
 // https://github.com/herrberk/go-http2-streaming/blob/master/http2/server.go
 // 受信時はくるくるループを回す
-func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(context.Context, json.Encoder, string, string, string, any) error) echo.HandlerFunc {
+func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
@@ -106,8 +105,13 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		channelCount := uint16(s.config.ChannelCount)
 
 		d := time.Duration(s.config.TimeToWaitForOpusPacketMs) * time.Millisecond
-		r, err := readerWithSilentPacketFromOpusReader(d, c.Request().Body)
+		r, err := readerWithSilentPacketFromOpusReader(ctx, d, c.Request().Body)
 		if err != nil {
+			zlog.Error().
+				Err(err).
+				Str("CHANNEL-ID", h.SoraChannelID).
+				Str("CONNECTION-ID", h.SoraConnectionID).
+				Send()
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
@@ -131,30 +135,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 				Str("CONNECTION-ID", h.SoraConnectionID).
 				Msg("NEW-REQUEST")
 
-			var transcriptionTargetReader io.Reader
-			if serviceType == "test" ||
-				serviceType == "dump" {
-				// /test, /dump の場合は受信したパケットをそのまま使用する
-				transcriptionTargetReader = r
-			} else {
-				oggReader, oggWriter := io.Pipe()
-				transcriptionTargetReader = oggReader
-
-				go func() {
-					defer oggWriter.Close()
-					if err := opus2ogg(ctx, r, oggWriter, sampleRate, channelCount, *s.config); err != nil {
-						zlog.Error().
-							Err(err).
-							Str("CHANNEL-ID", h.SoraChannelID).
-							Str("CONNECTION-ID", h.SoraConnectionID).
-							Send()
-						oggWriter.CloseWithError(err)
-						return
-					}
-				}()
-			}
-
-			reader, err := serviceHandler.Handle(ctx, transcriptionTargetReader)
+			reader, err := serviceHandler.Handle(ctx, r)
 			if err != nil {
 				zlog.Error().
 					Err(err).
@@ -170,6 +151,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 				buf := make([]byte, FrameSize)
 				n, err := reader.Read(buf)
 				if err != nil {
+					cancel()
+
 					if errors.Is(err, io.EOF) {
 						return c.NoContent(http.StatusOK)
 					} else if strings.Contains(err.Error(), "client disconnected") {
@@ -276,31 +259,38 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 	}
 }
 
-func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader) (io.Reader, error) {
-	type reqeust struct {
+func readerWithSilentPacketFromOpusReader(ctx context.Context, d time.Duration, opusReader io.Reader) (io.Reader, error) {
+	type request struct {
 		Payload []byte
 		Error   error
 	}
 
 	r, w := io.Pipe()
-	ch := make(chan reqeust)
+	ch := make(chan request)
 
 	go func() {
 		defer close(ch)
 
 		for {
+
 			buf := make([]byte, FrameSize)
 			n, err := opusReader.Read(buf)
 			if err != nil {
-				ch <- reqeust{
+				ch <- request{
 					Error: err,
 				}
 				return
 			}
 
-			if n > 0 {
-				ch <- reqeust{
-					Payload: buf[:n],
+			select {
+			case <-ctx.Done():
+				w.Close()
+				return
+			default:
+				if n > 0 {
+					ch <- request{
+						Payload: buf[:n],
+					}
 				}
 			}
 		}
@@ -327,11 +317,18 @@ func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader)
 				payload = req.Payload
 			}
 
-			if _, err := w.Write(payload); err != nil {
-				w.CloseWithError(err)
+			select {
+			case <-ctx.Done():
+				w.Close()
 				return
+			default:
+				if _, err := w.Write(payload); err != nil {
+					w.CloseWithError(err)
+					return
+				}
+				timer.Reset(d)
 			}
-			timer.Reset(d)
+
 		}
 	}()
 

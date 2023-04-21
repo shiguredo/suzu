@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -352,6 +353,33 @@ func TestSpeechHandler(t *testing.T) {
 				assert.Equal(t, "test", result.Type)
 				assert.NotEmpty(t, result.Message)
 			}
+		}
+
+	})
+
+	t.Run("OnResult Error", func(t *testing.T) {
+		//opt := goleak.IgnoreCurrent()
+		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+		defer goleak.VerifyNone(t, opt)
+
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
+		defer r.Close()
+
+		e := echo.New()
+		req := httptest.NewRequest("POST", path, r)
+		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
+		req.Proto = "HTTP/2.0"
+		req.ProtoMajor = 2
+		req.ProtoMinor = 0
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		h := s.createSpeechHandler(serviceType, func(ctx context.Context, w io.WriteCloser, chnanelID, connectionID, languageCode string, results any) error {
+			return fmt.Errorf("ON-RESULT-ERROR")
+		})
+		err := h(c)
+		if assert.Error(t, err) {
+			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
 		}
 
 	})

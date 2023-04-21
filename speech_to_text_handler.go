@@ -24,7 +24,7 @@ type SpeechToTextHandler struct {
 	ChannelCount uint16
 	LanguageCode string
 
-	OnResultFunc func(context.Context, json.Encoder, string, string, string, any) error
+	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
 
 func NewSpeechToTextHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
@@ -35,7 +35,7 @@ func NewSpeechToTextHandler(config Config, channelID, connectionID string, sampl
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
-		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, string, string, string, any) error),
+		OnResultFunc: onResultFunc.(func(context.Context, io.WriteCloser, string, string, string, any) error),
 	}
 }
 
@@ -66,7 +66,22 @@ func (gr *GcpResult) WithStability(stability float32) *GcpResult {
 
 func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
 	stt := NewSpeechToText(h.Config, h.LanguageCode, int32(h.SampleRate), int32(h.ChannelCount))
-	stream, err := stt.Start(ctx, reader)
+
+	oggReader, oggWriter := io.Pipe()
+	go func() {
+		defer oggWriter.Close()
+		if err := opus2ogg(ctx, reader, oggWriter, h.SampleRate, h.ChannelCount, h.Config); err != nil {
+			zlog.Error().
+				Err(err).
+				Str("CHANNEL-ID", h.ChannelID).
+				Str("CONNECTION-ID", h.ConnectionID).
+				Send()
+			oggWriter.CloseWithError(err)
+			return
+		}
+	}()
+
+	stream, err := stt.Start(ctx, oggReader)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +139,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 			}
 
 			if h.OnResultFunc != nil {
-				if err := h.OnResultFunc(ctx, *encoder, h.ChannelID, h.ConnectionID, h.LanguageCode, resp.Results); err != nil {
+				if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, resp.Results); err != nil {
 					w.CloseWithError(err)
 					return
 				}

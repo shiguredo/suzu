@@ -20,7 +20,7 @@ type TestHandler struct {
 	ChannelCount uint16
 	LanguageCode string
 
-	OnResultFunc func(context.Context, json.Encoder, string, string, string, any) error
+	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
 
 func NewTestHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
@@ -31,7 +31,7 @@ func NewTestHandler(config Config, channelID, connectionID string, sampleRate ui
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
-		OnResultFunc: onResultFunc.(func(context.Context, json.Encoder, string, string, string, any) error),
+		OnResultFunc: onResultFunc.(func(context.Context, io.WriteCloser, string, string, string, any) error),
 	}
 }
 
@@ -70,7 +70,7 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 				result.ChannelID = &[]string{"ch_0"}[0]
 
 				if h.OnResultFunc != nil {
-					if err := h.OnResultFunc(ctx, *encoder, h.ChannelID, h.ConnectionID, h.LanguageCode, result); err != nil {
+					if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, result); err != nil {
 						w.CloseWithError(err)
 						return
 					}
