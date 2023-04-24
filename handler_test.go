@@ -18,7 +18,7 @@ func TestSilentPacketReader(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		d := time.Duration(100) * time.Millisecond
-		r := readDumpFile(t, "testdata/dump.jsonl", 0)
+		r := readDumpFile(t, "testdata/000.jsonl", 0)
 		defer r.Close()
 
 		reader, err := readerWithSilentPacketFromOpusReader(ctx, d, r)
@@ -31,8 +31,7 @@ func TestSilentPacketReader(t *testing.T) {
 				assert.ErrorIs(t, err, io.EOF)
 				break
 			}
-			// TODO: silent packet と読み込んだパケットを見分けるためにテストデータを変更して、期待値も変更する
-			assert.Equal(t, buf[:n], []byte{252, 255, 254})
+			assert.Equal(t, buf[:n], []byte{0, 0, 0})
 		}
 	})
 
