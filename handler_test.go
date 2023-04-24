@@ -1,28 +1,45 @@
 package suzu
 
 import (
-	"context"
 	"errors"
 	"io"
 	"testing"
-	"testing/iotest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 )
 
-func TestSilentPacketReader(t *testing.T) {
+// Read 時にエラーを返す ReadCloser
+type ErrReadCloser struct {
+	Error error
+}
+
+func NewErrReadCloser(err error) ErrReadCloser {
+	return ErrReadCloser{
+		Error: err,
+	}
+}
+
+func (e *ErrReadCloser) Read(p []byte) (n int, err error) {
+	return 0, e.Error
+}
+
+func (e *ErrReadCloser) Close() error {
+	return nil
+}
+
+func TestOpusPacketReader(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
-		ctx := context.Background()
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
+		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+		defer goleak.VerifyNone(t, opt)
+
 		d := time.Duration(100) * time.Millisecond
 		r := readDumpFile(t, "testdata/000.jsonl", 0)
 		defer r.Close()
 
-		reader, err := readerWithSilentPacketFromOpusReader(ctx, d, r)
-		assert.NoError(t, err)
+		reader := NewOpusReader(d, r)
 
 		for {
 			buf := make([]byte, FrameSize)
@@ -36,15 +53,15 @@ func TestSilentPacketReader(t *testing.T) {
 	})
 
 	t.Run("read error", func(t *testing.T) {
-		ctx := context.Background()
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
+		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+		defer goleak.VerifyNone(t, opt)
+
 		d := time.Duration(100) * time.Millisecond
 		errPacketRead := errors.New("packet read error")
-		r := iotest.ErrReader(errPacketRead)
 
-		reader, err := readerWithSilentPacketFromOpusReader(ctx, d, r)
-		assert.NoError(t, err)
+		r := NewErrReadCloser(errPacketRead)
+
+		reader := NewOpusReader(d, &r)
 
 		for {
 			buf := make([]byte, FrameSize)
@@ -57,29 +74,47 @@ func TestSilentPacketReader(t *testing.T) {
 		}
 	})
 
-	//t.Run("closed reader", func(t *testing.T) {
-	//	ctx := context.Background()
-	//	ctx, cancel := context.WithCancelCause(ctx)
-	//	defer cancel(nil)
-	//	d := time.Duration(100) * time.Millisecond
-	//	r := readDumpFile(t, "testdata/dump.jsonl", 0)
-	//	go func() {
-	//		r.Close()
-	//	}()
+	t.Run("closed reader", func(t *testing.T) {
+		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+		defer goleak.VerifyNone(t, opt)
 
-	//	reader, err := readerWithSilentPacketFromOpusReader(ctx, d, r)
-	//	if assert.NoError(t, err) {
-	//		cancel(err)
-	//	}
+		d := time.Duration(100) * time.Millisecond
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
+		r.Close()
 
-	//	for {
-	//		buf := make([]byte, FrameSize)
-	//		_, err := reader.Read(buf)
-	//		if err != nil {
-	//			assert.ErrorIs(t, err, io.ErrClosedPipe)
-	//			break
-	//		}
-	//	}
-	//})
+		reader := NewOpusReader(d, r)
+
+		for {
+			buf := make([]byte, FrameSize)
+			_, err := reader.Read(buf)
+			if err != nil {
+				assert.ErrorIs(t, err, io.ErrClosedPipe)
+				break
+			}
+		}
+	})
+
+	t.Run("close reader", func(t *testing.T) {
+		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
+		defer goleak.VerifyNone(t, opt)
+
+		d := time.Duration(100) * time.Millisecond
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			r.Close()
+		}()
+
+		reader := NewOpusReader(d, r)
+
+		for {
+			buf := make([]byte, FrameSize)
+			_, err := reader.Read(buf)
+			if err != nil {
+				assert.ErrorIs(t, err, io.EOF)
+				break
+			}
+		}
+	})
 
 }

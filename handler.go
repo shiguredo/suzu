@@ -105,15 +105,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		channelCount := uint16(s.config.ChannelCount)
 
 		d := time.Duration(s.config.TimeToWaitForOpusPacketMs) * time.Millisecond
-		r, err := readerWithSilentPacketFromOpusReader(ctx, d, c.Request().Body)
-		if err != nil {
-			zlog.Error().
-				Err(err).
-				Str("CHANNEL-ID", h.SoraChannelID).
-				Str("CONNECTION-ID", h.SoraConnectionID).
-				Send()
-			return echo.NewHTTPError(http.StatusInternalServerError)
-		}
+		r := NewOpusReader(d, c.Request().Body)
+		defer r.Close()
 
 		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode, onResultFunc)
 		if err != nil {
@@ -151,8 +144,6 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 				buf := make([]byte, FrameSize)
 				n, err := reader.Read(buf)
 				if err != nil {
-					cancel()
-
 					if errors.Is(err, io.EOF) {
 						return c.NoContent(http.StatusOK)
 					} else if strings.Contains(err.Error(), "client disconnected") {
@@ -259,80 +250,80 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 	}
 }
 
-func readerWithSilentPacketFromOpusReader(ctx context.Context, d time.Duration, opusReader io.Reader) (io.Reader, error) {
-	type request struct {
-		Payload []byte
-		Error   error
-	}
+type opusRequest struct {
+	Payload []byte
+	Error   error
+}
 
-	r, w := io.Pipe()
-	ch := make(chan request)
+func readPacket(opusReader io.Reader) chan opusRequest {
+	ch := make(chan opusRequest)
 
 	go func() {
 		defer close(ch)
 
 		for {
-
 			buf := make([]byte, FrameSize)
 			n, err := opusReader.Read(buf)
 			if err != nil {
-				ch <- request{
+				ch <- opusRequest{
 					Error: err,
 				}
 				return
 			}
 
-			select {
-			case <-ctx.Done():
-				w.Close()
-				return
-			default:
-				if n > 0 {
-					ch <- request{
-						Payload: buf[:n],
-					}
+			if n > 0 {
+				ch <- opusRequest{
+					Payload: buf[:n],
 				}
 			}
+
 		}
 	}()
 
-	timer := time.NewTimer(d)
+	return ch
+}
+
+func NewOpusReader(d time.Duration, opusReader io.ReadCloser) io.ReadCloser {
+	r, w := io.Pipe()
+
+	ch := readPacket(opusReader)
+
 	go func() {
+		timer := time.NewTimer(d)
 		defer func() {
 			if !timer.Stop() {
 				<-timer.C
 			}
 		}()
 
-		var payload []byte
 		for {
+			var payload []byte
 			select {
 			case <-timer.C:
 				payload = silentPacket()
-			case req := <-ch:
+			case req, ok := <-ch:
+				if !ok {
+					w.Close()
+					return
+				}
 				if err := req.Error; err != nil {
 					w.CloseWithError(err)
 					return
 				}
+
 				payload = req.Payload
 			}
 
-			select {
-			case <-ctx.Done():
-				w.Close()
-				return
-			default:
-				if _, err := w.Write(payload); err != nil {
-					w.CloseWithError(err)
-					return
-				}
-				timer.Reset(d)
+			if _, err := w.Write(payload); err != nil {
+				w.CloseWithError(err)
+				opusReader.Close()
 			}
 
+			timer.Reset(d)
 		}
 	}()
 
-	return r, nil
+	return r
 }
 
 func silentPacket() []byte {
