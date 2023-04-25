@@ -4,7 +4,6 @@ go 1.20
 
 require (
 	cloud.google.com/go/speech v1.15.0
-	github.com/BurntSushi/toml v1.2.1
 	github.com/aws/aws-sdk-go v1.44.249
 	github.com/labstack/echo-contrib v0.14.1
 	github.com/labstack/echo/v4 v4.10.2
@@ -20,6 +19,7 @@ require (
 	google.golang.org/api v0.119.0
 	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.30.0
+	gopkg.in/ini.v1 v1.67.0
 )
 
 require (
