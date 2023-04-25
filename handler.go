@@ -30,12 +30,21 @@ type TranscriptionResult struct {
 	Type    string `json:"type"`
 }
 
+func getServiceHandler(serviceType string, config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) (serviceHandlerInterface, error) {
+	newHandlerFunc, err := NewServiceHandlerFuncs.get(serviceType)
+	if err != nil {
+		return nil, err
+	}
+
+	return (*newHandlerFunc)(config, channelID, connectionID, sampleRate, channelCount, languageCode, onResultFunc), nil
+}
+
 // https://echo.labstack.com/cookbook/streaming-response/
 // TODO(v): http/2 の streaming を使ってレスポンスを戻す方法を調べる
 
 // https://github.com/herrberk/go-http2-streaming/blob/master/http2/server.go
 // 受信時はくるくるループを回す
-func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.HandlerFunc {
+func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
@@ -78,9 +87,9 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 		}
 
 		zlog.Debug().
-			Str("channel_id", h.SoraChannelID).
-			Str("connection_id", h.SoraConnectionID).
-			Str("language_code", h.SoraAudioStreamingLanguageCode).
+			Str("CHANNEL-ID", h.SoraChannelID).
+			Str("CONNECTION-ID", h.SoraConnectionID).
+			Str("LANGUAGE-CODE", h.SoraAudioStreamingLanguageCode).
 			Msg("CONNECTED")
 
 		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -95,11 +104,17 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 		sampleRate := uint32(s.config.SampleRate)
 		channelCount := uint16(s.config.ChannelCount)
 
-		args := NewHandlerArgs(*s.config, sampleRate, channelCount, h.SoraChannelID, h.SoraConnectionID, languageCode)
+		d := time.Duration(s.config.TimeToWaitForOpusPacketMs) * time.Millisecond
+		r := NewOpusReader(d, c.Request().Body)
+		defer r.Close()
 
-		d := time.Duration(args.Config.TimeToWaitForOpusPacketMs) * time.Millisecond
-		r, err := readerWithSilentPacketFromOpusReader(d, c.Request().Body)
+		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode, onResultFunc)
 		if err != nil {
+			zlog.Error().
+				Err(err).
+				Str("CHANNEL-ID", h.SoraChannelID).
+				Str("CONNECTION-ID", h.SoraConnectionID).
+				Send()
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
@@ -113,30 +128,7 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 				Str("CONNECTION-ID", h.SoraConnectionID).
 				Msg("NEW-REQUEST")
 
-			var transcriptionTargetReader io.Reader
-			if c.Request().URL.Path == "/test" ||
-				c.Request().URL.Path == "/dump" {
-				// /test, /dump の場合は受信したパケットをそのまま使用する
-				transcriptionTargetReader = r
-			} else {
-				oggReader, oggWriter := io.Pipe()
-				transcriptionTargetReader = oggReader
-
-				go func() {
-					defer oggWriter.Close()
-					if err := opus2ogg(ctx, r, oggWriter, sampleRate, channelCount, *s.config); err != nil {
-						zlog.Error().
-							Err(err).
-							Str("CHANNEL-ID", h.SoraChannelID).
-							Str("CONNECTION-ID", h.SoraConnectionID).
-							Send()
-						oggWriter.CloseWithError(err)
-						return
-					}
-				}()
-			}
-
-			reader, err := f(ctx, transcriptionTargetReader, args)
+			reader, err := serviceHandler.Handle(ctx, r)
 			if err != nil {
 				zlog.Error().
 					Err(err).
@@ -212,26 +204,6 @@ func (s *Server) createSpeechHandler(serviceType string, f serviceHandler) echo.
 	}
 }
 
-type HandlerArgs struct {
-	Config           Config
-	SoraChannelID    string
-	SoraConnectionID string
-	SampleRate       uint32
-	ChannelCount     uint16
-	LanguageCode     string
-}
-
-func NewHandlerArgs(config Config, sampleRate uint32, channelCount uint16, soraChannelID, soraConnectionID, languageCode string) HandlerArgs {
-	return HandlerArgs{
-		Config:           config,
-		SampleRate:       sampleRate,
-		ChannelCount:     channelCount,
-		SoraChannelID:    soraChannelID,
-		SoraConnectionID: soraConnectionID,
-		LanguageCode:     languageCode,
-	}
-}
-
 func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sampleRate uint32, channelCount uint16, c Config) error {
 	o, err := NewWith(oggWriter, sampleRate, channelCount)
 	if err != nil {
@@ -278,14 +250,13 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 	}
 }
 
-func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader) (io.Reader, error) {
-	type reqeust struct {
-		Payload []byte
-		Error   error
-	}
+type opusRequest struct {
+	Payload []byte
+	Error   error
+}
 
-	r, w := io.Pipe()
-	ch := make(chan reqeust)
+func readPacket(opusReader io.Reader) chan opusRequest {
+	ch := make(chan opusRequest)
 
 	go func() {
 		defer close(ch)
@@ -294,50 +265,65 @@ func readerWithSilentPacketFromOpusReader(d time.Duration, opusReader io.Reader)
 			buf := make([]byte, FrameSize)
 			n, err := opusReader.Read(buf)
 			if err != nil {
-				ch <- reqeust{
+				ch <- opusRequest{
 					Error: err,
 				}
 				return
 			}
 
 			if n > 0 {
-				ch <- reqeust{
+				ch <- opusRequest{
 					Payload: buf[:n],
 				}
 			}
+
 		}
 	}()
 
-	timer := time.NewTimer(d)
+	return ch
+}
+
+func NewOpusReader(d time.Duration, opusReader io.ReadCloser) io.ReadCloser {
+	r, w := io.Pipe()
+
+	ch := readPacket(opusReader)
+
 	go func() {
+		timer := time.NewTimer(d)
 		defer func() {
 			if !timer.Stop() {
 				<-timer.C
 			}
 		}()
 
-		var payload []byte
 		for {
+			var payload []byte
 			select {
 			case <-timer.C:
 				payload = silentPacket()
-			case req := <-ch:
+			case req, ok := <-ch:
+				if !ok {
+					w.Close()
+					return
+				}
 				if err := req.Error; err != nil {
 					w.CloseWithError(err)
 					return
 				}
+
 				payload = req.Payload
 			}
 
 			if _, err := w.Write(payload); err != nil {
 				w.CloseWithError(err)
-				return
+				opusReader.Close()
 			}
+
 			timer.Reset(d)
 		}
 	}()
 
-	return r, nil
+	return r
 }
 
 func silentPacket() []byte {

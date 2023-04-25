@@ -10,12 +10,76 @@ import (
 )
 
 func init() {
-	ServiceHandlers.registerHandler("aws", AmazonTranscribeHandler)
+	NewServiceHandlerFuncs.register("aws", NewAmazonTranscribeHandler)
 }
 
-func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args HandlerArgs) (*io.PipeReader, error) {
-	at := NewAmazonTranscribe(args.Config, args.LanguageCode, int64(args.SampleRate), int64(args.ChannelCount))
-	stream, err := at.Start(ctx, reader)
+type AmazonTranscribeHandler struct {
+	Config Config
+
+	ChannelID    string
+	ConnectionID string
+	SampleRate   uint32
+	ChannelCount uint16
+	LanguageCode string
+
+	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
+}
+
+func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
+	return &AmazonTranscribeHandler{
+		Config:       config,
+		ChannelID:    channelID,
+		ConnectionID: connectionID,
+		SampleRate:   sampleRate,
+		ChannelCount: channelCount,
+		LanguageCode: languageCode,
+		OnResultFunc: onResultFunc.(func(context.Context, io.WriteCloser, string, string, string, any) error),
+	}
+}
+
+type AwsResult struct {
+	ChannelID *string `json:"channel_id,omitempty"`
+	IsPartial *bool   `json:"is_partial,omitempty"`
+	TranscriptionResult
+}
+
+func NewAwsResult(err error) AwsResult {
+	return AwsResult{
+		TranscriptionResult: TranscriptionResult{
+			Type:  "aws",
+			Error: err,
+		},
+	}
+}
+
+func (ar *AwsResult) WithChannelID(channelID string) *AwsResult {
+	ar.ChannelID = &channelID
+	return ar
+}
+
+func (ar *AwsResult) WithIsPartial(isPartial bool) *AwsResult {
+	ar.IsPartial = &isPartial
+	return ar
+}
+
+func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
+	at := NewAmazonTranscribe(h.Config, h.LanguageCode, int64(h.SampleRate), int64(h.ChannelCount))
+
+	oggReader, oggWriter := io.Pipe()
+	go func() {
+		defer oggWriter.Close()
+		if err := opus2ogg(ctx, reader, oggWriter, h.SampleRate, h.ChannelCount, h.Config); err != nil {
+			zlog.Error().
+				Err(err).
+				Str("CHANNEL-ID", h.ChannelID).
+				Str("CONNECTION-ID", h.ConnectionID).
+				Send()
+			oggWriter.CloseWithError(err)
+			return
+		}
+	}()
+
+	stream, err := at.Start(ctx, oggReader)
 	if err != nil {
 		return nil, err
 	}
@@ -33,24 +97,37 @@ func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args Handler
 			case event := <-stream.Events():
 				switch e := event.(type) {
 				case *transcribestreamingservice.TranscriptEvent:
-					for _, res := range e.Transcript.Results {
-						var result AwsResult
-						result.Type = "aws"
-						if at.Config.AwsResultIsPartial {
-							result.WithIsPartial(*res.IsPartial)
+					if h.OnResultFunc != nil {
+						if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, e.Transcript.Results); err != nil {
+							w.CloseWithError(err)
+							return
 						}
-						if at.Config.AwsResultChannelID {
-							result.WithChannelID(*res.ChannelId)
-						}
-						for _, alt := range res.Alternatives {
-							var message string
-							if alt.Transcript != nil {
-								message = *alt.Transcript
+					} else {
+						for _, res := range e.Transcript.Results {
+							if at.Config.FinalResultOnly {
+								// IsPartial: true の場合は結果を返さない
+								if *res.IsPartial {
+									continue
+								}
 							}
-							result.Message = message
-							if err := encoder.Encode(result); err != nil {
-								w.CloseWithError(err)
-								return
+
+							result := NewAwsResult(nil)
+							if at.Config.AwsResultIsPartial {
+								result.WithIsPartial(*res.IsPartial)
+							}
+							if at.Config.AwsResultChannelID {
+								result.WithChannelID(*res.ChannelId)
+							}
+							for _, alt := range res.Alternatives {
+								var message string
+								if alt.Transcript != nil {
+									message = *alt.Transcript
+								}
+								result.Message = message
+								if err := encoder.Encode(result); err != nil {
+									w.CloseWithError(err)
+									return
+								}
 							}
 						}
 					}
@@ -67,8 +144,8 @@ func AmazonTranscribeHandler(ctx context.Context, reader io.Reader, args Handler
 				*transcribestreamingservice.InternalFailureException:
 				zlog.Error().
 					Err(err).
-					Str("ChannelID", args.SoraChannelID).
-					Str("ConnectionID", args.SoraConnectionID).
+					Str("ChannelID", h.ChannelID).
+					Str("ConnectionID", h.ConnectionID).
 					Send()
 
 				err = ErrServerDisconnected

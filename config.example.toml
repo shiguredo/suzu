@@ -28,6 +28,9 @@ http2_verify_cacert_path = ""
 # サーバからの切断時に再接続を試みます
 retry = true
 
+# aws の場合は IsPartial が false, gcp の場合は IsFinal が true の場合の最終的な結果のみを返す指定
+final_result_only = true
+
 # [log]
 # ログの出力先ディレクトリです
 log_dir = "."

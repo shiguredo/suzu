@@ -3,22 +3,20 @@ module github.com/shiguredo/suzu
 go 1.20
 
 require (
+	cloud.google.com/go/speech v1.15.0
 	github.com/BurntSushi/toml v1.2.1
-	github.com/aws/aws-sdk-go v1.44.248
+	github.com/aws/aws-sdk-go v1.44.249
 	github.com/labstack/echo-contrib v0.14.1
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/pion/randutil v0.1.0
 	github.com/pion/rtp v1.7.13
 	github.com/rs/zerolog v1.29.1
 	github.com/shiguredo/lumberjack/v3 v3.0.0
-	golang.org/x/net v0.9.0
-	golang.org/x/sync v0.1.0
-)
-
-require (
-	cloud.google.com/go/speech v1.15.0
 	github.com/stretchr/testify v1.8.2
 	go.uber.org/goleak v1.2.1
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
+	golang.org/x/net v0.9.0
+	golang.org/x/sync v0.1.0
 	google.golang.org/api v0.119.0
 	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.30.0
@@ -53,7 +51,7 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.40.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
-	github.com/rogpeppe/go-internal v1.9.0 // indirect
+	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
