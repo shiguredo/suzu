@@ -66,7 +66,7 @@ func main() {
 	})
 
 	g.Go(func() error {
-		return server.StartExporter(ctx, config.ExporterIPAddress, config.ExporterPort)
+		return server.StartExporter(ctx, config.ExporterListenAddr, config.ExporterListenPort)
 	})
 
 	if err := g.Wait(); err != nil {

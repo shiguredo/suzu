@@ -27,8 +27,8 @@ type Config struct {
 
 	Retry *bool `ini:"retry"`
 
-	ExporterIPAddress string `ini:"exporter_ip_address"`
-	ExporterPort      int    `ini:"exporter_port"`
+	ExporterListenAddr string `ini:"exporter_listen_addr"`
+	ExporterListenPort int    `ini:"exporter_listen_port"`
 
 	SkipBasicAuth     bool   `ini:"skip_basic_auth"`
 	BasicAuthUsername string `ini:"basic_auth_username"`
