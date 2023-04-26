@@ -17,9 +17,9 @@ type Config struct {
 	ListenAddr string `ini:"listen_addr"`
 	ListenPort int    `ini:"listen_port"`
 
-	HTTP2FullchainFile    string `ini:"http2_fullchain_file"`
-	HTTP2PrivkeyFile      string `ini:"http2_privkey_file"`
-	HTTP2VerifyCacertPath string `ini:"http2_verify_cacert_path"` // クライアント認証用
+	TLSFullchainFile    string `ini:"tls_fullchain_file"`
+	TLSPrivkeyFile      string `ini:"tls_privkey_file"`
+	TLSVerifyCacertPath string `ini:"tls_verify_cacert_path"` // クライアント認証用
 
 	HTTP2MaxConcurrentStreams uint32 `ini:"http2_max_concurrent_streams"`
 	HTTP2MaxReadFrameSize     uint32 `ini:"http2_max_read_frame_size"`

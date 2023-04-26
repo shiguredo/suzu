@@ -46,8 +46,8 @@ func NewServer(c *Config, service string) (*Server, error) {
 	}
 
 	// クライアント認証をするかどうかのチェック
-	if c.HTTP2VerifyCacertPath != "" {
-		clientCAPath := c.HTTP2VerifyCacertPath
+	if c.TLSVerifyCacertPath != "" {
+		clientCAPath := c.TLSVerifyCacertPath
 		certPool, err := appendCerts(clientCAPath)
 		if err != nil {
 			zlog.Error().Err(err).Send()
@@ -99,21 +99,21 @@ func NewServer(c *Config, service string) (*Server, error) {
 }
 
 func (s *Server) Start(ctx context.Context, address string, port int) error {
-	http2FullchainFile := s.config.HTTP2FullchainFile
-	http2PrivkeyFile := s.config.HTTP2PrivkeyFile
+	tlsFullchainFile := s.config.TLSFullchainFile
+	tlsPrivkeyFile := s.config.TLSPrivkeyFile
 
-	if _, err := os.Stat(http2FullchainFile); err != nil {
-		return fmt.Errorf("http2FullchainFile error: %s", err)
+	if _, err := os.Stat(tlsFullchainFile); err != nil {
+		return fmt.Errorf("tlsFullchainFile error: %s", err)
 	}
 
-	if _, err := os.Stat(http2PrivkeyFile); err != nil {
-		return fmt.Errorf("http2PrivkeyFile error: %s", err)
+	if _, err := os.Stat(tlsPrivkeyFile); err != nil {
+		return fmt.Errorf("tls2PrivkeyFile error: %s", err)
 	}
 
 	ch := make(chan error)
 	go func() {
 		defer close(ch)
-		if err := s.ListenAndServeTLS(http2FullchainFile, http2PrivkeyFile); err != http.ErrServerClosed {
+		if err := s.ListenAndServeTLS(tlsFullchainFile, tlsPrivkeyFile); err != http.ErrServerClosed {
 			ch <- err
 		}
 	}()
