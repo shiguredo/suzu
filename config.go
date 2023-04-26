@@ -39,9 +39,12 @@ type Config struct {
 
 	DumpFile string `ini:"dump_file"`
 
-	LogDir    string `ini:"log_dir"`
-	LogName   string `ini:"log_name"`
-	LogStdout bool   `ini:"log_stdout"`
+	LogDir              string `ini:"log_dir"`
+	LogName             string `ini:"log_name"`
+	LogStdout           bool   `ini:"log_stdout"`
+	LogRotateMaxSize    int    `ini:"log_rotate_max_size"`
+	LogRotateMaxBackups int    `ini:"log_rotate_max_backups"`
+	LogRotateMaxAge     int    `ini:"log_rotate_max_age"`
 
 	TimeToWaitForOpusPacketMs int `ini:"time_to_wait_for_opus_packet_ms"`
 

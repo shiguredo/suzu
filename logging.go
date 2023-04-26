@@ -11,12 +11,12 @@ import (
 	"github.com/shiguredo/lumberjack/v3"
 )
 
-var (
+const (
 	// megabytes
-	logRotateMaxSize    = 200
-	logRotateMaxBackups = 7
+	DefaultLogRotateMaxSize    = 200
+	DefaultLogRotateMaxBackups = 7
 	// days
-	logRotateMaxAge = 30
+	DefaultLogRotateMaxAge = 30
 )
 
 // InitLogger ロガーを初期化する
@@ -46,6 +46,17 @@ func InitLogger(config Config) error {
 		format(&writer)
 		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
 	} else {
+		var logRotateMaxSize, logRotateMaxBackups, logRotateMaxAge int
+		if config.LogRotateMaxSize == 0 {
+			logRotateMaxSize = DefaultLogRotateMaxSize
+		}
+		if config.LogRotateMaxBackups == 0 {
+			logRotateMaxBackups = DefaultLogRotateMaxBackups
+		}
+		if config.LogRotateMaxAge == 0 {
+			logRotateMaxAge = DefaultLogRotateMaxAge
+		}
+
 		writer := &lumberjack.Logger{
 			Filename:   logPath,
 			MaxSize:    logRotateMaxSize,
