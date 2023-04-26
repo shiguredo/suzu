@@ -93,7 +93,7 @@ func NewServer(c *Config, service string) (*Server, error) {
 	s.echo = e
 	s.echoExporter = echoExporter
 
-	zlog.Info().Str("serviceType", service).Send()
+	zlog.Info().Str("service_type", service).Send()
 
 	return s, nil
 }
