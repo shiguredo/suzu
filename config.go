@@ -41,7 +41,6 @@ type Config struct {
 
 	LogDir    string `ini:"log_dir"`
 	LogName   string `ini:"log_name"`
-	LogDebug  bool   `ini:"log_debug"`
 	LogStdout bool   `ini:"log_stdout"`
 
 	TimeToWaitForOpusPacketMs int `ini:"time_to_wait_for_opus_packet_ms"`
