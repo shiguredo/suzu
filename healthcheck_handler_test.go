@@ -29,7 +29,6 @@ func TestHealthcheckHandler(t *testing.T) {
 		ListenAddr:                "127.0.0.1",
 		ListenPort:                48080,
 		SkipBasicAuth:             true,
-		LogDebug:                  true,
 		LogStdout:                 true,
 		DumpFile:                  "./test-dump.jsonl",
 		TimeToWaitForOpusPacketMs: 500,
