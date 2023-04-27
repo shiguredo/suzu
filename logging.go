@@ -40,8 +40,8 @@ func InitLogger(config Config) error {
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
-	// log_stdout: true の時はコンソールにもだす
-	if config.LogStdout {
+
+	if config.Debug {
 		writer := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05.000000Z"}
 		format(&writer)
 		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
