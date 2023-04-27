@@ -1,11 +1,11 @@
-.PHONY: all
+.PHONY: all patch test
 
-all:
+all: patch
 	go build -o bin/suzu cmd/suzu/main.go
 
-init:
-	curl -LO https://raw.githubusercontent.com/pion/webrtc/master/pkg/media/oggwriter/oggwriter.go
-	patch < oggwriter.go.patch
+patch:
+	patch -o oggwriter.go ./pion/oggwriter.go ./patch/oggwriter.go.patch
+
 
 test:
 	@go test -v --race
