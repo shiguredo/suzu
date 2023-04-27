@@ -22,6 +22,25 @@
     - @Hexa
 - [FIX] パケット読み込みの停止時に goroutine が停止しない場合がある処理を修正する
     - @Hexa
+- [CHANGE] 設定ファイルを toml から ini に変更する
+    - @Hexa
+- [CHANGE] ログの key を snake case で統一する
+    - @Hexa
+- [UPDATE] 使用していない log_debug を削除する
+    - @Hexa
+- [CHANGE] http2_fullchain_file, http2_privkey_file, http2_verify_cacert_path の設定を tls_fullchain_file, tls_privkey_file, tls_verify_cacert_path に変更する
+    - @Hexa
+- [ADD] log_rotate 関連の設定を追加する
+    - @Hexa
+- [ADD] Pion の oggwriter.go を追加する
+    - @Hexa
+- [CHANGE] HTTP リクエストのログを zerolog の書式で出力するように変更する
+    - @Hexa
+- [CHANGE] debug=false で log_stdout=true の場合は標準出力に JSON でログ出力させる
+    - @Hexa
+- [FIX] ログ出力時の書式をタイムゾーンにあったものに修正する
+    - @Hexa
+
 
 ## 2023.2.0
 
