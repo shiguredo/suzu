@@ -21,7 +21,6 @@ const (
 
 // InitLogger ロガーを初期化する
 func InitLogger(config Config) error {
-
 	if f, err := os.Stat(config.LogDir); os.IsNotExist(err) || !f.IsDir() {
 		return err
 	}
@@ -42,7 +41,7 @@ func InitLogger(config Config) error {
 	}
 
 	if config.Debug && config.LogStdout {
-		writer := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05.000000Z"}
+		writer := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05.000000Z07:00:00"}
 		format(&writer)
 		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
 	} else if config.LogStdout {
