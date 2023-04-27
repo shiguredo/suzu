@@ -86,7 +86,6 @@ func NewServer(c *Config, service string) (*Server, error) {
 			zlog.Info().
 				Str("remote_ip", v.RemoteIP).
 				Str("host", v.Host).
-				Str("method", v.Method).
 				Str("user_agent", v.UserAgent).
 				Str("uri", v.URI).
 				Int("status", v.Status).
@@ -94,7 +93,7 @@ func NewServer(c *Config, service string) (*Server, error) {
 				Str("latency", v.Latency.String()).
 				Str("bytes_in", v.ContentLength).
 				Int64("bytes_out", v.ResponseSize).
-				Send()
+				Msg(v.Method)
 
 			return nil
 		},
