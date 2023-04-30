@@ -10,6 +10,7 @@ require (
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/pion/randutil v0.1.0
 	github.com/pion/rtp v1.7.13
+	github.com/pion/rtp/v2 v2.0.0
 	github.com/rs/zerolog v1.29.1
 	github.com/shiguredo/lumberjack/v3 v3.0.0
 	github.com/stretchr/testify v1.8.2
