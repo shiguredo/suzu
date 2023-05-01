@@ -41,7 +41,16 @@ func InitLogger(config Config) error {
 	}
 
 	if config.Debug && config.LogStdout {
-		writer := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05.000000Z07:00:00"}
+		writer := zerolog.ConsoleWriter{
+			Out: os.Stdout,
+			FormatTimestamp: func(i interface{}) string {
+				ts, err := time.ParseInLocation("2006-01-02T15:04:05.000000Z", i.(string), time.UTC)
+				if err != nil {
+					return fmt.Sprintf("%s", i)
+				}
+				return ts.Format("2006-01-02 15:04:05.000000Z07:00:00")
+			},
+		}
 		format(&writer)
 		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
 	} else if config.LogStdout {
