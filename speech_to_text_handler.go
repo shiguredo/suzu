@@ -121,19 +121,19 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 						Err(err).
 						Str("channel_id", h.ChannelID).
 						Str("connection_id", h.ConnectionID).
-						Str("message", status.GetMessage()).
 						Int32("code", status.GetCode()).
-						Send()
+						Msg(status.GetMessage())
 					err := ErrServerDisconnected
+
 					w.CloseWithError(err)
 					return
 				}
 				zlog.Error().
 					Str("channel_id", h.ChannelID).
 					Str("connection_id", h.ConnectionID).
-					Str("message", status.GetMessage()).
 					Int32("code", status.GetCode()).
-					Send()
+					Msg(status.GetMessage())
+
 				w.Close()
 				return
 			}
