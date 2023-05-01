@@ -38,7 +38,7 @@
     - @Hexa
 - [CHANGE] debug=false で log_stdout=true の場合は標準出力に JSON でログ出力させる
     - @Hexa
-- [FIX] ログ出力時の書式をタイムゾーンにあったものに修正する
+- [FIX] ログ出力時のタイムスタンプを UTC に修正する
     - @Hexa
 
 
