@@ -356,7 +356,7 @@ func TestSpeechHandler(t *testing.T) {
 
 	})
 
-	t.Run("OnResult Error", func(t *testing.T) {
+	t.Run("onresultfunc error", func(t *testing.T) {
 		//opt := goleak.IgnoreCurrent()
 		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
 		defer goleak.VerifyNone(t, opt)
