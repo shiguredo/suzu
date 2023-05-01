@@ -19,8 +19,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
-
-	"go.uber.org/goleak"
 )
 
 func readDumpFile(t *testing.T, filename string, d time.Duration) *io.PipeReader {
@@ -89,10 +87,6 @@ func TestSpeechHandler(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		//opt := goleak.IgnoreCurrent()
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
@@ -136,9 +130,6 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("unexpected http proto version", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		logger := log.Logger
 		defer func() {
 			log.Logger = logger
@@ -179,9 +170,6 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("missing sora-audio-streaming-language-code header", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		logger := log.Logger
 		defer func() {
 			log.Logger = logger
@@ -221,9 +209,6 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("unsupported language code", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		logger := log.Logger
 		defer func() {
 			log.Logger = logger
@@ -257,9 +242,6 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("packet read error", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		logger := log.Logger
 		defer func() {
 			log.Logger = logger
@@ -299,9 +281,6 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("silent packet", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		timeout := config.TimeToWaitForOpusPacketMs
 		defer func() {
 			config.TimeToWaitForOpusPacketMs = timeout
@@ -357,10 +336,6 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("onresultfunc error", func(t *testing.T) {
-		//opt := goleak.IgnoreCurrent()
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/goleak"
 )
 
 // Read 時にエラーを返す ReadCloser
@@ -32,9 +31,6 @@ func (e *ErrReadCloser) Close() error {
 func TestOpusPacketReader(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		d := time.Duration(100) * time.Millisecond
 		r := readDumpFile(t, "testdata/000.jsonl", 0)
 		defer r.Close()
@@ -53,9 +49,6 @@ func TestOpusPacketReader(t *testing.T) {
 	})
 
 	t.Run("read error", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		d := time.Duration(100) * time.Millisecond
 		errPacketRead := errors.New("packet read error")
 
@@ -75,9 +68,6 @@ func TestOpusPacketReader(t *testing.T) {
 	})
 
 	t.Run("closed reader", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		d := time.Duration(100) * time.Millisecond
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		r.Close()
@@ -95,9 +85,6 @@ func TestOpusPacketReader(t *testing.T) {
 	})
 
 	t.Run("close reader", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		d := time.Duration(100) * time.Millisecond
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		go func() {

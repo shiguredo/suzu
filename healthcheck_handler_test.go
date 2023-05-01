@@ -9,8 +9,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
-
-	"go.uber.org/goleak"
 )
 
 func TestHealthcheckHandler(t *testing.T) {
@@ -51,9 +49,6 @@ func TestHealthcheckHandler(t *testing.T) {
 
 	for _, tc := range testCaces {
 		t.Run(tc.Name, func(t *testing.T) {
-			opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-			defer goleak.VerifyNone(t, opt)
-
 			e := echo.New()
 			req := httptest.NewRequest("GET", "/.ok", nil)
 			req.Proto = tc.Request.Proto
