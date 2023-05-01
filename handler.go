@@ -46,7 +46,7 @@ func getServiceHandler(serviceType string, config Config, channelID, connectionI
 // 受信時はくるくるループを回す
 func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		zlog.Debug().Msg("CONNECTING")
+		zlog.Info().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
 		if c.Request().ProtoMajor != 2 {
 			zlog.Error().
@@ -70,7 +70,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			return echo.NewHTTPError(http.StatusBadRequest)
 		}
 		defer func() {
-			zlog.Debug().
+			zlog.Info().
 				Str("channel_id", h.SoraChannelID).
 				Str("connection_id", h.SoraConnectionID).
 				Msg("DISCONNECTED")
@@ -86,7 +86,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
-		zlog.Debug().
+		zlog.Info().
 			Str("channel_id", h.SoraChannelID).
 			Str("connection_id", h.SoraConnectionID).
 			Str("language_code", h.SoraAudioStreamingLanguageCode).
