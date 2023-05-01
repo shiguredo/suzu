@@ -28,6 +28,7 @@ jobs:
       with:
         version: "2023.1.2"
         install-go: false
+        cache-key: ${{ runner.os }}-${{ github.ref }}
 
     - name: Test
       run: make test
