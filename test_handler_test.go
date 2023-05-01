@@ -44,13 +44,14 @@ func readDumpFile(t *testing.T, filename string, d time.Duration) *io.PipeReader
 			}{}
 			if err := json.Unmarshal(b, &s); err != nil {
 				t.Error(err.Error())
-				return
+				break
 			}
 
 			if _, err := w.Write(s.Payload); err != nil {
 				// 停止条件を r.Close() にしているため、io: read/write on closed pipe エラーは出力される
-				t.Log(err.Error())
-				return
+				//t.Log(err.Error())
+				fmt.Println(err.Error())
+				break
 			}
 
 			if d > 0 {
