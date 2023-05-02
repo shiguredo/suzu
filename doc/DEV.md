@@ -6,7 +6,7 @@
 
 ```console
 $ make init
-$ cp config.example.toml config.toml
+$ cp config.example.ini config.ini
 ```
 
 ## リリースビルド

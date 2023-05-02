@@ -9,7 +9,7 @@
 サンプルをコピーしてください。
 
 ```
-$ cp config.example.toml config.toml
+$ cp config.example.ini config.ini
 ```
 
 
@@ -18,7 +18,7 @@ $ cp config.example.toml config.toml
 -service で `aws` を指定することで AWS Transcribe が利用されます。
 
 ```
-$ ./suzu -C config.toml -service aws
+$ ./suzu -C config.ini -service aws
 ```
 
 AWS Transcribe を利用するに当たっての注意事項は [AWS.md](AWS.md) をご確認ください。
@@ -28,7 +28,7 @@ AWS Transcribe を利用するに当たっての注意事項は [AWS.md](AWS.md)
 -service で `gcp` を指定することで GCP Speech-to-Text が利用されます。
 
 ```
-$ ./suzu -C config.toml -service gcp
+$ ./suzu -C config.ini -service gcp
 ```
 
 GCP Speech-to-Text を利用するに当たっての注意事項は [GCP.md](GCP.md) をご確認ください。

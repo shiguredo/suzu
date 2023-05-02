@@ -4,40 +4,42 @@ import (
 	"context"
 	"fmt"
 	"io"
+
+	"golang.org/x/exp/slices"
 )
 
 var (
-	ServiceHandlers = NewServiceHandlers()
+	NewServiceHandlerFuncs = make(newServiceHandlerFuncs)
+
+	ErrServiceNotFound = fmt.Errorf("SERVICE-NOT-FOUND")
 )
 
-type serviceHandler func(ctx context.Context, conn io.Reader, args HandlerArgs) (*io.PipeReader, error)
-
-type serviceHandlers struct {
-	Handlers map[string]serviceHandler
+type serviceHandlerInterface interface {
+	Handle(context.Context, io.Reader) (*io.PipeReader, error)
 }
 
-func NewServiceHandlers() serviceHandlers {
-	return serviceHandlers{
-		Handlers: make(map[string]serviceHandler),
-	}
+type newServiceHandlerFunc func(Config, string, string, uint32, uint16, string, any) serviceHandlerInterface
+
+type newServiceHandlerFuncs map[string]newServiceHandlerFunc
+
+func (sh *newServiceHandlerFuncs) register(name string, f newServiceHandlerFunc) {
+	(*sh)[name] = f
 }
 
-func (sh *serviceHandlers) registerHandler(name string, handler serviceHandler) {
-	sh.Handlers[name] = handler
-}
-
-func (sh *serviceHandlers) getServiceHandler(name string) (serviceHandler, error) {
-	h, ok := sh.Handlers[name]
+func (sh *newServiceHandlerFuncs) get(name string) (*newServiceHandlerFunc, error) {
+	h, ok := (*sh)[name]
 	if !ok {
-		return nil, fmt.Errorf("UNREGISTERED-SERVICE: %s", name)
+		return nil, ErrServiceNotFound
 	}
-
-	return h, nil
+	return &h, nil
 }
 
-func (sh *serviceHandlers) GetNames() []string {
-	var names []string
-	for name := range sh.Handlers {
+func (sh *newServiceHandlerFuncs) GetNames(exclude []string) []string {
+	names := make([]string, 0, len(*sh))
+	for name := range *sh {
+		if slices.Contains(exclude, name) {
+			continue
+		}
 		names = append(names, name)
 	}
 

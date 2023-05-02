@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,8 +19,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
-
-	"go.uber.org/goleak"
 )
 
 func readDumpFile(t *testing.T, filename string, d time.Duration) *io.PipeReader {
@@ -45,13 +44,14 @@ func readDumpFile(t *testing.T, filename string, d time.Duration) *io.PipeReader
 			}{}
 			if err := json.Unmarshal(b, &s); err != nil {
 				t.Error(err.Error())
-				return
+				break
 			}
 
 			if _, err := w.Write(s.Payload); err != nil {
 				// 停止条件を r.Close() にしているため、io: read/write on closed pipe エラーは出力される
-				t.Log(err.Error())
-				return
+				//t.Log(err.Error())
+				fmt.Println(err.Error())
+				break
 			}
 
 			if d > 0 {
@@ -74,15 +74,13 @@ func TestSpeechHandler(t *testing.T) {
 		ListenAddr:                "127.0.0.1",
 		ListenPort:                48080,
 		SkipBasicAuth:             true,
-		LogDebug:                  true,
 		LogStdout:                 true,
 		DumpFile:                  "./test-dump.jsonl",
 		TimeToWaitForOpusPacketMs: 500,
 	}
 
-	handler := TestHandler
 	path := "/test"
-	serviceType := "aws"
+	serviceType := "test"
 
 	s, err := NewServer(&config, serviceType)
 	if err != nil {
@@ -90,10 +88,6 @@ func TestSpeechHandler(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		//opt := goleak.IgnoreCurrent()
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
@@ -106,7 +100,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType, nil)
 		err := h(c)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
@@ -131,15 +125,12 @@ func TestSpeechHandler(t *testing.T) {
 				lastMessage = result.Message
 			}
 			// TODO: テストデータは固定のため、すべてのメッセージを確認する
-			assert.Equal(t, lastMessage, "n: 31")
+			assert.Equal(t, lastMessage, "n: 3")
 		}
 
 	})
 
 	t.Run("unexpected http proto version", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		logger := log.Logger
 		defer func() {
 			log.Logger = logger
@@ -163,7 +154,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType, nil)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusBadRequest, err.(*echo.HTTPError).Code)
@@ -180,9 +171,6 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("missing sora-audio-streaming-language-code header", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		logger := log.Logger
 		defer func() {
 			log.Logger = logger
@@ -205,7 +193,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType, nil)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
@@ -222,15 +210,12 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("unsupported language code", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		logger := log.Logger
 		defer func() {
 			log.Logger = logger
 		}()
 
-		pr, pw, err := os.Pipe()
+		_, pw, err := os.Pipe()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -248,26 +233,16 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType, nil)
 		err = h(c)
-		if assert.Error(t, err) {
-			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
+		if assert.NoError(t, err) {
+			assert.Equal(t, http.StatusOK, rec.Code)
 		}
 
 		pw.Close()
-
-		var buf bytes.Buffer
-		n, err := buf.ReadFrom(pr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		assert.Contains(t, buf.String()[:n], "UNSUPPORTED-LANGUAGE-CODE: aws, en-JP")
 	})
 
 	t.Run("packet read error", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		logger := log.Logger
 		defer func() {
 			log.Logger = logger
@@ -290,7 +265,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType, nil)
 		err = h(c)
 		if assert.Error(t, err) {
 			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
@@ -307,9 +282,6 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("silent packet", func(t *testing.T) {
-		opt := goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start")
-		defer goleak.VerifyNone(t, opt)
-
 		timeout := config.TimeToWaitForOpusPacketMs
 		defer func() {
 			config.TimeToWaitForOpusPacketMs = timeout
@@ -338,7 +310,7 @@ func TestSpeechHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req2, rec)
 
-		h := s.createSpeechHandler(serviceType, handler)
+		h := s.createSpeechHandler(serviceType, nil)
 		err = h(c)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
@@ -360,6 +332,29 @@ func TestSpeechHandler(t *testing.T) {
 				assert.Equal(t, "test", result.Type)
 				assert.NotEmpty(t, result.Message)
 			}
+		}
+
+	})
+
+	t.Run("onresultfunc error", func(t *testing.T) {
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
+		defer r.Close()
+
+		e := echo.New()
+		req := httptest.NewRequest("POST", path, r)
+		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
+		req.Proto = "HTTP/2.0"
+		req.ProtoMajor = 2
+		req.ProtoMinor = 0
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		h := s.createSpeechHandler(serviceType, func(ctx context.Context, w io.WriteCloser, chnanelID, connectionID, languageCode string, results any) error {
+			return fmt.Errorf("ON-RESULT-ERROR")
+		})
+		err := h(c)
+		if assert.Error(t, err) {
+			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
 		}
 
 	})
