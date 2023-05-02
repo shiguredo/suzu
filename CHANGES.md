@@ -11,6 +11,8 @@
 
 ## develop
 
+## 2023.3.0
+
 - [ADD] 受信した解析結果を操作できる OnResultFunc を追加する
     - @Hexa
 - [CHANGE] サービス毎に OnResultFunc 処理を指定できるようにするために Handler を struct に変更する
@@ -40,7 +42,8 @@
     - @Hexa
 - [FIX] ログ出力時のタイムスタンプを UTC に修正する
     - @Hexa
-
+- [CHANGE] リリースバイナリの作成時には CGO_ENABLED=0 を指定する
+    - @Hexa
 
 ## 2023.2.0
 
