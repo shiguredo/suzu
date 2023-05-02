@@ -23,8 +23,8 @@ var (
 )
 
 func init() {
-	// XXX(v): とりあえず 同じ場所にある config.toml を読みに行く実装
-	flag.StringVar(&configFilePath, "C", "config.toml", "suzu の設定ファイルへのパス")
+	// XXX(v): とりあえず 同じ場所にある config.ini を読みに行く実装
+	flag.StringVar(&configFilePath, "C", "config.ini", "suzu の設定ファイルへのパス")
 	flag.StringVar(&serviceType, "service", "aws", fmt.Sprintf("音声文字変換のサービス（%s）", strings.Join(suzu.NewServiceHandlerFuncs.GetNames([]string{"test", "dump"}), ", ")))
 	flag.Parse()
 }
@@ -37,7 +37,7 @@ func main() {
 		log.Fatal("cannot open config file, err=", err)
 	}
 
-	// toml をパース
+	// ini をパース
 	var config suzu.Config
 	if err := suzu.InitConfig(buf, &config); err != nil {
 		// パースに失敗した場合 Fatal で終了
@@ -66,7 +66,7 @@ func main() {
 	})
 
 	g.Go(func() error {
-		return server.StartExporter(ctx, config.ExporterIPAddress, config.ExporterPort)
+		return server.StartExporter(ctx, config.ExporterListenAddr, config.ExporterListenPort)
 	})
 
 	if err := g.Wait(); err != nil {

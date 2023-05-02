@@ -71,8 +71,8 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 		if err := opus2ogg(ctx, reader, oggWriter, h.SampleRate, h.ChannelCount, h.Config); err != nil {
 			zlog.Error().
 				Err(err).
-				Str("CHANNEL-ID", h.ChannelID).
-				Str("CONNECTION-ID", h.ConnectionID).
+				Str("channel_id", h.ChannelID).
+				Str("connection_id", h.ConnectionID).
 				Send()
 			oggWriter.CloseWithError(err)
 			return
@@ -144,8 +144,8 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 				*transcribestreamingservice.InternalFailureException:
 				zlog.Error().
 					Err(err).
-					Str("ChannelID", h.ChannelID).
-					Str("ConnectionID", h.ConnectionID).
+					Str("channel_id", h.ChannelID).
+					Str("connection_id", h.ConnectionID).
 					Send()
 
 				err = ErrServerDisconnected

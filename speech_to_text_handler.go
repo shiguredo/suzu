@@ -73,8 +73,8 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 		if err := opus2ogg(ctx, reader, oggWriter, h.SampleRate, h.ChannelCount, h.Config); err != nil {
 			zlog.Error().
 				Err(err).
-				Str("CHANNEL-ID", h.ChannelID).
-				Str("CONNECTION-ID", h.ConnectionID).
+				Str("channel_id", h.ChannelID).
+				Str("connection_id", h.ConnectionID).
 				Send()
 			oggWriter.CloseWithError(err)
 			return
@@ -96,8 +96,8 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 			if err != nil {
 				zlog.Error().
 					Err(err).
-					Str("CHANNEL-ID", h.ChannelID).
-					Str("CONNECTION-ID", h.ConnectionID).
+					Str("channel_id", h.ChannelID).
+					Str("connection_id", h.ConnectionID).
 					Send()
 
 				if (strings.Contains(err.Error(), "code = OutOfRange")) ||
@@ -119,21 +119,21 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 
 					zlog.Error().
 						Err(err).
-						Str("CHANNEL-ID", h.ChannelID).
-						Str("CONNECTION-ID", h.ConnectionID).
-						Str("MESSAGE", status.GetMessage()).
-						Int32("CODE", status.GetCode()).
-						Send()
+						Str("channel_id", h.ChannelID).
+						Str("connection_id", h.ConnectionID).
+						Int32("code", status.GetCode()).
+						Msg(status.GetMessage())
 					err := ErrServerDisconnected
+
 					w.CloseWithError(err)
 					return
 				}
 				zlog.Error().
-					Str("CHANNEL-ID", h.ChannelID).
-					Str("CONNECTION-ID", h.ConnectionID).
-					Str("MESSAGE", status.GetMessage()).
-					Int32("CODE", status.GetCode()).
-					Send()
+					Str("channel_id", h.ChannelID).
+					Str("connection_id", h.ConnectionID).
+					Int32("code", status.GetCode()).
+					Msg(status.GetMessage())
+
 				w.Close()
 				return
 			}
@@ -163,12 +163,12 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 						if h.Config.GcpEnableWordConfidence {
 							for _, word := range alternative.Words {
 								zlog.Debug().
-									Str("CHANNEL-ID", h.ChannelID).
-									Str("CONNECTION-ID", h.ConnectionID).
-									Str("Wrod", word.Word).
-									Float32("Confidence", word.Confidence).
-									Str("StartTime", word.StartTime.String()).
-									Str("EndTime", word.EndTime.String()).
+									Str("channel_id", h.ChannelID).
+									Str("connection_id", h.ConnectionID).
+									Str("wrod", word.Word).
+									Float32("confidence", word.Confidence).
+									Str("start_time", word.StartTime.String()).
+									Str("end_time", word.EndTime.String()).
 									Send()
 							}
 						}

@@ -11,17 +11,16 @@ import (
 	"github.com/shiguredo/lumberjack/v3"
 )
 
-var (
+const (
 	// megabytes
-	logRotateMaxSize    = 200
-	logRotateMaxBackups = 7
+	DefaultLogRotateMaxSize    = 200
+	DefaultLogRotateMaxBackups = 7
 	// days
-	logRotateMaxAge = 30
+	DefaultLogRotateMaxAge = 30
 )
 
 // InitLogger ロガーを初期化する
 func InitLogger(config Config) error {
-
 	if f, err := os.Stat(config.LogDir); os.IsNotExist(err) || !f.IsDir() {
 		return err
 	}
@@ -40,12 +39,35 @@ func InitLogger(config Config) error {
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
-	// log_stdout: true の時はコンソールにもだす
-	if config.LogStdout {
-		writer := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05.000000Z"}
+
+	if config.Debug && config.LogStdout {
+		writer := zerolog.ConsoleWriter{
+			Out: os.Stdout,
+			FormatTimestamp: func(i interface{}) string {
+				ts, err := time.ParseInLocation("2006-01-02T15:04:05.000000Z", i.(string), time.UTC)
+				if err != nil {
+					return fmt.Sprintf("%s", i)
+				}
+				return ts.Format("2006-01-02 15:04:05.000000Z07:00:00")
+			},
+		}
 		format(&writer)
 		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
+	} else if config.LogStdout {
+		writer := os.Stdout
+		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
 	} else {
+		var logRotateMaxSize, logRotateMaxBackups, logRotateMaxAge int
+		if config.LogRotateMaxSize == 0 {
+			logRotateMaxSize = DefaultLogRotateMaxSize
+		}
+		if config.LogRotateMaxBackups == 0 {
+			logRotateMaxBackups = DefaultLogRotateMaxBackups
+		}
+		if config.LogRotateMaxAge == 0 {
+			logRotateMaxAge = DefaultLogRotateMaxAge
+		}
+
 		writer := &lumberjack.Logger{
 			Filename:   logPath,
 			MaxSize:    logRotateMaxSize,
