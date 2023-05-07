@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	cloud.google.com/go/speech v1.15.0
-	github.com/aws/aws-sdk-go v1.44.253
+	github.com/aws/aws-sdk-go v1.44.258
 	github.com/labstack/echo-contrib v0.14.1
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/pion/randutil v0.1.0
@@ -14,11 +14,11 @@ require (
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
 	golang.org/x/net v0.9.0
-	golang.org/x/sync v0.1.0
+	golang.org/x/sync v0.2.0
 	// v0.117.0 以上では意図しないフラグが含まれてしまうため v0.116.0 を使用する
 	// (https://github.com/google/s2a-go/issues/107)
-	google.golang.org/api v0.116.0
-	google.golang.org/grpc v1.54.0
+	google.golang.org/api v0.121.0
+	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/ini.v1 v1.67.0
 )
@@ -35,6 +35,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/s2a-go v0.1.3 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.8.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
