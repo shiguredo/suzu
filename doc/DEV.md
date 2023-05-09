@@ -6,7 +6,7 @@
 
 ```console
 $ make init
-$ cp config.example.ini config.ini
+$ cp config_example.ini config.ini
 ```
 
 ## リリースビルド
