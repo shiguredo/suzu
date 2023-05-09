@@ -11,6 +11,9 @@
 
 ## develop
 
+- [CHANGE] サンプル設定ファイル名を変更する
+    - @voluntas
+
 ## 2023.3.0
 
 - [ADD] 受信した解析結果を操作できる OnResultFunc を追加する
