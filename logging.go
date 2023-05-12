@@ -3,6 +3,7 @@ package suzu
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -44,12 +45,11 @@ func InitLogger(config Config) error {
 		writer := zerolog.ConsoleWriter{
 			Out: os.Stdout,
 			FormatTimestamp: func(i interface{}) string {
-				ts, err := time.ParseInLocation("2006-01-02T15:04:05.000000Z", i.(string), time.UTC)
-				if err != nil {
-					return fmt.Sprintf("%s", i)
-				}
-				return ts.Format("2006-01-02 15:04:05.000000Z07:00:00")
+				darkGray := "\x1b[90m"
+				reset := "\x1b[0m"
+				return strings.Join([]string{darkGray, i.(string), reset}, "")
 			},
+			NoColor: false,
 		}
 		format(&writer)
 		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
@@ -82,11 +82,39 @@ func InitLogger(config Config) error {
 }
 
 func format(w *zerolog.ConsoleWriter) {
+	const Reset = "\x1b[0m"
+
 	w.FormatLevel = func(i interface{}) string {
-		return strings.ToUpper(fmt.Sprintf("[%s]", i))
+		var color, level string
+		switch i.(string) {
+		case "info":
+			color = "\x1b[32m"
+		case "error":
+			color = "\x1b[31m"
+		case "warn":
+			color = "\x1b[33m"
+		case "debug":
+			color = "\x1b[34m"
+		default:
+			color = "\x1b[37m"
+		}
+
+		level = strings.ToUpper(i.(string))
+		return fmt.Sprintf("%s[%s]%s", color, level, Reset)
+	}
+	w.FormatCaller = func(i interface{}) string {
+		return fmt.Sprintf("[%s]", filepath.Base(i.(string)))
+	}
+	w.FormatMessage = func(i interface{}) string {
+		if i == nil {
+			return ""
+		} else {
+			return fmt.Sprintf("%s |", i)
+		}
 	}
 	w.FormatFieldName = func(i interface{}) string {
-		return fmt.Sprintf("%s=", i)
+		const Cyan = "\x1b[36m"
+		return fmt.Sprintf("%s%s=%s", Cyan, i, Reset)
 	}
 	w.FormatFieldValue = func(i interface{}) string {
 		return fmt.Sprintf("%s", i)
