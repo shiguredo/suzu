@@ -110,6 +110,7 @@ func NewServer(c *Config, service string) (*Server, error) {
 
 	echoExporter := echo.New()
 	echoExporter.HideBanner = true
+	echoExporter.HidePort = true
 	prom := prometheus.NewPrometheus("echo", nil)
 
 	e.Use(prom.HandlerFunc)
