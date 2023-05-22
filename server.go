@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -35,12 +36,17 @@ func NewServer(c *Config, service string) (*Server, error) {
 		IdleTimeout:          time.Duration(c.HTTP2IdleTimeout) * time.Second,
 	}
 
+	_, err := netip.ParseAddr(c.ListenAddr)
+	if err != nil {
+		return nil, err
+	}
+
 	e := echo.New()
 
 	s := &Server{
 		config: c,
 		Server: http.Server{
-			Addr:    net.JoinHostPort("", strconv.Itoa(c.ListenPort)),
+			Addr:    net.JoinHostPort(c.ListenAddr, strconv.Itoa(c.ListenPort)),
 			Handler: e,
 		},
 	}
