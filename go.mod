@@ -12,7 +12,7 @@ require (
 	github.com/rs/zerolog v1.29.1
 	github.com/shiguredo/lumberjack/v3 v3.0.0
 	github.com/stretchr/testify v1.8.3
-	golang.org/x/exp v0.0.0-20230519143937-03e91628a987
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/net v0.10.0
 	golang.org/x/sync v0.2.0
 	// v0.117.0 以上では意図しないフラグが含まれてしまうため v0.116.0 を使用する
