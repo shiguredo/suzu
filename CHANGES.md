@@ -11,6 +11,9 @@
 
 ## develop
 
+- [CHANGE] lumberjack を公式に戻す
+  - @voluntas
+
 ## 2023.4.0
 
 - [CHANGE] サンプル設定ファイル名を変更する

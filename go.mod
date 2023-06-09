@@ -10,7 +10,6 @@ require (
 	github.com/pion/randutil v0.1.0
 	github.com/pion/rtp v1.7.13
 	github.com/rs/zerolog v1.29.1
-	github.com/shiguredo/lumberjack/v3 v3.0.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/net v0.10.0
@@ -21,6 +20,7 @@ require (
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/ini.v1 v1.67.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (
