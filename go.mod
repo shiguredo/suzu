@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	cloud.google.com/go/speech v1.17.0
-	github.com/aws/aws-sdk-go v1.44.275
+	github.com/aws/aws-sdk-go v1.44.280
 	github.com/labstack/echo-contrib v0.15.0
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/pion/randutil v0.1.0
@@ -16,7 +16,7 @@ require (
 	golang.org/x/sync v0.2.0
 	// v0.117.0 以上では意図しないフラグが含まれてしまうため v0.116.0 を使用する
 	// (https://github.com/google/s2a-go/issues/107)
-	google.golang.org/api v0.125.0
+	google.golang.org/api v0.126.0
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/ini.v1 v1.67.0
