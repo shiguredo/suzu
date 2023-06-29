@@ -47,49 +47,33 @@ func getServiceHandler(serviceType string, config Config, channelID, connectionI
 func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		zlog.Debug().Msg("CONNECTING")
-		// http/2 じゃなかったらエラー
-		if c.Request().ProtoMajor != 2 {
-			zlog.Error().
-				Msg("INVALID-HTTP-PROTOCOL")
-			return echo.NewHTTPError(http.StatusBadRequest)
+
+		sc, ok := c.(*suzuContext)
+		if !ok {
+			return errors.New("UNEXPECTED-CONTEXT")
 		}
 
-		h := struct {
-			SoraChannelID string `header:"Sora-Channel-Id"`
-			// SoraSessionID       string `header:"sora-session-id"`
-			// SoraClientID        string `header:"sora-client-id"`
-			SoraConnectionID string `header:"sora-connection-id"`
-			// SoraAudioCodecType  string `header:"sora-audio-codec-type"`
-			// SoraAudioSampleRate int64  `header:"sora-audio-sample-rate"`
-			SoraAudioStreamingLanguageCode string `header:"sora-audio-streaming-language-code"`
-		}{}
-		if err := (&echo.DefaultBinder{}).BindHeaders(c, &h); err != nil {
-			zlog.Error().
-				Err(err).
-				Msg("INVALID-HEADER")
-			return echo.NewHTTPError(http.StatusBadRequest)
-		}
 		defer func() {
 			zlog.Debug().
-				Str("channel_id", h.SoraChannelID).
-				Str("connection_id", h.SoraConnectionID).
+				Str("channel_id", sc.ChannelID).
+				Str("connection_id", sc.ConnectionID).
 				Msg("DISCONNECTED")
 		}()
 
-		languageCode, err := GetLanguageCode(serviceType, h.SoraAudioStreamingLanguageCode, nil)
+		languageCode, err := GetLanguageCode(serviceType, sc.LanguageCode, nil)
 		if err != nil {
 			zlog.Error().
 				Err(err).
-				Str("channel_id", h.SoraChannelID).
-				Str("connection_id", h.SoraConnectionID).
+				Str("channel_id", sc.ChannelID).
+				Str("connection_id", sc.ConnectionID).
 				Send()
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
 		zlog.Debug().
-			Str("channel_id", h.SoraChannelID).
-			Str("connection_id", h.SoraConnectionID).
-			Str("language_code", h.SoraAudioStreamingLanguageCode).
+			Str("channel_id", sc.ChannelID).
+			Str("connection_id", sc.ConnectionID).
+			Str("language_code", sc.LanguageCode).
 			Msg("CONNECTED")
 
 		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -100,20 +84,16 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		// TODO: ヘッダから取得する
-		sampleRate := uint32(s.config.SampleRate)
-		channelCount := uint16(s.config.ChannelCount)
-
 		d := time.Duration(s.config.TimeToWaitForOpusPacketMs) * time.Millisecond
 		r := NewOpusReader(d, c.Request().Body)
 		defer r.Close()
 
-		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode, onResultFunc)
+		serviceHandler, err := getServiceHandler(serviceType, *s.config, sc.ChannelID, sc.ConnectionID, sc.SampleRate, sc.ChannelCount, languageCode, onResultFunc)
 		if err != nil {
 			zlog.Error().
 				Err(err).
-				Str("channel_id", h.SoraChannelID).
-				Str("connection_id", h.SoraConnectionID).
+				Str("channel_id", sc.ChannelID).
+				Str("connection_id", sc.ConnectionID).
 				Send()
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
@@ -124,16 +104,16 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		// サーバへの再接続が期待できる限りは、再接続を試みる
 		for {
 			zlog.Info().
-				Str("channel_id", h.SoraChannelID).
-				Str("connection_id", h.SoraConnectionID).
+				Str("channel_id", sc.ChannelID).
+				Str("connection_id", sc.ConnectionID).
 				Msg("NEW-REQUEST")
 
 			reader, err := serviceHandler.Handle(ctx, r)
 			if err != nil {
 				zlog.Error().
 					Err(err).
-					Str("channel_id", h.SoraChannelID).
-					Str("connection_id", h.SoraConnectionID).
+					Str("channel_id", sc.ChannelID).
+					Str("connection_id", sc.ConnectionID).
 					Send()
 				// TODO: エラー内容で status code を変更する
 				return echo.NewHTTPError(http.StatusInternalServerError)
@@ -151,8 +131,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 						// TODO: エラーレベルを見直す
 						zlog.Error().
 							Err(err).
-							Str("channel_id", h.SoraChannelID).
-							Str("connection_id", h.SoraConnectionID).
+							Str("channel_id", sc.ChannelID).
+							Str("connection_id", sc.ConnectionID).
 							Send()
 						return echo.NewHTTPError(499)
 					} else if errors.Is(err, ErrServerDisconnected) {
@@ -162,8 +142,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 
 							zlog.Debug().
 								Err(err).
-								Str("channel_id", h.SoraChannelID).
-								Str("connection_id", h.SoraConnectionID).
+								Str("channel_id", sc.ChannelID).
+								Str("connection_id", sc.ConnectionID).
 								Int("retry_count", retryCount).
 								Send()
 							break
@@ -171,8 +151,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							// サーバから切断されたが再接続させない設定の場合
 							zlog.Error().
 								Err(err).
-								Str("channel_id", h.SoraChannelID).
-								Str("connection_id", h.SoraConnectionID).
+								Str("channel_id", sc.ChannelID).
+								Str("connection_id", sc.ConnectionID).
 								Send()
 							return echo.NewHTTPError(http.StatusInternalServerError)
 						}
@@ -180,8 +160,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 
 					zlog.Error().
 						Err(err).
-						Str("channel_id", h.SoraChannelID).
-						Str("connection_id", h.SoraConnectionID).
+						Str("channel_id", sc.ChannelID).
+						Str("connection_id", sc.ConnectionID).
 						Send()
 					// サーバから切断されたが再度の接続が期待できない場合、または、想定外のエラーの場合は InternalServerError
 					return echo.NewHTTPError(http.StatusInternalServerError)
@@ -192,8 +172,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					if _, err := c.Response().Write(buf[:n]); err != nil {
 						zlog.Error().
 							Err(err).
-							Str("channel_id", h.SoraChannelID).
-							Str("connection_id", h.SoraConnectionID).
+							Str("channel_id", sc.ChannelID).
+							Str("connection_id", sc.ConnectionID).
 							Send()
 						return echo.NewHTTPError(http.StatusInternalServerError)
 					}

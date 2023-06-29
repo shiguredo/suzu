@@ -110,9 +110,9 @@ func NewServer(c *Config, service string) (*Server, error) {
 	// LB からのヘルスチェック専用 API
 	e.GET("/.ok", s.healthcheckHandler)
 
-	e.POST("/speech", s.createSpeechHandler(service, nil))
-	e.POST("/test", s.createSpeechHandler("test", nil))
-	e.POST("/dump", s.createSpeechHandler("dump", nil))
+	e.POST("/speech", s.createSpeechHandler(service, nil), HTTPVersionValidation, s.SuzuContext)
+	e.POST("/test", s.createSpeechHandler("test", nil), HTTPVersionValidation, s.SuzuContext)
+	e.POST("/dump", s.createSpeechHandler("dump", nil), HTTPVersionValidation, s.SuzuContext)
 
 	echoExporter := echo.New()
 	echoExporter.HideBanner = true
