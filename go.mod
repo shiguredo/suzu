@@ -11,7 +11,7 @@ require (
 	github.com/pion/rtp v1.7.13
 	github.com/rs/zerolog v1.29.1
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
+	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	golang.org/x/net v0.12.0
 	golang.org/x/sync v0.3.0
 	// v0.117.0 以上では意図しないフラグが含まれてしまうため v0.116.0 を使用する
