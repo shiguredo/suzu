@@ -13,6 +13,8 @@
 
 - [CHANGE] lumberjack を公式に戻す
   - @voluntas
+- [UPDATE] go.mod, Github Actions で使用する Go のバージョンを 1.21.0 にあげる
+  - @Hexa
 
 ## 2023.4.0
 
