@@ -15,6 +15,8 @@
   - @voluntas
 - [ADD] exporter で HTTPS を有効にする `exporter_https` を追加する
   - @voluntas
+- [CHANGE] コンソールログの日付フォーマットを修正する
+  - @voluntas
 - [CHANGE] lumberjack を公式に戻す
   - @voluntas
 - [UPDATE] go.mod, Github Actions で使用する Go のバージョンを 1.21.0 にあげる
