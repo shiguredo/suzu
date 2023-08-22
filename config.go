@@ -8,6 +8,18 @@ import (
 )
 
 const (
+	DefaultLogDir  = "."
+	DefaultLogName = "suzu.jsonl"
+
+	// megabytes
+	DefaultLogRotateMaxSize    = 200
+	DefaultLogRotateMaxBackups = 7
+	// days
+	DefaultLogRotateMaxAge = 30
+
+	DefaultExporterListenAddr = "0.0.0.0"
+	DefaultExporterListenPort = 5891
+
 	// 100ms
 	DefaultTimeToWaitForOpusPacketMs = 100
 )
@@ -109,6 +121,34 @@ func NewConfig(configFilePath string) (*Config, error) {
 }
 
 func setDefaultsConfig(config *Config) {
+	if config.LogDir == "" {
+		config.LogDir = DefaultLogDir
+	}
+
+	if config.LogName == "" {
+		config.LogDir = DefaultLogName
+	}
+
+	if config.LogRotateMaxSize == 0 {
+		config.LogRotateMaxSize = DefaultLogRotateMaxSize
+	}
+
+	if config.LogRotateMaxBackups == 0 {
+		config.LogRotateMaxBackups = DefaultLogRotateMaxBackups
+	}
+
+	if config.LogRotateMaxAge == 0 {
+		config.LogRotateMaxAge = DefaultLogRotateMaxAge
+	}
+
+	if config.ExporterListenAddr == "" {
+		config.ExporterListenAddr = DefaultExporterListenAddr
+	}
+
+	if config.ExporterListenPort == 0 {
+		config.ExporterListenPort = DefaultExporterListenPort
+	}
+
 	if config.TimeToWaitForOpusPacketMs == 0 {
 		config.TimeToWaitForOpusPacketMs = DefaultTimeToWaitForOpusPacketMs
 	}
