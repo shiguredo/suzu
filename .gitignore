@@ -1,7 +1,7 @@
-suzu-dev
-tmp/*
+.DS_Store
 bin/*
+.grafana/*
+tmp/*
+
 config.ini
-suzu.log
 suzu.jsonl
-*.pem
