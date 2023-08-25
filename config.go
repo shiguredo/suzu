@@ -1,10 +1,26 @@
 package suzu
 
 import (
+	"fmt"
+	"net/netip"
+
+	zlog "github.com/rs/zerolog/log"
 	"gopkg.in/ini.v1"
 )
 
 const (
+	DefaultLogDir  = "."
+	DefaultLogName = "suzu.jsonl"
+
+	// megabytes
+	DefaultLogRotateMaxSize    = 200
+	DefaultLogRotateMaxBackups = 7
+	// days
+	DefaultLogRotateMaxAge = 30
+
+	DefaultExporterListenAddr = "0.0.0.0"
+	DefaultExporterListenPort = 5891
+
 	// 100ms
 	DefaultTimeToWaitForOpusPacketMs = 100
 )
@@ -14,6 +30,7 @@ type Config struct {
 
 	Debug bool `ini:"debug"`
 
+	HTTPS      bool   `ini:"https"`
 	ListenAddr string `ini:"listen_addr"`
 	ListenPort int    `ini:"listen_port"`
 
@@ -27,6 +44,7 @@ type Config struct {
 
 	Retry *bool `ini:"retry"`
 
+	ExporterHTTPS      bool   `ini:"exporter_https"`
 	ExporterListenAddr string `ini:"exporter_listen_addr"`
 	ExporterListenPort int    `ini:"exporter_listen_port"`
 
@@ -82,16 +100,54 @@ type Config struct {
 	GcpResultStability bool `ini:"gcp_result_stability"`
 }
 
-func InitConfig(data []byte, config *Config) error {
-	f, err := ini.InsensitiveLoad(data)
+func NewConfig(configFilePath string) (*Config, error) {
+	config := new(Config)
+
+	iniConfig, err := ini.InsensitiveLoad(configFilePath)
 	if err != nil {
-		// パースに失敗した場合 Fatal で終了
-		return err
+		return nil, err
 	}
 
-	if err := f.MapTo(config); err != nil {
-		// マッピングに失敗した場合 Fatal で終了
-		return err
+	if err := iniConfig.StrictMapTo(config); err != nil {
+		return nil, err
+	}
+
+	setDefaultsConfig(config)
+
+	if err := validateConfig(config); err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+func setDefaultsConfig(config *Config) {
+	if config.LogDir == "" {
+		config.LogDir = DefaultLogDir
+	}
+
+	if config.LogName == "" {
+		config.LogName = DefaultLogName
+	}
+
+	if config.LogRotateMaxSize == 0 {
+		config.LogRotateMaxSize = DefaultLogRotateMaxSize
+	}
+
+	if config.LogRotateMaxBackups == 0 {
+		config.LogRotateMaxBackups = DefaultLogRotateMaxBackups
+	}
+
+	if config.LogRotateMaxAge == 0 {
+		config.LogRotateMaxAge = DefaultLogRotateMaxAge
+	}
+
+	if config.ExporterListenAddr == "" {
+		config.ExporterListenAddr = DefaultExporterListenAddr
+	}
+
+	if config.ExporterListenPort == 0 {
+		config.ExporterListenPort = DefaultExporterListenPort
 	}
 
 	if config.TimeToWaitForOpusPacketMs == 0 {
@@ -103,7 +159,52 @@ func InitConfig(data []byte, config *Config) error {
 		defaultRetry := true
 		config.Retry = &defaultRetry
 	}
+}
+func validateConfig(config *Config) error {
+	var err error
+	// アドレスとして正しいことを確認する
+	_, err = netip.ParseAddr(config.ListenAddr)
+	if err != nil {
+		return err
+	}
 
-	// TODO(v): 初期値
+	// アドレスとして正しいことを確認する
+	_, err = netip.ParseAddr(config.ExporterListenAddr)
+	if err != nil {
+		return err
+	}
+
+	if config.HTTPS || config.ExporterHTTPS {
+		if config.TLSFullchainFile == "" {
+			return fmt.Errorf("tls_fullchain_file is required")
+		}
+
+		if config.TLSPrivkeyFile == "" {
+			return fmt.Errorf("tls_privkey_file is required")
+		}
+	}
+
 	return nil
+}
+
+func ShowConfig(config *Config) {
+
+	zlog.Info().Bool("debug", config.Debug).Msg("CONF")
+
+	zlog.Info().Str("log_dir", config.LogDir).Msg("CONF")
+	zlog.Info().Str("log_name", config.LogName).Msg("CONF")
+	zlog.Info().Bool("log_stdout", config.LogStdout).Msg("CONF")
+
+	zlog.Info().Int("log_rotate_max_size", config.LogRotateMaxSize).Msg("CONF")
+	zlog.Info().Int("log_rotate_max_backups", config.LogRotateMaxBackups).Msg("CONF")
+	zlog.Info().Int("log_rotate_max_age", config.LogRotateMaxAge).Msg("CONF")
+
+	zlog.Info().Bool("https", config.HTTPS).Msg("CONF")
+	zlog.Info().Str("listen_addr", config.ListenAddr).Msg("CONF")
+	zlog.Info().Int("listen_port", config.ListenPort).Msg("CONF")
+
+	zlog.Info().Bool("exporter_https", config.ExporterHTTPS).Msg("CONF")
+	zlog.Info().Str("exporter_listen_addr", config.ExporterListenAddr).Msg("CONF")
+	zlog.Info().Int("exporter_listen_port", config.ExporterListenPort).Msg("CONF")
+
 }

@@ -19,14 +19,13 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	zlog "github.com/rs/zerolog/log"
 	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 type Server struct {
 	config       *Config
 	echo         *echo.Echo
 	echoExporter *echo.Echo
-
-	http.Server
 }
 
 func NewServer(c *Config, service string) (*Server, error) {
@@ -45,10 +44,11 @@ func NewServer(c *Config, service string) (*Server, error) {
 
 	s := &Server{
 		config: c,
-		Server: http.Server{
-			Addr:    net.JoinHostPort(c.ListenAddr, strconv.Itoa(c.ListenPort)),
-			Handler: e,
-		},
+	}
+
+	e.Server = &http.Server{
+		Addr:    net.JoinHostPort(c.ListenAddr, strconv.Itoa(c.ListenPort)),
+		Handler: h2c.NewHandler(e, h2s),
 	}
 
 	// クライアント認証をするかどうかのチェック
@@ -64,10 +64,10 @@ func NewServer(c *Config, service string) (*Server, error) {
 			ClientAuth: tls.RequireAndVerifyClientCert,
 			ClientCAs:  certPool,
 		}
-		s.Server.TLSConfig = tlsConfig
+		e.Server.TLSConfig = tlsConfig
 	}
 
-	if err := http2.ConfigureServer(&s.Server, h2s); err != nil {
+	if err := http2.ConfigureServer(e.Server, h2s); err != nil {
 		return nil, err
 	}
 
@@ -130,28 +130,24 @@ func NewServer(c *Config, service string) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Start(ctx context.Context, address string, port int) error {
-	tlsFullchainFile := s.config.TLSFullchainFile
-	tlsPrivkeyFile := s.config.TLSPrivkeyFile
-
-	if _, err := os.Stat(tlsFullchainFile); err != nil {
-		return fmt.Errorf("tlsFullchainFile error: %s", err)
-	}
-
-	if _, err := os.Stat(tlsPrivkeyFile); err != nil {
-		return fmt.Errorf("tls2PrivkeyFile error: %s", err)
-	}
-
+func (s *Server) Start(ctx context.Context) error {
 	ch := make(chan error)
 	go func() {
 		defer close(ch)
-		if err := s.ListenAndServeTLS(tlsFullchainFile, tlsPrivkeyFile); err != http.ErrServerClosed {
-			ch <- err
+		if s.config.HTTPS {
+			if err := s.echo.Server.ListenAndServeTLS(s.config.TLSFullchainFile, s.config.TLSPrivkeyFile); err != http.ErrServerClosed {
+				ch <- err
+			}
+		} else {
+			// HTTP/2 over TCP
+			if err := s.echo.Server.ListenAndServe(); err != http.ErrServerClosed {
+				ch <- err
+			}
 		}
 	}()
 
 	defer func() {
-		if err := s.Shutdown(ctx); err != nil {
+		if err := s.echo.Shutdown(ctx); err != nil {
 			zlog.Error().Err(err).Send()
 		}
 	}()
@@ -165,10 +161,23 @@ func (s *Server) Start(ctx context.Context, address string, port int) error {
 
 }
 
-func (s *Server) StartExporter(ctx context.Context, address string, port int) error {
+func (s *Server) StartExporter(ctx context.Context) error {
 	ch := make(chan error)
 	go func() {
-		err := s.echoExporter.Start(net.JoinHostPort(address, strconv.Itoa(port)))
+		var err error
+		// exporter も HTTPS にしたい場合はこちら
+		if s.config.ExporterHTTPS {
+			err = s.echoExporter.StartTLS(
+				net.JoinHostPort(s.config.ExporterListenAddr, strconv.Itoa(s.config.ExporterListenPort)),
+				s.config.TLSFullchainFile, s.config.TLSPrivkeyFile,
+			)
+		} else {
+			// TODO: StartTLS 可能にする?
+			err = s.echoExporter.Start(
+				net.JoinHostPort(s.config.ExporterListenAddr, strconv.Itoa(s.config.ExporterListenPort)),
+			)
+		}
+
 		if err != nil {
 			ch <- err
 		}
