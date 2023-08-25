@@ -1,0 +1,18 @@
+[Unit]
+Description=Audio Streaming Gateway Suzu
+After=network.target
+
+[Service]
+Restart=on-failure
+RestartSec=60s
+RestartPreventExitStatus=1
+KillMode=control-group
+User=shiguredo
+Group=shiguredo
+WorkingDirectory=/home/shiguredo/suzu
+ExecStart=/bin/bash -c '/home/shiguredo/suzu/bin/suzu -C /home/shiguredo/suzu/config.ini 2>/var/log/suzu/stderr.log 1>/var/log/suzu/stdout.log'
+Type=simple
+LogsDirectory=suzu
+
+[Install]
+WantedBy=multi-user.target
