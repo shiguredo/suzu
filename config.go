@@ -127,7 +127,7 @@ func setDefaultsConfig(config *Config) {
 	}
 
 	if config.LogName == "" {
-		config.LogDir = DefaultLogName
+		config.LogName = DefaultLogName
 	}
 
 	if config.LogRotateMaxSize == 0 {
