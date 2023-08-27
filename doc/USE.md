@@ -2,8 +2,6 @@
 
 ## パッケージダウンロード
 
-
-
 ## 設定ファイル
 
 サンプルをコピーしてください。
@@ -12,6 +10,16 @@
 $ cp config_example.ini config.ini
 ```
 
+## 開発環境での利用
+
+HTTPS 設定無効にすることで HTTP/2 over TCP (h2c) での通信が利用できます。
+この場合は証明書の設定は不要です。
+
+```ini
+https = false
+```
+
+本番環境で利用する場合は Sora と Suzu の通信経路は暗号化することをお勧めします。
 
 ## Amazon Transcribe を利用する
 
