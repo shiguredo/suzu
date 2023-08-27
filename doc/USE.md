@@ -1,13 +1,9 @@
-# 使ってみる
+# Suzu の使い方
 
-## パッケージダウンロード
-
-## 設定ファイル
-
-サンプルをコピーしてください。
+## ビルド
 
 ```
-$ cp config_example.ini config.ini
+$ make
 ```
 
 ## 開発環境での利用
@@ -21,12 +17,20 @@ https = false
 
 本番環境で利用する場合は Sora と Suzu の通信経路は暗号化することをお勧めします。
 
+## 設定ファイル
+
+サンプルをコピーしてください。
+
+```
+$ cp config_example.ini config.ini
+```
+
 ## Amazon Transcribe を利用する
 
 -service で `aws` を指定することで AWS Transcribe が利用されます。
 
 ```
-$ ./suzu -C config.ini -service aws
+$ ./bin/suzu -C config.ini -service aws
 ```
 
 AWS Transcribe を利用するに当たっての注意事項は [AWS.md](AWS.md) をご確認ください。
