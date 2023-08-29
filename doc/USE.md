@@ -2,8 +2,16 @@
 
 ## ビルド
 
-```
+```console
 $ make
+```
+
+## 設定ファイル
+
+config_example.ini をコピーして、AWS や GCP の設定をしてください
+
+```console
+$ cp config_example.ini config.ini
 ```
 
 ## 開発環境での利用
@@ -11,18 +19,18 @@ $ make
 HTTPS 設定無効にすることで HTTP/2 over TCP (h2c) での通信が利用できます。
 この場合は証明書の設定は不要です。
 
+### Kohaku 側の設定
+
 ```ini
 https = false
 ```
 
-本番環境で利用する場合は Sora と Suzu の通信経路は暗号化することをお勧めします。
+### Sora 側の設定
 
-## 設定ファイル
+HTTP にすることで HTTP/2 over TCP (h2c) を利用して接続しに行きます。
 
-サンプルをコピーしてください。
-
-```
-$ cp config_example.ini config.ini
+```ini
+audio_streaming_url = http://192.0.2.10:5890/speech
 ```
 
 ## Amazon Transcribe を利用する
