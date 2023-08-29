@@ -7,10 +7,10 @@ Restart=on-failure
 RestartSec=60s
 RestartPreventExitStatus=1
 KillMode=control-group
-User=shiguredo
-Group=shiguredo
+User=sora
+Group=sora
 WorkingDirectory=/home/shiguredo/suzu
-ExecStart=/bin/bash -c '/home/shiguredo/suzu/bin/suzu -C /home/shiguredo/suzu/config.ini 2>/var/log/suzu/stderr.log 1>/var/log/suzu/stdout.log'
+ExecStart=/bin/bash -c '/home/sora/suzu/bin/suzu -C /home/sora/suzu/config.ini 2>/var/log/suzu/stderr.log 1>/var/log/suzu/stdout.log'
 Type=simple
 LogsDirectory=suzu
 
