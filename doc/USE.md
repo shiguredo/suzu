@@ -19,7 +19,7 @@ $ cp config_example.ini config.ini
 HTTPS 設定無効にすることで HTTP/2 over TCP (h2c) での通信が利用できます。
 この場合は証明書の設定は不要です。
 
-### Kohaku 側の設定
+### Suzu 側の設定
 
 ```ini
 https = false
