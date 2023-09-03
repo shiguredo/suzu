@@ -1,10 +1,20 @@
 # Suzu の使い方
 
-## ビルド
+## バイナリ
+
+### パッケージ
+
+https://github.com/shiguredo/suzu/releases から最新バイナリをダウンロードしてください。
+
+### ビルド
+
+**Go 1.21 以降が必要です**
 
 ```console
 $ make
 ```
+
+`bin/suzu` が生成されます。
 
 ## 設定ファイル
 
