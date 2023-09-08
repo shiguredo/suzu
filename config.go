@@ -1,12 +1,16 @@
 package suzu
 
 import (
+	_ "embed"
 	"fmt"
 	"net/netip"
 
 	zlog "github.com/rs/zerolog/log"
 	"gopkg.in/ini.v1"
 )
+
+//go:embed VERSION
+var Version string
 
 const (
 	DefaultLogDir  = "."
@@ -26,7 +30,7 @@ const (
 )
 
 type Config struct {
-	Revision string
+	Version string
 
 	Debug bool `ini:"debug"`
 
@@ -122,6 +126,8 @@ func NewConfig(configFilePath string) (*Config, error) {
 }
 
 func setDefaultsConfig(config *Config) {
+	config.Version = Version
+
 	if config.LogDir == "" {
 		config.LogDir = DefaultLogDir
 	}

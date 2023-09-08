@@ -11,25 +11,25 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var (
-	// git rev-parse --short HEAD
-	revision string = "air"
-)
-
 func main() {
-	// XXX(v): とりあえず 同じ場所にある config.ini を読みに行く実装
-	configFilePath := flag.String("C", "config.ini", "suzu の設定ファイルへのパス")
+	// /bin/kohaku -V
+	showVersion := flag.Bool("V", false, "バージョン")
+
+	// bin/suzu -C config.ini
+	configFilePath := flag.String("C", "./config.ini", "設定ファイルへのパス")
 	serviceType := flag.String("service", "aws", fmt.Sprintf("音声文字変換のサービス（%s）", strings.Join(suzu.NewServiceHandlerFuncs.GetNames([]string{"test", "dump"}), ", ")))
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("Audio Streaming Gateway Suzu version %s\n", suzu.Version)
+		return
+	}
 
 	config, err := suzu.NewConfig(*configFilePath)
 	if err != nil {
 		// パースに失敗した場合 Fatal で終了
 		log.Fatal("cannot parse config file, err=", err)
 	}
-
-	// リビジョンを追加
-	config.Revision = revision
 
 	// ロガー初期化
 	err = suzu.InitLogger(config)

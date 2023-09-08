@@ -8,6 +8,6 @@ import (
 
 func (s *Server) healthcheckHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"revision": s.config.Revision,
+		"version": s.config.Version,
 	})
 }
