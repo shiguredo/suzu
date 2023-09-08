@@ -1,9 +1,7 @@
-suzu-dev
-tmp/*
+.DS_Store
 bin/*
-config.yaml
-config.toml
-suzu.log
-suzu.jsonl
-*.pem
+.grafana/*
+tmp/*
 
+config.ini
+suzu.jsonl

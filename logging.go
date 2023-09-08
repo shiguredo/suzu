@@ -9,19 +9,11 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/shiguredo/lumberjack/v3"
-)
-
-const (
-	// megabytes
-	DefaultLogRotateMaxSize    = 200
-	DefaultLogRotateMaxBackups = 7
-	// days
-	DefaultLogRotateMaxAge = 30
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // InitLogger ロガーを初期化する
-func InitLogger(config Config) error {
+func InitLogger(config *Config) error {
 	if f, err := os.Stat(config.LogDir); os.IsNotExist(err) || !f.IsDir() {
 		return err
 	}
@@ -33,7 +25,7 @@ func InitLogger(config Config) error {
 		return time.Now().UTC()
 	}
 
-	zerolog.TimeFieldFormat = time.RFC3339Nano
+	zerolog.TimeFieldFormat = "2006-01-02T15:04:05.000000Z"
 
 	if config.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -51,7 +43,7 @@ func InitLogger(config Config) error {
 			},
 			NoColor: false,
 		}
-		format(&writer)
+		prettyFormat(&writer)
 		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
 	} else if config.LogStdout {
 		writer := os.Stdout
@@ -81,11 +73,15 @@ func InitLogger(config Config) error {
 	return nil
 }
 
-func format(w *zerolog.ConsoleWriter) {
+// 現時点での prettyFormat
+// 2023-04-17 12:51:56.333485Z [INFO] config.go:102 > CONF | debug=true
+func prettyFormat(w *zerolog.ConsoleWriter) {
 	const Reset = "\x1b[0m"
 
 	w.FormatLevel = func(i interface{}) string {
 		var color, level string
+		// TODO: 各色を定数に置き換える
+		// TODO: 他の logLevel が必要な場合は追加する
 		switch i.(string) {
 		case "info":
 			color = "\x1b[32m"
@@ -105,6 +101,10 @@ func format(w *zerolog.ConsoleWriter) {
 	w.FormatCaller = func(i interface{}) string {
 		return fmt.Sprintf("[%s]", filepath.Base(i.(string)))
 	}
+	// TODO: Caller をファイル名と行番号だけの表示で出力する
+	//       以下のようなフォーマットにしたい
+	//       2023-04-17 12:50:09.334758Z [INFO] [config.go:102] CONF | debug=true
+	// TODO: name=value が無い場合に | を消す方法がわからなかった
 	w.FormatMessage = func(i interface{}) string {
 		if i == nil {
 			return ""
@@ -116,6 +116,7 @@ func format(w *zerolog.ConsoleWriter) {
 		const Cyan = "\x1b[36m"
 		return fmt.Sprintf("%s%s=%s", Cyan, i, Reset)
 	}
+	// TODO: カンマ区切りを同実現するかわからなかった
 	w.FormatFieldValue = func(i interface{}) string {
 		return fmt.Sprintf("%s", i)
 	}

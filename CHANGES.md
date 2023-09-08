@@ -11,6 +11,23 @@
 
 ## develop
 
+## 2023.5.0
+
+- [ADD] -V で VERSION ファイルを表示する
+  - @voluntas
+- [ADD] VERSION ファイルを追加する
+  - @voluntas
+- [ADD] `h2c` を有効にするため `https` を追加する
+  - @voluntas
+- [ADD] exporter で HTTPS を有効にする `exporter_https` を追加する
+  - @voluntas
+- [CHANGE] コンソールログの日付フォーマットを修正する
+  - @voluntas
+- [CHANGE] lumberjack を公式に戻す
+  - @voluntas
+- [UPDATE] go.mod, Github Actions で使用する Go のバージョンを 1.21.0 にあげる
+  - @Hexa
+
 ## 2023.4.0
 
 - [CHANGE] サンプル設定ファイル名を変更する

@@ -36,7 +36,7 @@ func TestHealthcheckHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := fmt.Sprintf(`{"revision":"%s"}`, s.config.Revision)
+	body := fmt.Sprintf(`{"version":"%s"}`, s.config.Version)
 
 	testCaces := []struct {
 		Name    string
