@@ -11,6 +11,10 @@
 
 ## develop
 
+- [ADD] -V で VERSION ファイルを表示する
+  - @voluntas
+- [ADD] VERSION ファイルを追加する
+  - @voluntas
 - [ADD] `h2c` を有効にするため `https` を追加する
   - @voluntas
 - [ADD] exporter で HTTPS を有効にする `exporter_https` を追加する
