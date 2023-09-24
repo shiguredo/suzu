@@ -8,7 +8,7 @@ require (
 	github.com/labstack/echo-contrib v0.15.0
 	github.com/labstack/echo/v4 v4.11.1
 	github.com/pion/randutil v0.1.0
-	github.com/pion/rtp v1.8.1
+	github.com/pion/rtp v1.8.2
 	github.com/rs/zerolog v1.30.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
