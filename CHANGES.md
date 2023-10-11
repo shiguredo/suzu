@@ -11,6 +11,12 @@
 
 ## develop
 
+## 2023.5.1
+
+- [FIX] HTTP/2 Rapid Reset 対策として Go 1.21.3 以上でリリースバイナリを作成するよう修正する
+  - https://groups.google.com/g/golang-announce/c/iNNxDTCjZvo
+  - @voluntas
+
 ## 2023.5.0
 
 - [ADD] -V で VERSION ファイルを表示する
