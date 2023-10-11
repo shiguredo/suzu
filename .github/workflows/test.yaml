@@ -3,34 +3,34 @@ name: Go Build & Test
 on:
   push:
     branches-ignore:
-      - 'main'
+      - "main"
     tags-ignore:
-      - '*'
+      - "*"
 
 jobs:
-
   build:
     name: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version-file: './go.mod'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          # go-version-file: ./go.mod
+          go-version: "^1.21.3"
 
-    - run: go version
+      - run: go version
 
-    - run: go fmt .
+      - run: go fmt .
 
-    - uses: dominikh/staticcheck-action@v1.3.0
-      with:
-        version: "2023.1.2"
-        install-go: false
+      - uses: dominikh/staticcheck-action@v1.3.0
+        with:
+          version: "2023.1.2"
+          install-go: false
 
-    - name: Test
-      run: make test
+      - name: Test
+        run: make test
 
-    - name: Build
-      run: make
+      - name: Build
+        run: make
