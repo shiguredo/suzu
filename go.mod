@@ -3,8 +3,8 @@ module github.com/shiguredo/suzu
 go 1.21
 
 require (
-	cloud.google.com/go/speech v1.19.1
-	github.com/aws/aws-sdk-go v1.46.1
+	cloud.google.com/go/speech v1.19.2
+	github.com/aws/aws-sdk-go v1.46.6
 	github.com/labstack/echo-contrib v0.15.0
 	github.com/labstack/echo/v4 v4.11.2
 	github.com/pion/randutil v0.1.0
