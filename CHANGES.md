@@ -11,6 +11,9 @@
 
 ## develop
 
+- [UPDATE] go.mod の Go のバージョンを 1.21.4 にあげる
+  - @voluntas
+
 ## 2023.5.1
 
 - [FIX] HTTP/2 Rapid Reset 対策として Go 1.21.3 以上でリリースバイナリを作成するよう修正する
