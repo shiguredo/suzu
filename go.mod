@@ -1,10 +1,10 @@
 module github.com/shiguredo/suzu
 
-go 1.21.4
+go 1.21.5
 
 require (
 	cloud.google.com/go/speech v1.21.0
-	github.com/aws/aws-sdk-go v1.48.11
+	github.com/aws/aws-sdk-go v1.48.16
 	github.com/labstack/echo-contrib v0.15.0
 	github.com/labstack/echo/v4 v4.11.3
 	github.com/pion/randutil v0.1.0
@@ -14,7 +14,7 @@ require (
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e
 	golang.org/x/net v0.19.0
 	golang.org/x/sync v0.5.0
-	google.golang.org/api v0.152.0
+	google.golang.org/api v0.153.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/ini.v1 v1.67.0
