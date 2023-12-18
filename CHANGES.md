@@ -11,7 +11,7 @@
 
 ## develop
 
-- [UPDATE] go.mod の Go のバージョンを 1.21.4 にあげる
+- [UPDATE] go.mod の Go のバージョンを 1.21.5 にあげる
   - @voluntas
 
 ## 2023.5.1
