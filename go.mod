@@ -4,7 +4,7 @@ go 1.21.5
 
 require (
 	cloud.google.com/go/speech v1.21.0
-	github.com/aws/aws-sdk-go v1.49.9
+	github.com/aws/aws-sdk-go v1.49.13
 	github.com/labstack/echo-contrib v0.15.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/pion/randutil v0.1.0
