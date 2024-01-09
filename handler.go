@@ -93,7 +93,6 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			Msg("CONNECTED")
 
 		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		c.Response().WriteHeader(http.StatusOK)
 
 		ctx := c.Request().Context()
 		// TODO: context.WithCancelCause(ctx) に変更する
