@@ -153,7 +153,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							Str("channel_id", h.SoraChannelID).
 							Str("connection_id", h.SoraConnectionID).
 							Send()
-						return echo.NewHTTPError(499)
+						return err
 					} else if errors.Is(err, ErrServerDisconnected) {
 						if *s.config.Retry {
 							// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
@@ -173,7 +173,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 								Str("channel_id", h.SoraChannelID).
 								Str("connection_id", h.SoraConnectionID).
 								Send()
-							return echo.NewHTTPError(http.StatusInternalServerError)
+							return err
 						}
 					}
 
@@ -182,8 +182,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 						Str("channel_id", h.SoraChannelID).
 						Str("connection_id", h.SoraConnectionID).
 						Send()
-					// サーバから切断されたが再度の接続が期待できない場合、または、想定外のエラーの場合は InternalServerError
-					return echo.NewHTTPError(http.StatusInternalServerError)
+					// サーバから切断されたが再度の接続が期待できない場合
+					return err
 				}
 
 				// メッセージが空でない場合はクライアントに結果を送信する
@@ -194,7 +194,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							Str("channel_id", h.SoraChannelID).
 							Str("connection_id", h.SoraConnectionID).
 							Send()
-						return echo.NewHTTPError(http.StatusInternalServerError)
+						return err
 					}
 					c.Response().Flush()
 				}
