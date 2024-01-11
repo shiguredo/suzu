@@ -13,6 +13,8 @@
 
 - [UPDATE] go.mod の Go のバージョンを 1.21.5 にあげる
   - @voluntas
+- [FIX] stream 処理開始後のエラー時に、ログに出力される status code が実際にクライアントに送信した値になるように修正する
+  - @Hexa
 
 ## 2023.5.1
 
