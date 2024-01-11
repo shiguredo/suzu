@@ -11,6 +11,13 @@
 
 ## develop
 
+## 2023.5.2
+
+- [UPDATE] go.mod の Go のバージョンを 1.21.5 にあげる
+  - @voluntas
+- [FIX] stream 処理開始後のエラー時に、ログに出力される status code が実際にクライアントに送信した値になるように修正する
+  - @Hexa
+
 ## 2023.5.1
 
 - [FIX] HTTP/2 Rapid Reset 対策として Go 1.21.3 以上でリリースバイナリを作成するよう修正する

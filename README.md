@@ -28,7 +28,7 @@ Sora は Suzu から送られてきた解析結果を、プッシュ API を経�
 - Sora から音声データを HTTP/2 経由で受け取り、音声解析サービスへ送信します
 - 音声解析サービスの解析結果を HTTP/2 レスポンスで Sora に戻します
 - Sora は受け取った解析結果をクライアントへプッシュで送信します
-    - [DataChannel 経由のシグナリング](https://sora-doc.shiguredo.jp/DATA_CHANNEL_SIGNALING) の利用を推奨します
+  - [DataChannel 経由のシグナリング](https://sora-doc.shiguredo.jp/DATA_CHANNEL_SIGNALING) の利用を推奨します
 - 音声解析に必要とされる言語コードをクライアントごとに指定できます
 - 無限リトライ対応
 - mTLS 対応
@@ -55,7 +55,7 @@ sequenceDiagram
         sora-)suzu: Opus over HTTP/2
         note over suzu: Opus を Ogg コンテナに詰める
         suzu-)gcp: Ogg over HTTP/2
-        note over gcp: 音声データが十分ではないためまだ解析結果が返せない       
+        note over gcp: 音声データが十分ではないためまだ解析結果が返せない
     and
         client1-)sora: Opus over SRTP
         sora-)suzu: Opus over HTTP/2
@@ -119,10 +119,11 @@ limitations under the License.
 
 詳細は Discord やメールなどでお気軽にお問い合わせください。
 
+- [Google Cloud Speech\-to\-Text V2 API](https://cloud.google.com/blog/products/ai-machine-learning/google-cloud-speech-to-text-v2-api?hl=en)
 - [Google Cloud Media Translation](https://cloud.google.com/media-translation)
 - [Microsoft Azure Speech to Text](https://azure.microsoft.com/ja-jp/products/cognitive-services/speech-to-text/) 対応
 - [Microsoft Azure Speech Translation](https://azure.microsoft.com/ja-jp/products/cognitive-services/speech-translation/) 対応
 - [Deepgram](https://deepgram.com/) 対応
 - [AmiVoice Cloud Platform](https://acp.amivoice.com/amivoice/) 対応
 - ウェブフック機能対応
-    - クライアントごとに接続先サービスを変更できるようになる
+  - クライアントごとに接続先サービスを変更できるようになる

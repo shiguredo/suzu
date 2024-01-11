@@ -1,33 +1,30 @@
-name: Release Build
+name: release
 
 on:
   push:
     tags:
-      - '*'
+      - "*"
 
 jobs:
-
-  build:
-    name: build
+  release:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        # go-version-file: ./go.mod
-        go-version: "^1.21.3"
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
 
-    - run: go install github.com/tcnksm/ghr@latest
+      - run: go install github.com/tcnksm/ghr@latest
 
-    - name: Build
-      run: |
-        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/suzu_linux_amd64 cmd/suzu/main.go
-        CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o dist/suzu_darwin_amd64 cmd/suzu/main.go
-        CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o dist/suzu_darwin_arm64 cmd/suzu/main.go
-        gzip dist/*
+      - name: Build
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/suzu_linux_amd64 cmd/suzu/main.go
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o dist/suzu_darwin_amd64 cmd/suzu/main.go
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o dist/suzu_darwin_arm64 cmd/suzu/main.go
+          gzip dist/*
 
-    - name: Release
-      run: |
-        ghr -t "${{ secrets.GITHUB_TOKEN }}" -u "${{ github.repository_owner }}" -r "suzu" --replace "${GITHUB_REF##*/}" dist/
+      - name: Release
+        run: |
+          ghr -t "${{ secrets.GITHUB_TOKEN }}" -u "${{ github.repository_owner }}" -r "suzu" --replace "${GITHUB_REF##*/}" dist/
