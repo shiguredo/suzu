@@ -11,6 +11,11 @@
 
 ## develop
 
+## 2023.5.3
+
+- [FIX] VERSION ファイルを tag のバージョンに修正する
+  - @Hexa
+
 ## 2023.5.2
 
 - [UPDATE] go.mod の Go のバージョンを 1.21.5 にあげる
