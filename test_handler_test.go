@@ -268,7 +268,7 @@ func TestSpeechHandler(t *testing.T) {
 		h := s.createSpeechHandler(serviceType, nil)
 		err = h(c)
 		if assert.Error(t, err) {
-			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
+			assert.Equal(t, "packet read error", err.Error())
 		}
 
 		pw.Close()
@@ -354,7 +354,7 @@ func TestSpeechHandler(t *testing.T) {
 		})
 		err := h(c)
 		if assert.Error(t, err) {
-			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
+			assert.Equal(t, "ON-RESULT-ERROR", err.Error())
 		}
 
 	})
