@@ -27,4 +27,4 @@ jobs:
 
       - name: Release
         run: |
-          ghr -t "${{ secrets.GITHUB_TOKEN }}" -u "${{ github.repository_owner }}" -r "suzu" --replace "${GITHUB_REF##*/}" dist/
+          ghr -t "${{ secrets.GITHUB_TOKEN }}" -u "${{ github.repository_owner }}" -r "suzu" --replace "${GITHUB_REF##*/}" -n "${GITHUB_REF##*/}" -draft dist/
