@@ -45,11 +45,10 @@ type GcpResult struct {
 	TranscriptionResult
 }
 
-func NewGcpResult(err error) GcpResult {
+func NewGcpResult() GcpResult {
 	return GcpResult{
 		TranscriptionResult: TranscriptionResult{
-			Type:  "gcp",
-			Error: err,
+			Type: "gcp",
 		},
 	}
 }
@@ -61,6 +60,11 @@ func (gr *GcpResult) WithIsFinal(isFinal bool) *GcpResult {
 
 func (gr *GcpResult) WithStability(stability float32) *GcpResult {
 	gr.Stability = &stability
+	return gr
+}
+
+func (gr *GcpResult) SetMessage(message string) *GcpResult {
+	gr.Message = message
 	return gr
 }
 
@@ -151,7 +155,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 						}
 					}
 
-					result := NewGcpResult(nil)
+					result := NewGcpResult()
 					if stt.Config.GcpResultIsFinal {
 						result.WithIsFinal(res.IsFinal)
 					}
@@ -173,7 +177,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 							}
 						}
 						transcript := alternative.Transcript
-						result.Message = transcript
+						result.SetMessage(transcript)
 						if err := encoder.Encode(result); err != nil {
 							w.CloseWithError(err)
 							return

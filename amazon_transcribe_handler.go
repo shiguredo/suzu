@@ -43,11 +43,10 @@ type AwsResult struct {
 	TranscriptionResult
 }
 
-func NewAwsResult(err error) AwsResult {
+func NewAwsResult() AwsResult {
 	return AwsResult{
 		TranscriptionResult: TranscriptionResult{
-			Type:  "aws",
-			Error: err,
+			Type: "aws",
 		},
 	}
 }
@@ -59,6 +58,11 @@ func (ar *AwsResult) WithChannelID(channelID string) *AwsResult {
 
 func (ar *AwsResult) WithIsPartial(isPartial bool) *AwsResult {
 	ar.IsPartial = &isPartial
+	return ar
+}
+
+func (ar *AwsResult) SetMessage(message string) *AwsResult {
+	ar.Message = message
 	return ar
 }
 
@@ -111,7 +115,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 								}
 							}
 
-							result := NewAwsResult(nil)
+							result := NewAwsResult()
 							if at.Config.AwsResultIsPartial {
 								result.WithIsPartial(*res.IsPartial)
 							}
@@ -123,7 +127,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 								if alt.Transcript != nil {
 									message = *alt.Transcript
 								}
-								result.Message = message
+								result.SetMessage(message)
 								if err := encoder.Encode(result); err != nil {
 									w.CloseWithError(err)
 									return
@@ -138,6 +142,15 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 		}
 
 		if err := stream.Err(); err != nil {
+			errResponse := NewSuzuErrorResponse(err.Error())
+			if err := encoder.Encode(errResponse); err != nil {
+				zlog.Error().
+					Err(err).
+					Str("channel_id", h.ChannelID).
+					Str("connection_id", h.ConnectionID).
+					Send()
+			}
+
 			// 復帰が不可能なエラー以外は再接続を試みる
 			switch err.(type) {
 			case *transcribestreamingservice.LimitExceededException,

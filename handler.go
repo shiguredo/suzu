@@ -26,8 +26,15 @@ var (
 
 type TranscriptionResult struct {
 	Message string `json:"message,omitempty"`
-	Error   error  `json:"error,omitempty"`
+	Reason  string `json:"reason,omitempty"`
 	Type    string `json:"type"`
+}
+
+func NewSuzuErrorResponse(message string) TranscriptionResult {
+	return TranscriptionResult{
+		Type:   "error",
+		Reason: message,
+	}
 }
 
 func getServiceHandler(serviceType string, config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) (serviceHandlerInterface, error) {

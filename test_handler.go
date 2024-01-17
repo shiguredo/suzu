@@ -3,6 +3,7 @@ package suzu
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -40,12 +41,13 @@ type TestResult struct {
 	TranscriptionResult
 }
 
-func TestErrorResult(err error) TestResult {
+func NewTestResult(channelID, message string) TestResult {
 	return TestResult{
 		TranscriptionResult: TranscriptionResult{
-			Type:  "test",
-			Error: err,
+			Type:    "test",
+			Message: message,
 		},
+		ChannelID: &channelID,
 	}
 }
 
@@ -53,24 +55,42 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 	r, w := io.Pipe()
 
 	go func() {
+		c := 0
 		encoder := json.NewEncoder(w)
 
 		for {
+			c += 1
 			buf := make([]byte, FrameSize)
 			n, err := reader.Read(buf)
 			if err != nil {
+				errResponse := NewSuzuErrorResponse(err.Error())
+				if err := encoder.Encode(errResponse); err != nil {
+					// TODO: ログを書く
+				}
 				w.CloseWithError(err)
 				return
 			}
 
+			if c > 10 {
+				err := errors.New("c > 10")
+				errResponse := NewSuzuErrorResponse(err.Error())
+				if err := encoder.Encode(errResponse); err != nil {
+					w.CloseWithError(err)
+					return
+				}
+			}
+
 			if n > 0 {
-				var result TestResult
-				result.Type = "test"
-				result.Message = fmt.Sprintf("n: %d", n)
-				result.ChannelID = &[]string{"ch_0"}[0]
+				message := fmt.Sprintf("n: %d", n)
+				channelID := &[]string{"ch_0"}[0]
+				result := NewTestResult(*channelID, message)
 
 				if h.OnResultFunc != nil {
 					if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, result); err != nil {
+						errResponse := NewSuzuErrorResponse(err.Error())
+						if err := encoder.Encode(errResponse); err != nil {
+							// TODO: ログを書く
+						}
 						w.CloseWithError(err)
 						return
 					}
