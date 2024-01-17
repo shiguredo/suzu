@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 )
@@ -95,6 +96,16 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.Reader) (*transcribe
 
 	resp, err := client.StartStreamTranscriptionWithContext(ctx, &input)
 	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+			code, ok := awsTranscribeErrors[awsErr.Code()]
+			if !ok {
+				return nil, err
+			}
+			return nil, &SuzuError{
+				Code:    code,
+				Message: awsErr.Message(),
+			}
+		}
 		return nil, err
 	}
 

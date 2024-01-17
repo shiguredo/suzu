@@ -135,8 +135,13 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					Str("channel_id", h.SoraChannelID).
 					Str("connection_id", h.SoraConnectionID).
 					Send()
-				// TODO: エラー内容で status code を変更する
-				return echo.NewHTTPError(http.StatusInternalServerError)
+				if err, ok := err.(*SuzuError); ok {
+					// SuzuError の場合はその Status Code を返す
+					return echo.NewHTTPError(err.Code, err)
+				}
+
+				// SuzuError 以外の場合は 500 を返す
+				return echo.NewHTTPError(http.StatusInternalServerError, err)
 			}
 			defer reader.Close()
 
