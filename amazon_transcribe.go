@@ -11,6 +11,17 @@ import (
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 )
 
+var (
+	// https://docs.aws.amazon.com/transcribe/latest/APIReference/API_streaming_StartStreamTranscription.html#API_streaming_StartStreamTranscription_Errors
+	amazonTranscribeStreamingServiceErrors = map[string]int{
+		transcribestreamingservice.ErrCodeLimitExceededException:      429,
+		transcribestreamingservice.ErrCodeConflictException:           409,
+		transcribestreamingservice.ErrCodeBadRequestException:         400,
+		transcribestreamingservice.ErrCodeInternalFailureException:    500,
+		transcribestreamingservice.ErrCodeServiceUnavailableException: 503,
+	}
+)
+
 type AmazonTranscribe struct {
 	LanguageCode                      string
 	MediaEncoding                     string
@@ -97,7 +108,7 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.Reader) (*transcribe
 	resp, err := client.StartStreamTranscriptionWithContext(ctx, &input)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
-			code, ok := awsTranscribeErrors[awsErr.Code()]
+			code, ok := amazonTranscribeStreamingServiceErrors[awsErr.Code()]
 			if !ok {
 				return nil, err
 			}
