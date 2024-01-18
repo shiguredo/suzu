@@ -3,7 +3,6 @@ package suzu
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 )
@@ -55,11 +54,9 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 	r, w := io.Pipe()
 
 	go func() {
-		c := 0
 		encoder := json.NewEncoder(w)
 
 		for {
-			c += 1
 			buf := make([]byte, FrameSize)
 			n, err := reader.Read(buf)
 			if err != nil {
@@ -69,15 +66,6 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 				}
 				w.CloseWithError(err)
 				return
-			}
-
-			if c > 10 {
-				err := errors.New("c > 10")
-				errResponse := NewSuzuErrorResponse(err.Error())
-				if err := encoder.Encode(errResponse); err != nil {
-					w.CloseWithError(err)
-					return
-				}
 			}
 
 			if n > 0 {
