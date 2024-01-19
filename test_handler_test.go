@@ -125,7 +125,7 @@ func TestSpeechHandler(t *testing.T) {
 				lastMessage = result.Message
 			}
 			// TODO: テストデータは固定のため、すべてのメッセージを確認する
-			assert.Equal(t, lastMessage, "n: 3")
+			assert.Equal(t, "n: 3", lastMessage)
 		}
 
 	})
