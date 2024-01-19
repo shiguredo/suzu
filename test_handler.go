@@ -60,9 +60,11 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 			buf := make([]byte, FrameSize)
 			n, err := reader.Read(buf)
 			if err != nil {
-				errResponse := NewSuzuErrorResponse(err.Error())
-				if err := encoder.Encode(errResponse); err != nil {
-					// TODO: ログを書く
+				if err != io.EOF {
+					errResponse := NewSuzuErrorResponse(err.Error())
+					if err := encoder.Encode(errResponse); err != nil {
+						// TODO: ログを書く
+					}
 				}
 				w.CloseWithError(err)
 				return
