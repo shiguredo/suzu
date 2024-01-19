@@ -144,6 +144,10 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 
 			if h.OnResultFunc != nil {
 				if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, resp.Results); err != nil {
+					errResponse := NewSuzuErrorResponse(err.Error())
+					if err := encoder.Encode(errResponse); err != nil {
+						// TODO: ログを書く
+					}
 					w.CloseWithError(err)
 					return
 				}
