@@ -359,4 +359,47 @@ func TestSpeechHandler(t *testing.T) {
 
 	})
 
+	t.Run("stream error", func(t *testing.T) {
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
+		defer r.Close()
+
+		e := echo.New()
+		req := httptest.NewRequest("POST", path, r)
+		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
+		req.Proto = "HTTP/2.0"
+		req.ProtoMajor = 2
+		req.ProtoMinor = 0
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		h := s.createSpeechHandler(serviceType, func(ctx context.Context, w io.WriteCloser, chnanelID, connectionID, languageCode string, results any) error {
+			return fmt.Errorf("STREAM-ERROR")
+		})
+		err := h(c)
+		if assert.Error(t, err) {
+			assert.Equal(t, http.StatusOK, rec.Code)
+
+			delim := []byte("\n")[0]
+			for {
+				line, err := rec.Body.ReadBytes(delim)
+				if err != nil {
+					if !assert.ErrorIs(t, err, io.EOF) {
+						t.Logf("STREAM-ERROR: %v\n", err)
+					}
+					break
+				}
+				var result TranscriptionResult
+				if err := json.Unmarshal(line, &result); err != nil {
+					t.Error(err)
+				}
+
+				assert.Equal(t, "error", result.Type)
+				if assert.NotEmpty(t, result.Reason) {
+					assert.Equal(t, "STREAM-ERROR", result.Reason)
+					assert.Empty(t, result.Message)
+				}
+			}
+		}
+
+	})
 }
