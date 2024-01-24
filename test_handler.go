@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	zlog "github.com/rs/zerolog/log"
 )
 
 func init() {
@@ -61,9 +63,12 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 			n, err := reader.Read(buf)
 			if err != nil {
 				if err != io.EOF {
-					errResponse := NewSuzuErrorResponse(err.Error())
-					if err := encoder.Encode(errResponse); err != nil {
-						// TODO: ログを書く
+					if err := encoder.Encode(NewSuzuErrorResponse(err.Error())); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.ChannelID).
+							Str("connection_id", h.ConnectionID).
+							Send()
 					}
 				}
 				w.CloseWithError(err)
@@ -77,9 +82,12 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 
 				if h.OnResultFunc != nil {
 					if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, result); err != nil {
-						errResponse := NewSuzuErrorResponse(err.Error())
-						if err := encoder.Encode(errResponse); err != nil {
-							// TODO: ログを書く
+						if err := encoder.Encode(NewSuzuErrorResponse(err.Error())); err != nil {
+							zlog.Error().
+								Err(err).
+								Str("channel_id", h.ChannelID).
+								Str("connection_id", h.ConnectionID).
+								Send()
 						}
 						w.CloseWithError(err)
 						return

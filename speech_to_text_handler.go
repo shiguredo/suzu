@@ -144,9 +144,12 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 
 			if h.OnResultFunc != nil {
 				if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, resp.Results); err != nil {
-					errResponse := NewSuzuErrorResponse(err.Error())
-					if err := encoder.Encode(errResponse); err != nil {
-						// TODO: ログを書く
+					if err := encoder.Encode(NewSuzuErrorResponse(err.Error())); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.ChannelID).
+							Str("connection_id", h.ConnectionID).
+							Send()
 					}
 					w.CloseWithError(err)
 					return
