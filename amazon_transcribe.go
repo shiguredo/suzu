@@ -11,14 +11,55 @@ import (
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 )
 
+const (
+	AccessDeniedException       = "AccessDeniedException"
+	IncompleteSignature         = "IncompleteSignature"
+	InternalFailure             = "InternalFailure"
+	InvalidAction               = "InvalidAction"
+	InvalidClientTokenID        = "InvalidClientTokenId"
+	InvalidParameterCombination = "InvalidParameterCombination"
+	InvalidParameterValue       = "InvalidParameterValue"
+	InvalidQueryParameter       = "InvalidQueryParameter"
+	MalformedQueryString        = "MalformedQueryString"
+	MissingAction               = "MissingAction"
+	MissingAuthenticationToken  = "MissingAuthenticationToken"
+	MissingParameter            = "MissingParameter"
+	NotAuthorized               = "NotAuthorized"
+	OptInRequired               = "OptInRequired"
+	RequestExpired              = "RequestExpired"
+	ServiceUnavailable          = "ServiceUnavailable"
+	ThrottlingException         = "ThrottlingException"
+	ValidationError             = "ValidationError"
+)
+
 var (
-	// https://docs.aws.amazon.com/transcribe/latest/APIReference/API_streaming_StartStreamTranscription.html#API_streaming_StartStreamTranscription_Errors
-	amazonTranscribeStreamingServiceErrors = map[string]int{
+	amazonErrors = map[string]int{
+		// https://docs.aws.amazon.com/transcribe/latest/APIReference/API_streaming_StartStreamTranscription.html#API_streaming_StartStreamTranscription_Errors
 		transcribestreamingservice.ErrCodeLimitExceededException:      429,
 		transcribestreamingservice.ErrCodeConflictException:           409,
 		transcribestreamingservice.ErrCodeBadRequestException:         400,
 		transcribestreamingservice.ErrCodeInternalFailureException:    500,
 		transcribestreamingservice.ErrCodeServiceUnavailableException: 503,
+
+		// https://docs.aws.amazon.com/transcribe/latest/APIReference/CommonErrors.html
+		AccessDeniedException:       400,
+		IncompleteSignature:         400,
+		InternalFailure:             500,
+		InvalidAction:               400,
+		InvalidClientTokenID:        403,
+		InvalidParameterCombination: 400,
+		InvalidParameterValue:       400,
+		InvalidQueryParameter:       400,
+		MalformedQueryString:        404,
+		MissingAction:               400,
+		MissingAuthenticationToken:  403,
+		MissingParameter:            400,
+		NotAuthorized:               400,
+		OptInRequired:               403,
+		RequestExpired:              400,
+		ServiceUnavailable:          503,
+		ThrottlingException:         400,
+		ValidationError:             400,
 	}
 )
 
@@ -108,7 +149,7 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.Reader) (*transcribe
 	resp, err := client.StartStreamTranscriptionWithContext(ctx, &input)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
-			code, ok := amazonTranscribeStreamingServiceErrors[awsErr.Code()]
+			code, ok := amazonErrors[awsErr.Code()]
 			if !ok {
 				return nil, err
 			}
