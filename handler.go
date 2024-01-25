@@ -144,7 +144,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					Send()
 				if err, ok := err.(*SuzuError); ok {
 					// SuzuError の場合はその Status Code を返す
-					return echo.NewHTTPError(err.Code, err)
+					return c.NoContent(err.Code)
 				}
 
 				// SuzuError 以外の場合は 500 を返す
