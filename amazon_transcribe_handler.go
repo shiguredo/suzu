@@ -103,7 +103,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 				case *transcribestreamingservice.TranscriptEvent:
 					if h.OnResultFunc != nil {
 						if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, e.Transcript.Results); err != nil {
-							if err := encoder.Encode(NewSuzuErrorResponse(err.Error())); err != nil {
+							if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
 								zlog.Error().
 									Err(err).
 									Str("channel_id", h.ChannelID).
@@ -149,8 +149,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 		}
 
 		if err := stream.Err(); err != nil {
-			errResponse := NewSuzuErrorResponse(err.Error())
-			if err := encoder.Encode(errResponse); err != nil {
+			if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
 				zlog.Error().
 					Err(err).
 					Str("channel_id", h.ChannelID).

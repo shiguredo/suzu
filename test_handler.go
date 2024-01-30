@@ -63,7 +63,7 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 			n, err := reader.Read(buf)
 			if err != nil {
 				if err != io.EOF {
-					if err := encoder.Encode(NewSuzuErrorResponse(err.Error())); err != nil {
+					if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
 						zlog.Error().
 							Err(err).
 							Str("channel_id", h.ChannelID).
@@ -82,7 +82,7 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 
 				if h.OnResultFunc != nil {
 					if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, result); err != nil {
-						if err := encoder.Encode(NewSuzuErrorResponse(err.Error())); err != nil {
+						if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
 							zlog.Error().
 								Err(err).
 								Str("channel_id", h.ChannelID).

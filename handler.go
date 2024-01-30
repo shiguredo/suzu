@@ -30,10 +30,10 @@ type TranscriptionResult struct {
 	Type    string `json:"type"`
 }
 
-func NewSuzuErrorResponse(message string) TranscriptionResult {
+func NewSuzuErrorResponse(err error) TranscriptionResult {
 	return TranscriptionResult{
 		Type:   "error",
-		Reason: message,
+		Reason: err.Error(),
 	}
 }
 
