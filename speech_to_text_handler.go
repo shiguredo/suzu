@@ -75,11 +75,13 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 	go func() {
 		defer oggWriter.Close()
 		if err := opus2ogg(ctx, reader, oggWriter, h.SampleRate, h.ChannelCount, h.Config); err != nil {
-			zlog.Error().
-				Err(err).
-				Str("channel_id", h.ChannelID).
-				Str("connection_id", h.ConnectionID).
-				Send()
+			if err != io.EOF {
+				zlog.Error().
+					Err(err).
+					Str("channel_id", h.ChannelID).
+					Str("connection_id", h.ConnectionID).
+					Send()
+			}
 			oggWriter.CloseWithError(err)
 			return
 		}
