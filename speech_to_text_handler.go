@@ -116,7 +116,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 				w.CloseWithError(err)
 				return
 			}
-			if status := resp.Error; err != nil {
+			if status := resp.Error; status != nil {
 				// 音声の長さの上限値に達した場合
 				code := codes.Code(status.GetCode())
 				if code == codes.OutOfRange ||
