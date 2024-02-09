@@ -3,6 +3,7 @@ package suzu
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 
@@ -106,6 +107,14 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 					Str("connection_id", h.ConnectionID).
 					Send()
 
+				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+					zlog.Error().
+						Err(err).
+						Str("channel_id", h.ChannelID).
+						Str("connection_id", h.ConnectionID).
+						Send()
+				}
+
 				if (strings.Contains(err.Error(), "code = OutOfRange")) ||
 					(strings.Contains(err.Error(), "code = InvalidArgument")) ||
 					(strings.Contains(err.Error(), "code = ResourceExhausted")) {
@@ -117,6 +126,14 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 				return
 			}
 			if status := resp.Error; status != nil {
+				err := fmt.Errorf(status.GetMessage())
+				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+					zlog.Error().
+						Err(err).
+						Str("channel_id", h.ChannelID).
+						Str("connection_id", h.ConnectionID).
+						Send()
+				}
 				// 音声の長さの上限値に達した場合
 				code := codes.Code(status.GetCode())
 				if code == codes.OutOfRange ||
