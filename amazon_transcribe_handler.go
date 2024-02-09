@@ -152,14 +152,6 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 		}
 
 		if err := stream.Err(); err != nil {
-			if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
-				zlog.Error().
-					Err(err).
-					Str("channel_id", h.ChannelID).
-					Str("connection_id", h.ConnectionID).
-					Send()
-			}
-
 			// 復帰が不可能なエラー以外は再接続を試みる
 			switch err.(type) {
 			case *transcribestreamingservice.LimitExceededException,
@@ -172,6 +164,14 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 
 				err = ErrServerDisconnected
 			default:
+				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+					zlog.Error().
+						Err(err).
+						Str("channel_id", h.ChannelID).
+						Str("connection_id", h.ConnectionID).
+						Send()
+				}
+
 			}
 
 			w.CloseWithError(err)

@@ -107,14 +107,6 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 					Str("connection_id", h.ConnectionID).
 					Send()
 
-				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
-					zlog.Error().
-						Err(err).
-						Str("channel_id", h.ChannelID).
-						Str("connection_id", h.ConnectionID).
-						Send()
-				}
-
 				if (strings.Contains(err.Error(), "code = OutOfRange")) ||
 					(strings.Contains(err.Error(), "code = InvalidArgument")) ||
 					(strings.Contains(err.Error(), "code = ResourceExhausted")) {
@@ -122,11 +114,6 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 					return
 				}
 
-				w.CloseWithError(err)
-				return
-			}
-			if status := resp.Error; status != nil {
-				err := fmt.Errorf(status.GetMessage())
 				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
 					zlog.Error().
 						Err(err).
@@ -134,6 +121,11 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 						Str("connection_id", h.ConnectionID).
 						Send()
 				}
+
+				w.CloseWithError(err)
+				return
+			}
+			if status := resp.Error; status != nil {
 				// 音声の長さの上限値に達した場合
 				code := codes.Code(status.GetCode())
 				if code == codes.OutOfRange ||
@@ -146,16 +138,26 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 						Str("connection_id", h.ConnectionID).
 						Int32("code", status.GetCode()).
 						Msg(status.GetMessage())
-					err := ErrServerDisconnected
 
-					w.CloseWithError(err)
+					w.CloseWithError(ErrServerDisconnected)
 					return
 				}
+
+				errMessage := status.GetMessage()
 				zlog.Error().
 					Str("channel_id", h.ChannelID).
 					Str("connection_id", h.ConnectionID).
 					Int32("code", status.GetCode()).
-					Msg(status.GetMessage())
+					Msg(errMessage)
+
+				err := fmt.Errorf(errMessage)
+				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+					zlog.Error().
+						Err(err).
+						Str("channel_id", h.ChannelID).
+						Str("connection_id", h.ConnectionID).
+						Send()
+				}
 
 				w.Close()
 				return
