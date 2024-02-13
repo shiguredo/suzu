@@ -373,24 +373,32 @@ func TestSpeechHandler(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		h := s.createSpeechHandler(serviceType, func(ctx context.Context, w io.WriteCloser, chnanelID, connectionID, languageCode string, results any) error {
-			return fmt.Errorf("STREAM-ERROR")
+			go func() {
+				defer w.Close()
+
+				encoder := json.NewEncoder(w)
+				if err := encoder.Encode(NewSuzuErrorResponse(fmt.Errorf("STREAM-ERROR"))); err != nil {
+					return
+				}
+			}()
+
+			return nil
 		})
 		err := h(c)
-		if assert.Error(t, err) {
+		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 
 			delim := []byte("\n")[0]
 			for {
 				line, err := rec.Body.ReadBytes(delim)
 				if err != nil {
-					if !assert.ErrorIs(t, err, io.EOF) {
-						t.Logf("STREAM-ERROR: %v\n", err)
-					}
+					assert.ErrorIs(t, err, io.EOF)
 					break
 				}
+
 				var result TranscriptionResult
 				if err := json.Unmarshal(line, &result); err != nil {
-					t.Error(err)
+					assert.ErrorIs(t, err, io.EOF)
 				}
 
 				assert.Equal(t, "error", result.Type)
