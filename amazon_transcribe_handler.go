@@ -164,6 +164,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 
 				err = ErrServerDisconnected
 			default:
+				// 再接続を想定している以外のエラーの場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
 				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
 					zlog.Error().
 						Err(err).
@@ -171,7 +172,6 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 						Str("connection_id", h.ConnectionID).
 						Send()
 				}
-
 			}
 
 			w.CloseWithError(err)
