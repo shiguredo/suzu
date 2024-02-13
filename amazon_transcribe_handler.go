@@ -154,8 +154,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 		if err := stream.Err(); err != nil {
 			// 復帰が不可能なエラー以外は再接続を試みる
 			switch err.(type) {
-			case *transcribestreamingservice.LimitExceededException,
-				*transcribestreamingservice.InternalFailureException:
+			case *transcribestreamingservice.LimitExceededException:
 				zlog.Error().
 					Err(err).
 					Str("channel_id", h.ChannelID).
