@@ -132,12 +132,24 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 					code == codes.InvalidArgument ||
 					code == codes.ResourceExhausted {
 
+					err := fmt.Errorf(status.GetMessage())
 					zlog.Error().
 						Err(err).
 						Str("channel_id", h.ChannelID).
 						Str("connection_id", h.ConnectionID).
 						Int32("code", status.GetCode()).
-						Msg(status.GetMessage())
+						Send()
+
+					// リトライしない設定の場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
+					if !*stt.Config.Retry {
+						if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+							zlog.Error().
+								Err(err).
+								Str("channel_id", h.ChannelID).
+								Str("connection_id", h.ConnectionID).
+								Send()
+						}
+					}
 
 					w.CloseWithError(ErrServerDisconnected)
 					return
