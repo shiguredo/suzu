@@ -3,6 +3,7 @@ package suzu
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -76,7 +77,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 	go func() {
 		defer oggWriter.Close()
 		if err := opus2ogg(ctx, reader, oggWriter, h.SampleRate, h.ChannelCount, h.Config); err != nil {
-			if err != io.EOF {
+			if !errors.Is(err, io.EOF) {
 				zlog.Error().
 					Err(err).
 					Str("channel_id", h.ChannelID).
