@@ -11,6 +11,14 @@
 
 ## develop
 
+- [CHANGE] サービス接続時にエラーになった場合は、Body が空のレスポンスを返すように変更する
+  - @Hexa
+- [CHANGE] サービス接続後にエラーになった場合は、{"type": "error", "reason": string} をクライアントへ送信するように変更する
+  - @Hexa
+- [CHANGE] aws の再接続条件の exception から InternalFailureException を削除する
+  - @Hexa
+
+
 ## 2023.5.3
 
 - [FIX] VERSION ファイルを tag のバージョンに修正する

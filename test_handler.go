@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	zlog "github.com/rs/zerolog/log"
 )
 
 func init() {
@@ -40,12 +42,13 @@ type TestResult struct {
 	TranscriptionResult
 }
 
-func TestErrorResult(err error) TestResult {
+func NewTestResult(channelID, message string) TestResult {
 	return TestResult{
 		TranscriptionResult: TranscriptionResult{
-			Type:  "test",
-			Error: err,
+			Type:    "test",
+			Message: message,
 		},
+		ChannelID: &channelID,
 	}
 }
 
@@ -59,18 +62,33 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 			buf := make([]byte, FrameSize)
 			n, err := reader.Read(buf)
 			if err != nil {
+				if err != io.EOF {
+					if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.ChannelID).
+							Str("connection_id", h.ConnectionID).
+							Send()
+					}
+				}
 				w.CloseWithError(err)
 				return
 			}
 
 			if n > 0 {
-				var result TestResult
-				result.Type = "test"
-				result.Message = fmt.Sprintf("n: %d", n)
-				result.ChannelID = &[]string{"ch_0"}[0]
+				message := fmt.Sprintf("n: %d", n)
+				channelID := &[]string{"ch_0"}[0]
+				result := NewTestResult(*channelID, message)
 
 				if h.OnResultFunc != nil {
 					if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, result); err != nil {
+						if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+							zlog.Error().
+								Err(err).
+								Str("channel_id", h.ChannelID).
+								Str("connection_id", h.ConnectionID).
+								Send()
+						}
 						w.CloseWithError(err)
 						return
 					}
