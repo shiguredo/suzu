@@ -44,6 +44,7 @@ func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech
 	client, err := speech.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, &SuzuError{
+			// TODO: 適切な StatusCode に変更する
 			Code:    500,
 			Message: err.Error(),
 		}
@@ -51,6 +52,7 @@ func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech
 	stream, err := client.StreamingRecognize(ctx)
 	if err != nil {
 		return nil, &SuzuError{
+			// TODO: 適切な StatusCode に変更する
 			Code:    500,
 			Message: err.Error(),
 		}
@@ -60,6 +62,7 @@ func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech
 		StreamingRequest: streamingRecognitionConfig,
 	}); err != nil {
 		return nil, &SuzuError{
+			// TODO: 適切な StatusCode に変更する
 			Code:    500,
 			Message: err.Error(),
 		}
