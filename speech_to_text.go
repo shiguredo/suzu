@@ -43,17 +43,26 @@ func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech
 
 	client, err := speech.NewClient(ctx, opts...)
 	if err != nil {
-		return nil, err
+		return nil, &SuzuError{
+			Code:    500,
+			Message: err.Error(),
+		}
 	}
 	stream, err := client.StreamingRecognize(ctx)
 	if err != nil {
-		return nil, err
+		return nil, &SuzuError{
+			Code:    500,
+			Message: err.Error(),
+		}
 	}
 
 	if err := stream.Send(&speechpb.StreamingRecognizeRequest{
 		StreamingRequest: streamingRecognitionConfig,
 	}); err != nil {
-		return nil, err
+		return nil, &SuzuError{
+			Code:    500,
+			Message: err.Error(),
+		}
 	}
 
 	go func() {
