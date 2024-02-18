@@ -11,7 +11,7 @@ require (
 	github.com/pion/rtp v1.8.3
 	github.com/rs/zerolog v1.32.0
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20240205201215-2c58cdc269a3
+	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a
 	golang.org/x/net v0.21.0
 	golang.org/x/sync v0.6.0
 	google.golang.org/api v0.163.0
