@@ -3,6 +3,8 @@ package suzu
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"strings"
 
@@ -45,11 +47,10 @@ type GcpResult struct {
 	TranscriptionResult
 }
 
-func NewGcpResult(err error) GcpResult {
+func NewGcpResult() GcpResult {
 	return GcpResult{
 		TranscriptionResult: TranscriptionResult{
-			Type:  "gcp",
-			Error: err,
+			Type: "gcp",
 		},
 	}
 }
@@ -64,6 +65,11 @@ func (gr *GcpResult) WithStability(stability float32) *GcpResult {
 	return gr
 }
 
+func (gr *GcpResult) SetMessage(message string) *GcpResult {
+	gr.Message = message
+	return gr
+}
+
 func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
 	stt := NewSpeechToText(h.Config, h.LanguageCode, int32(h.SampleRate), int32(h.ChannelCount))
 
@@ -71,11 +77,13 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 	go func() {
 		defer oggWriter.Close()
 		if err := opus2ogg(ctx, reader, oggWriter, h.SampleRate, h.ChannelCount, h.Config); err != nil {
-			zlog.Error().
-				Err(err).
-				Str("channel_id", h.ChannelID).
-				Str("connection_id", h.ConnectionID).
-				Send()
+			if !errors.Is(err, io.EOF) {
+				zlog.Error().
+					Err(err).
+					Str("channel_id", h.ChannelID).
+					Str("connection_id", h.ConnectionID).
+					Send()
+			}
 			oggWriter.CloseWithError(err)
 			return
 		}
@@ -107,32 +115,62 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 					return
 				}
 
+				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+					zlog.Error().
+						Err(err).
+						Str("channel_id", h.ChannelID).
+						Str("connection_id", h.ConnectionID).
+						Send()
+				}
+
 				w.CloseWithError(err)
 				return
 			}
-			if status := resp.Error; err != nil {
+			if status := resp.Error; status != nil {
 				// 音声の長さの上限値に達した場合
 				code := codes.Code(status.GetCode())
 				if code == codes.OutOfRange ||
 					code == codes.InvalidArgument ||
 					code == codes.ResourceExhausted {
 
+					err := fmt.Errorf(status.GetMessage())
 					zlog.Error().
 						Err(err).
 						Str("channel_id", h.ChannelID).
 						Str("connection_id", h.ConnectionID).
 						Int32("code", status.GetCode()).
-						Msg(status.GetMessage())
-					err := ErrServerDisconnected
+						Send()
 
-					w.CloseWithError(err)
+					// リトライしない設定の場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
+					if !*stt.Config.Retry {
+						if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+							zlog.Error().
+								Err(err).
+								Str("channel_id", h.ChannelID).
+								Str("connection_id", h.ConnectionID).
+								Send()
+						}
+					}
+
+					w.CloseWithError(ErrServerDisconnected)
 					return
 				}
+
+				errMessage := status.GetMessage()
 				zlog.Error().
 					Str("channel_id", h.ChannelID).
 					Str("connection_id", h.ConnectionID).
 					Int32("code", status.GetCode()).
-					Msg(status.GetMessage())
+					Msg(errMessage)
+
+				err := fmt.Errorf(errMessage)
+				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+					zlog.Error().
+						Err(err).
+						Str("channel_id", h.ChannelID).
+						Str("connection_id", h.ConnectionID).
+						Send()
+				}
 
 				w.Close()
 				return
@@ -140,6 +178,13 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 
 			if h.OnResultFunc != nil {
 				if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, resp.Results); err != nil {
+					if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.ChannelID).
+							Str("connection_id", h.ConnectionID).
+							Send()
+					}
 					w.CloseWithError(err)
 					return
 				}
@@ -151,7 +196,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 						}
 					}
 
-					result := NewGcpResult(nil)
+					result := NewGcpResult()
 					if stt.Config.GcpResultIsFinal {
 						result.WithIsFinal(res.IsFinal)
 					}
@@ -173,7 +218,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 							}
 						}
 						transcript := alternative.Transcript
-						result.Message = transcript
+						result.SetMessage(transcript)
 						if err := encoder.Encode(result); err != nil {
 							w.CloseWithError(err)
 							return

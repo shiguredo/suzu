@@ -125,7 +125,7 @@ func TestSpeechHandler(t *testing.T) {
 				lastMessage = result.Message
 			}
 			// TODO: テストデータは固定のため、すべてのメッセージを確認する
-			assert.Equal(t, lastMessage, "n: 3")
+			assert.Equal(t, "n: 3", lastMessage)
 		}
 
 	})
@@ -359,4 +359,55 @@ func TestSpeechHandler(t *testing.T) {
 
 	})
 
+	t.Run("stream error", func(t *testing.T) {
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
+		defer r.Close()
+
+		e := echo.New()
+		req := httptest.NewRequest("POST", path, r)
+		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
+		req.Proto = "HTTP/2.0"
+		req.ProtoMajor = 2
+		req.ProtoMinor = 0
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		h := s.createSpeechHandler(serviceType, func(ctx context.Context, w io.WriteCloser, chnanelID, connectionID, languageCode string, results any) error {
+			go func() {
+				defer w.Close()
+
+				encoder := json.NewEncoder(w)
+				if err := encoder.Encode(NewSuzuErrorResponse(fmt.Errorf("STREAM-ERROR"))); err != nil {
+					return
+				}
+			}()
+
+			return nil
+		})
+		err := h(c)
+		if assert.NoError(t, err) {
+			assert.Equal(t, http.StatusOK, rec.Code)
+
+			delim := []byte("\n")[0]
+			for {
+				line, err := rec.Body.ReadBytes(delim)
+				if err != nil {
+					assert.ErrorIs(t, err, io.EOF)
+					break
+				}
+
+				var result TranscriptionResult
+				if err := json.Unmarshal(line, &result); err != nil {
+					assert.ErrorIs(t, err, io.EOF)
+				}
+
+				assert.Equal(t, "error", result.Type)
+				if assert.NotEmpty(t, result.Reason) {
+					assert.Equal(t, "STREAM-ERROR", result.Reason)
+					assert.Empty(t, result.Message)
+				}
+			}
+		}
+
+	})
 }

@@ -3,6 +3,7 @@ package suzu
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
@@ -43,11 +44,10 @@ type AwsResult struct {
 	TranscriptionResult
 }
 
-func NewAwsResult(err error) AwsResult {
+func NewAwsResult() AwsResult {
 	return AwsResult{
 		TranscriptionResult: TranscriptionResult{
-			Type:  "aws",
-			Error: err,
+			Type: "aws",
 		},
 	}
 }
@@ -62,6 +62,11 @@ func (ar *AwsResult) WithIsPartial(isPartial bool) *AwsResult {
 	return ar
 }
 
+func (ar *AwsResult) SetMessage(message string) *AwsResult {
+	ar.Message = message
+	return ar
+}
+
 func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(h.Config, h.LanguageCode, int64(h.SampleRate), int64(h.ChannelCount))
 
@@ -69,11 +74,14 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 	go func() {
 		defer oggWriter.Close()
 		if err := opus2ogg(ctx, reader, oggWriter, h.SampleRate, h.ChannelCount, h.Config); err != nil {
-			zlog.Error().
-				Err(err).
-				Str("channel_id", h.ChannelID).
-				Str("connection_id", h.ConnectionID).
-				Send()
+			if !errors.Is(err, io.EOF) {
+				zlog.Error().
+					Err(err).
+					Str("channel_id", h.ChannelID).
+					Str("connection_id", h.ConnectionID).
+					Send()
+			}
+
 			oggWriter.CloseWithError(err)
 			return
 		}
@@ -99,6 +107,13 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 				case *transcribestreamingservice.TranscriptEvent:
 					if h.OnResultFunc != nil {
 						if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, e.Transcript.Results); err != nil {
+							if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+								zlog.Error().
+									Err(err).
+									Str("channel_id", h.ChannelID).
+									Str("connection_id", h.ConnectionID).
+									Send()
+							}
 							w.CloseWithError(err)
 							return
 						}
@@ -111,7 +126,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 								}
 							}
 
-							result := NewAwsResult(nil)
+							result := NewAwsResult()
 							if at.Config.AwsResultIsPartial {
 								result.WithIsPartial(*res.IsPartial)
 							}
@@ -123,7 +138,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 								if alt.Transcript != nil {
 									message = *alt.Transcript
 								}
-								result.Message = message
+								result.SetMessage(message)
 								if err := encoder.Encode(result); err != nil {
 									w.CloseWithError(err)
 									return
@@ -140,16 +155,34 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 		if err := stream.Err(); err != nil {
 			// 復帰が不可能なエラー以外は再接続を試みる
 			switch err.(type) {
-			case *transcribestreamingservice.LimitExceededException,
-				*transcribestreamingservice.InternalFailureException:
+			case *transcribestreamingservice.LimitExceededException:
 				zlog.Error().
 					Err(err).
 					Str("channel_id", h.ChannelID).
 					Str("connection_id", h.ConnectionID).
 					Send()
 
+				// リトライしない設定の場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
+				if !*at.Config.Retry {
+					if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.ChannelID).
+							Str("connection_id", h.ConnectionID).
+							Send()
+					}
+				}
+
 				err = ErrServerDisconnected
 			default:
+				// 再接続を想定している以外のエラーの場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
+				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
+					zlog.Error().
+						Err(err).
+						Str("channel_id", h.ChannelID).
+						Str("connection_id", h.ConnectionID).
+						Send()
+				}
 			}
 
 			w.CloseWithError(err)

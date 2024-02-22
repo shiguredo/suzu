@@ -26,8 +26,15 @@ var (
 
 type TranscriptionResult struct {
 	Message string `json:"message,omitempty"`
-	Error   error  `json:"error,omitempty"`
+	Reason  string `json:"reason,omitempty"`
 	Type    string `json:"type"`
+}
+
+func NewSuzuErrorResponse(err error) TranscriptionResult {
+	return TranscriptionResult{
+		Type:   "error",
+		Reason: err.Error(),
+	}
 }
 
 func getServiceHandler(serviceType string, config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) (serviceHandlerInterface, error) {
@@ -135,8 +142,13 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					Str("channel_id", h.SoraChannelID).
 					Str("connection_id", h.SoraConnectionID).
 					Send()
-				// TODO: エラー内容で status code を変更する
-				return echo.NewHTTPError(http.StatusInternalServerError)
+				if err, ok := err.(*SuzuError); ok {
+					// SuzuError の場合はその Status Code を返す
+					return c.NoContent(err.Code)
+				}
+
+				// SuzuError 以外の場合は 500 を返す
+				return echo.NewHTTPError(http.StatusInternalServerError, err)
 			}
 			defer reader.Close()
 
