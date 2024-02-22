@@ -11,6 +11,11 @@
 
 ## develop
 
+
+## 2024.1.0
+
+- [UPDATE] go.mod の Go のバージョンを 1.22.0 にあげる
+  - @voluntas
 - [CHANGE] サービス接続時にエラーになった場合は、Body が空のレスポンスを返すように変更する
   - @Hexa
 - [CHANGE] サービス接続後にエラーになった場合は、{"type": "error", "reason": string} をクライアントへ送信するように変更する
