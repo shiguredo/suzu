@@ -143,8 +143,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					Str("connection_id", h.SoraConnectionID).
 					Send()
 				if err, ok := err.(*SuzuError); ok {
-					if *s.config.Retry {
-						if err.IsRetry() {
+					if err.IsRetry() {
+						if *s.config.MaxRetry > retryCount {
 							retryCount += 1
 
 							zlog.Debug().
@@ -184,7 +184,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							Send()
 						return err
 					} else if errors.Is(err, ErrServerDisconnected) {
-						if *s.config.Retry {
+						if *s.config.MaxRetry > retryCount {
 							// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
 							retryCount += 1
 
@@ -214,6 +214,9 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					// サーバから切断されたが再度の接続が期待できない場合
 					return err
 				}
+
+				// 1 度でも接続結果を受け取れた場合はリトライ回数をリセットする
+				retryCount = 0
 
 				// メッセージが空でない場合はクライアントに結果を送信する
 				if n > 0 {

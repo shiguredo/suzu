@@ -142,7 +142,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 						Send()
 
 					// リトライしない設定の場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
-					if !*stt.Config.Retry {
+					if *stt.Config.MaxRetry < 1 {
 						if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
 							zlog.Error().
 								Err(err).

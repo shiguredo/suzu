@@ -163,7 +163,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 					Send()
 
 				// リトライしない設定の場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
-				if !*at.Config.Retry {
+				if *at.Config.MaxRetry < 1 {
 					if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
 						zlog.Error().
 							Err(err).
