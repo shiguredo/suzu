@@ -154,6 +154,9 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 								Int("retry_count", retryCount).
 								Send()
 
+							// 連続のリトライを避けるために少し待つ
+							time.Sleep(time.Duration(s.config.RetryIntervalMs) * time.Millisecond)
+
 							// リトライ対象のエラーのため、クライアントとの接続は切らずにリトライする
 							continue
 						}
@@ -194,6 +197,9 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 								Str("connection_id", h.SoraConnectionID).
 								Int("retry_count", retryCount).
 								Send()
+
+							// TODO: 必要な場合は連続のリトライを避けるために少し待つ処理を追加する
+
 							break
 						} else {
 							// サーバから切断されたが再接続させない設定の場合
