@@ -101,7 +101,7 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.Reader) (*transcribe
 			message := reqErr.Message()
 
 			var retry bool
-			if code == 429 {
+			if code == http.StatusTooManyRequests {
 				retry = true
 			}
 
