@@ -143,6 +143,22 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					Str("connection_id", h.SoraConnectionID).
 					Send()
 				if err, ok := err.(*SuzuError); ok {
+					if *s.config.Retry {
+						if err.IsRetry() {
+							retryCount += 1
+
+							zlog.Debug().
+								Err(err).
+								Str("channel_id", h.SoraChannelID).
+								Str("connection_id", h.SoraConnectionID).
+								Int("retry_count", retryCount).
+								Send()
+
+							// リトライ対象のエラーのため、クライアントとの接続は切らずにリトライする
+							continue
+						}
+					}
+
 					// SuzuError の場合はその Status Code を返す
 					return c.NoContent(err.Code)
 				}
