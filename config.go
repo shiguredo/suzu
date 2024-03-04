@@ -165,7 +165,8 @@ func setDefaultsConfig(config *Config) {
 
 	// 未指定の場合のリトライ回数は 0
 	if config.MaxRetry == nil {
-		*config.MaxRetry = DefaultMaxRetry
+		maxRetry := DefaultMaxRetry
+		config.MaxRetry = &maxRetry
 	}
 }
 func validateConfig(config *Config) error {
@@ -215,4 +216,5 @@ func ShowConfig(config *Config) {
 	zlog.Info().Str("exporter_listen_addr", config.ExporterListenAddr).Msg("CONF")
 	zlog.Info().Int("exporter_listen_port", config.ExporterListenPort).Msg("CONF")
 
+	zlog.Info().Int("max_retry", *config.MaxRetry).Msg("CONF")
 }
