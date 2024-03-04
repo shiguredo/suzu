@@ -27,6 +27,9 @@ const (
 
 	// 100ms
 	DefaultTimeToWaitForOpusPacketMs = 100
+
+	// リトライ無し
+	DefaultMaxRetry = 0
 )
 
 type Config struct {
@@ -46,7 +49,7 @@ type Config struct {
 	HTTP2MaxReadFrameSize     uint32 `ini:"http2_max_read_frame_size"`
 	HTTP2IdleTimeout          uint32 `ini:"http2_idle_timeout"`
 
-	Retry *bool `ini:"retry"`
+	MaxRetry *int `ini:"max_retry"`
 
 	ExporterHTTPS      bool   `ini:"exporter_https"`
 	ExporterListenAddr string `ini:"exporter_listen_addr"`
@@ -160,10 +163,9 @@ func setDefaultsConfig(config *Config) {
 		config.TimeToWaitForOpusPacketMs = DefaultTimeToWaitForOpusPacketMs
 	}
 
-	// 未指定の場合は true
-	if config.Retry == nil {
-		defaultRetry := true
-		config.Retry = &defaultRetry
+	// 未指定の場合のリトライ回数は 0
+	if config.MaxRetry == nil {
+		*config.MaxRetry = DefaultMaxRetry
 	}
 }
 func validateConfig(config *Config) error {
