@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sync"
 
 	zlog "github.com/rs/zerolog/log"
 )
@@ -21,6 +22,8 @@ type TestHandler struct {
 	SampleRate   uint32
 	ChannelCount uint16
 	LanguageCode string
+	RetryCount   int
+	mu           sync.Mutex
 
 	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
@@ -50,6 +53,24 @@ func NewTestResult(channelID, message string) TestResult {
 		},
 		ChannelID: &channelID,
 	}
+}
+
+func (h *TestHandler) UpdateRetryCount() int {
+	defer h.mu.Unlock()
+	h.mu.Lock()
+	h.RetryCount++
+	return h.RetryCount
+}
+
+func (h *TestHandler) GetRetryCount() int {
+	return h.RetryCount
+}
+
+func (h *TestHandler) ResetRetryCount() int {
+	defer h.mu.Unlock()
+	h.mu.Lock()
+	h.RetryCount = 0
+	return h.RetryCount
 }
 
 func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {

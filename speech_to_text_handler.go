@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	zlog "github.com/rs/zerolog/log"
 
@@ -25,6 +26,8 @@ type SpeechToTextHandler struct {
 	SampleRate   uint32
 	ChannelCount uint16
 	LanguageCode string
+	RetryCount   int
+	mu           sync.Mutex
 
 	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
@@ -68,6 +71,24 @@ func (gr *GcpResult) WithStability(stability float32) *GcpResult {
 func (gr *GcpResult) SetMessage(message string) *GcpResult {
 	gr.Message = message
 	return gr
+}
+
+func (h *SpeechToTextHandler) UpdateRetryCount() int {
+	defer h.mu.Unlock()
+	h.mu.Lock()
+	h.RetryCount++
+	return h.RetryCount
+}
+
+func (h *SpeechToTextHandler) GetRetryCount() int {
+	return h.RetryCount
+}
+
+func (h *SpeechToTextHandler) ResetRetryCount() int {
+	defer h.mu.Unlock()
+	h.mu.Lock()
+	h.RetryCount = 0
+	return h.RetryCount
 }
 
 func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
@@ -141,8 +162,8 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 						Int32("code", status.GetCode()).
 						Send()
 
-					// リトライしない設定の場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
-					if stt.Config.MaxRetry < 1 {
+					// リトライしない設定の場合、または、max_retry を超えた場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
+					if (stt.Config.MaxRetry < 1) || (stt.Config.MaxRetry <= h.GetRetryCount()) {
 						if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
 							zlog.Error().
 								Err(err).
