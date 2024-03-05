@@ -133,6 +133,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			zlog.Info().
 				Str("channel_id", h.SoraChannelID).
 				Str("connection_id", h.SoraConnectionID).
+				Int("retry_count", retryCount).
 				Msg("NEW-REQUEST")
 
 			reader, err := serviceHandler.Handle(ctx, r)
@@ -146,13 +147,6 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					if err.IsRetry() {
 						if s.config.MaxRetry > retryCount {
 							retryCount += 1
-
-							zlog.Debug().
-								Err(err).
-								Str("channel_id", h.SoraChannelID).
-								Str("connection_id", h.SoraConnectionID).
-								Int("retry_count", retryCount).
-								Send()
 
 							// 連続のリトライを避けるために少し待つ
 							time.Sleep(time.Duration(s.config.RetryIntervalMs) * time.Millisecond)
@@ -190,13 +184,6 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 						if s.config.MaxRetry > retryCount {
 							// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
 							retryCount += 1
-
-							zlog.Debug().
-								Err(err).
-								Str("channel_id", h.SoraChannelID).
-								Str("connection_id", h.SoraConnectionID).
-								Int("retry_count", retryCount).
-								Send()
 
 							// TODO: 必要な場合は連続のリトライを避けるために少し待つ処理を追加する
 
