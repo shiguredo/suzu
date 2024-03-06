@@ -11,6 +11,9 @@
 
 ## develop
 
+
+## 2024.2.0
+
 - [CHANGE] retry 設定を削除し、リトライ回数を指定する max_retry 設定を追加する
     - リトライしない場合は、max_retry を設定ファイルから削除するか、または、max_retry = 0 を設定する
     - デフォルト値: 0 （リトライ無し）
@@ -26,7 +29,6 @@
     - @Hexa
 - [CHANGE] aws、または、gcp への接続後にリトライ回数が max_retry を超えた場合は、{"type": "error", "reason": string} をクライアントへ送信する
     - @Hexa
-
 
 ## 2024.1.0
 
