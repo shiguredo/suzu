@@ -175,16 +175,16 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 		}
 
 		if err := stream.Err(); err != nil {
+			zlog.Error().
+				Err(err).
+				Str("channel_id", h.ChannelID).
+				Str("connection_id", h.ConnectionID).
+				Int("retry_count", h.GetRetryCount()).
+				Send()
+
 			// 復帰が不可能なエラー以外は再接続を試みる
 			switch err.(type) {
 			case *transcribestreamingservice.LimitExceededException:
-				zlog.Error().
-					Err(err).
-					Str("channel_id", h.ChannelID).
-					Str("connection_id", h.ConnectionID).
-					Int("retry_count", h.GetRetryCount()).
-					Send()
-
 				// リトライしない設定の場合、または、max_retry を超えた場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
 				if (at.Config.MaxRetry < 1) || (at.Config.MaxRetry <= h.GetRetryCount()) {
 					if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
