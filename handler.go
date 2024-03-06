@@ -125,14 +125,13 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
-		retryCount := 0
-
 		// サーバへの接続・結果の送信処理
 		// サーバへの再接続が期待できる限りは、再接続を試みる
 		for {
 			zlog.Info().
 				Str("channel_id", h.SoraChannelID).
 				Str("connection_id", h.SoraConnectionID).
+				Int("retry_count", serviceHandler.GetRetryCount()).
 				Msg("NEW-REQUEST")
 
 			reader, err := serviceHandler.Handle(ctx, r)
@@ -143,10 +142,20 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					Str("connection_id", h.SoraConnectionID).
 					Send()
 				if err, ok := err.(*SuzuError); ok {
+					if err.IsRetry() {
+						if s.config.MaxRetry > serviceHandler.GetRetryCount() {
+							serviceHandler.UpdateRetryCount()
+
+							// 連続のリトライを避けるために少し待つ
+							time.Sleep(time.Duration(s.config.RetryIntervalMs) * time.Millisecond)
+
+							// リトライ対象のエラーのため、クライアントとの接続は切らずにリトライする
+							continue
+						}
+					}
 					// SuzuError の場合はその Status Code を返す
 					return c.NoContent(err.Code)
 				}
-
 				// SuzuError 以外の場合は 500 を返す
 				return echo.NewHTTPError(http.StatusInternalServerError, err)
 			}
@@ -168,18 +177,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							Send()
 						return err
 					} else if errors.Is(err, ErrServerDisconnected) {
-						if *s.config.Retry {
-							// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
-							retryCount += 1
-
-							zlog.Debug().
-								Err(err).
-								Str("channel_id", h.SoraChannelID).
-								Str("connection_id", h.SoraConnectionID).
-								Int("retry_count", retryCount).
-								Send()
-							break
-						} else {
+						if s.config.MaxRetry < 1 {
 							// サーバから切断されたが再接続させない設定の場合
 							zlog.Error().
 								Err(err).
@@ -188,16 +186,32 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 								Send()
 							return err
 						}
+
+						if s.config.MaxRetry > serviceHandler.GetRetryCount() {
+							// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
+
+							serviceHandler.UpdateRetryCount()
+
+							// TODO: 必要な場合は連続のリトライを避けるために少し待つ処理を追加する
+
+							break
+						} else {
+							zlog.Error().
+								Err(err).
+								Str("channel_id", h.SoraChannelID).
+								Str("connection_id", h.SoraConnectionID).
+								Send()
+							// max_retry を超えた場合は終了
+							return c.NoContent(http.StatusOK)
+						}
 					}
 
-					zlog.Error().
-						Err(err).
-						Str("channel_id", h.SoraChannelID).
-						Str("connection_id", h.SoraConnectionID).
-						Send()
 					// サーバから切断されたが再度の接続が期待できない場合
 					return err
 				}
+
+				// 1 度でも接続結果を受け取れた場合はリトライ回数をリセットする
+				serviceHandler.ResetRetryCount()
 
 				// メッセージが空でない場合はクライアントに結果を送信する
 				if n > 0 {

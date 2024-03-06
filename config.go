@@ -27,6 +27,9 @@ const (
 
 	// 100ms
 	DefaultTimeToWaitForOpusPacketMs = 100
+
+	// リトライ間隔 100ms
+	DefaultRetryIntervalMs = 100
 )
 
 type Config struct {
@@ -46,7 +49,8 @@ type Config struct {
 	HTTP2MaxReadFrameSize     uint32 `ini:"http2_max_read_frame_size"`
 	HTTP2IdleTimeout          uint32 `ini:"http2_idle_timeout"`
 
-	Retry *bool `ini:"retry"`
+	MaxRetry        int `ini:"max_retry"`
+	RetryIntervalMs int `ini:"retry_interval_ms"`
 
 	ExporterHTTPS      bool   `ini:"exporter_https"`
 	ExporterListenAddr string `ini:"exporter_listen_addr"`
@@ -160,12 +164,11 @@ func setDefaultsConfig(config *Config) {
 		config.TimeToWaitForOpusPacketMs = DefaultTimeToWaitForOpusPacketMs
 	}
 
-	// 未指定の場合は true
-	if config.Retry == nil {
-		defaultRetry := true
-		config.Retry = &defaultRetry
+	if config.RetryIntervalMs == 0 {
+		config.RetryIntervalMs = DefaultRetryIntervalMs
 	}
 }
+
 func validateConfig(config *Config) error {
 	var err error
 	// アドレスとして正しいことを確認する
@@ -213,4 +216,6 @@ func ShowConfig(config *Config) {
 	zlog.Info().Str("exporter_listen_addr", config.ExporterListenAddr).Msg("CONF")
 	zlog.Info().Int("exporter_listen_port", config.ExporterListenPort).Msg("CONF")
 
+	zlog.Info().Int("max_retry", config.MaxRetry).Msg("CONF")
+	zlog.Info().Int("retry_interval_ms", config.RetryIntervalMs).Msg("CONF")
 }
