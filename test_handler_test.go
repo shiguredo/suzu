@@ -243,17 +243,6 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("packet read error", func(t *testing.T) {
-		logger := log.Logger
-		defer func() {
-			log.Logger = logger
-		}()
-
-		pr, pw, err := os.Pipe()
-		if err != nil {
-			t.Fatal(err)
-		}
-		log.Logger = zerolog.New(pw).With().Caller().Timestamp().Logger()
-
 		r := iotest.ErrReader(errors.New("packet read error"))
 
 		e := echo.New()
@@ -271,14 +260,11 @@ func TestSpeechHandler(t *testing.T) {
 			assert.Equal(t, "packet read error", err.Error())
 		}
 
-		pw.Close()
-
-		var buf bytes.Buffer
-		n, err := buf.ReadFrom(pr)
+		line, err := rec.Body.ReadBytes([]byte("\n")[0])
 		if err != nil {
 			t.Fatal(err)
 		}
-		assert.Contains(t, buf.String()[:n], "packet read error")
+		assert.Contains(t, string(line), "packet read error")
 	})
 
 	t.Run("silent packet", func(t *testing.T) {

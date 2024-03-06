@@ -99,9 +99,16 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.Reader) (*transcribe
 		if reqErr, ok := err.(awserr.RequestFailure); ok {
 			code := reqErr.StatusCode()
 			message := reqErr.Message()
+
+			var retry bool
+			if code == http.StatusTooManyRequests {
+				retry = true
+			}
+
 			return nil, &SuzuError{
 				Code:    code,
 				Message: message,
+				Retry:   retry,
 			}
 		}
 		return nil, err
