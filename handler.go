@@ -38,12 +38,12 @@ func NewSuzuErrorResponse(err error) TranscriptionResult {
 }
 
 func getServiceHandler(serviceType string, config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) (serviceHandlerInterface, error) {
-	newHandlerFunc, err := NewServiceHandlerFuncs.get(serviceType)
+	handler, err := ServiceHandlers.Get(serviceType)
 	if err != nil {
 		return nil, err
 	}
 
-	return (*newHandlerFunc)(config, channelID, connectionID, sampleRate, channelCount, languageCode, onResultFunc), nil
+	return handler.New(config, channelID, connectionID, sampleRate, channelCount, languageCode, onResultFunc), nil
 }
 
 // https://echo.labstack.com/cookbook/streaming-response/

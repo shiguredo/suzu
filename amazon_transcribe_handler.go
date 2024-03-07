@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	NewServiceHandlerFuncs.register("aws", NewAmazonTranscribeHandler)
+	ServiceHandlers.Register("aws", new(AmazonTranscribeHandler))
 }
 
 type AmazonTranscribeHandler struct {
@@ -29,7 +29,7 @@ type AmazonTranscribeHandler struct {
 	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
 
-func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
+func (h *AmazonTranscribeHandler) New(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
 	return &AmazonTranscribeHandler{
 		Config:       config,
 		ChannelID:    channelID,

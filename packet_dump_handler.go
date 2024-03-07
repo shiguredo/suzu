@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	NewServiceHandlerFuncs.register("dump", NewPacketDumpHandler)
+	ServiceHandlers.Register("dump", new(PacketDumpHandler))
 }
 
 type PacketDumpHandler struct {
@@ -27,7 +27,7 @@ type PacketDumpHandler struct {
 	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
 
-func NewPacketDumpHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
+func (h *PacketDumpHandler) New(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
 	return &PacketDumpHandler{
 		Config:       config,
 		ChannelID:    channelID,
