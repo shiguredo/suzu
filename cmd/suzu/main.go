@@ -17,7 +17,7 @@ func main() {
 
 	// bin/suzu -C config.ini
 	configFilePath := flag.String("C", "./config.ini", "設定ファイルへのパス")
-	serviceType := flag.String("service", "aws", fmt.Sprintf("音声文字変換のサービス（%s）", strings.Join(suzu.ServiceHandlers.GetNames([]string{"test", "dump"}), ", ")))
+	serviceType := flag.String("service", "aws", fmt.Sprintf("音声文字変換のサービス（%s）", strings.Join(suzu.ServiceHandlerMakers.GetNames([]string{"test", "dump"}), ", ")))
 	flag.Parse()
 
 	if *showVersion {

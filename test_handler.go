@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	ServiceHandlers.Register("test", new(TestHandler))
+	ServiceHandlerMakers.Register("test", new(TestHandlerMaker))
 }
 
 type TestHandler struct {
@@ -28,7 +28,9 @@ type TestHandler struct {
 	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
 
-func (h *TestHandler) New(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
+type TestHandlerMaker struct{}
+
+func (h *TestHandlerMaker) New(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
 	return &TestHandler{
 		Config:       config,
 		ChannelID:    channelID,

@@ -9,45 +9,48 @@ import (
 )
 
 var (
-	ServiceHandlers = NewServiceHandlers()
+	ServiceHandlerMakers = NewServiceHandlerMakers()
 
 	ErrServiceNotFound = fmt.Errorf("SERVICE-NOT-FOUND")
 )
+
+type serviceHandlerMakerInterface interface {
+	New(Config, string, string, uint32, uint16, string, any) serviceHandlerInterface
+}
 
 type serviceHandlerInterface interface {
 	Handle(context.Context, io.Reader) (*io.PipeReader, error)
 	UpdateRetryCount() int
 	GetRetryCount() int
 	ResetRetryCount() int
-	New(Config, string, string, uint32, uint16, string, any) serviceHandlerInterface
 }
 
-type serviceHandlers struct {
-	Handlers map[string]serviceHandlerInterface
+type serviceHandlerMakers struct {
+	Makers map[string]serviceHandlerMakerInterface
 }
 
-func NewServiceHandlers() serviceHandlers {
-	return serviceHandlers{
-		Handlers: make(map[string]serviceHandlerInterface),
+func NewServiceHandlerMakers() serviceHandlerMakers {
+	return serviceHandlerMakers{
+		Makers: make(map[string]serviceHandlerMakerInterface),
 	}
 }
 
-func (h *serviceHandlers) Register(name string, f serviceHandlerInterface) {
-	h.Handlers[name] = f
+func (h *serviceHandlerMakers) Register(name string, f serviceHandlerMakerInterface) {
+	h.Makers[name] = f
 }
 
-func (h *serviceHandlers) Get(name string) (serviceHandlerInterface, error) {
-	handler, ok := h.Handlers[name]
+func (h *serviceHandlerMakers) Get(name string) (serviceHandlerMakerInterface, error) {
+	maker, ok := h.Makers[name]
 	if !ok {
 		return nil, ErrServiceNotFound
 	}
-	return handler, nil
+	return maker, nil
 }
 
-func (h *serviceHandlers) GetNames(exclude []string) []string {
-	handlers := h.Handlers
-	names := make([]string, 0, len(handlers))
-	for name := range handlers {
+func (h *serviceHandlerMakers) GetNames(exclude []string) []string {
+	makers := h.Makers
+	names := make([]string, 0, len(makers))
+	for name := range makers {
 		if slices.Contains(exclude, name) {
 			continue
 		}

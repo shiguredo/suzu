@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	ServiceHandlers.Register("gcp", new(SpeechToTextHandler))
+	ServiceHandlerMakers.Register("gcp", new(SpeechToTextHandlerMaker))
 }
 
 type SpeechToTextHandler struct {
@@ -32,7 +32,9 @@ type SpeechToTextHandler struct {
 	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
 
-func (h *SpeechToTextHandler) New(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
+type SpeechToTextHandlerMaker struct{}
+
+func (h *SpeechToTextHandlerMaker) New(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
 	return &SpeechToTextHandler{
 		Config:       config,
 		ChannelID:    channelID,

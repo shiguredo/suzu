@@ -38,7 +38,7 @@ func NewSuzuErrorResponse(err error) TranscriptionResult {
 }
 
 func getServiceHandler(serviceType string, config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) (serviceHandlerInterface, error) {
-	handler, err := ServiceHandlers.Get(serviceType)
+	handler, err := ServiceHandlerMakers.Get(serviceType)
 	if err != nil {
 		return nil, err
 	}
