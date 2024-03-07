@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -21,8 +20,7 @@ type PacketDumpHandler struct {
 	SampleRate   uint32
 	ChannelCount uint16
 	LanguageCode string
-	RetryCount   int
-	mu           sync.Mutex
+	RetryCounter RetryCounter
 
 	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
@@ -37,6 +35,7 @@ func (h *PacketDumpHandlerMaker) New(config Config, channelID, connectionID stri
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
+		RetryCounter: NewRetryCounter(),
 		OnResultFunc: onResultFunc.(func(context.Context, io.WriteCloser, string, string, string, any) error),
 	}
 }
@@ -52,21 +51,15 @@ type PacketDumpResult struct {
 }
 
 func (h *PacketDumpHandler) UpdateRetryCount() int {
-	defer h.mu.Unlock()
-	h.mu.Lock()
-	h.RetryCount++
-	return h.RetryCount
+	return h.RetryCounter.Update()
 }
 
 func (h *PacketDumpHandler) GetRetryCount() int {
-	return h.RetryCount
+	return h.RetryCounter.Get()
 }
 
 func (h *PacketDumpHandler) ResetRetryCount() int {
-	defer h.mu.Unlock()
-	h.mu.Lock()
-	h.RetryCount = 0
-	return h.RetryCount
+	return h.RetryCounter.Reset()
 }
 
 func (h *PacketDumpHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"sync"
 
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 	zlog "github.com/rs/zerolog/log"
@@ -23,8 +22,7 @@ type AmazonTranscribeHandler struct {
 	SampleRate   uint32
 	ChannelCount uint16
 	LanguageCode string
-	RetryCount   int
-	mu           sync.Mutex
+	RetryCounter RetryCounter
 
 	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
@@ -39,7 +37,7 @@ func (h *AmazonTranscribeHandlerMaker) New(config Config, channelID, connectionI
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
-		RetryCount:   0,
+		RetryCounter: NewRetryCounter(),
 		OnResultFunc: onResultFunc.(func(context.Context, io.WriteCloser, string, string, string, any) error),
 	}
 }
@@ -74,21 +72,15 @@ func (ar *AwsResult) SetMessage(message string) *AwsResult {
 }
 
 func (h *AmazonTranscribeHandler) UpdateRetryCount() int {
-	defer h.mu.Unlock()
-	h.mu.Lock()
-	h.RetryCount++
-	return h.RetryCount
+	return h.RetryCounter.Update()
 }
 
 func (h *AmazonTranscribeHandler) GetRetryCount() int {
-	return h.RetryCount
+	return h.RetryCounter.Get()
 }
 
 func (h *AmazonTranscribeHandler) ResetRetryCount() int {
-	defer h.mu.Unlock()
-	h.mu.Lock()
-	h.RetryCount = 0
-	return h.RetryCount
+	return h.RetryCounter.Reset()
 }
 
 func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {

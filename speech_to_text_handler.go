@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"sync"
 
 	zlog "github.com/rs/zerolog/log"
 
@@ -26,8 +25,7 @@ type SpeechToTextHandler struct {
 	SampleRate   uint32
 	ChannelCount uint16
 	LanguageCode string
-	RetryCount   int
-	mu           sync.Mutex
+	RetryCounter RetryCounter
 
 	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
@@ -42,6 +40,7 @@ func (h *SpeechToTextHandlerMaker) New(config Config, channelID, connectionID st
 		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		LanguageCode: languageCode,
+		RetryCounter: NewRetryCounter(),
 		OnResultFunc: onResultFunc.(func(context.Context, io.WriteCloser, string, string, string, any) error),
 	}
 }
@@ -76,21 +75,15 @@ func (gr *GcpResult) SetMessage(message string) *GcpResult {
 }
 
 func (h *SpeechToTextHandler) UpdateRetryCount() int {
-	defer h.mu.Unlock()
-	h.mu.Lock()
-	h.RetryCount++
-	return h.RetryCount
+	return h.RetryCounter.Update()
 }
 
 func (h *SpeechToTextHandler) GetRetryCount() int {
-	return h.RetryCount
+	return h.RetryCounter.Get()
 }
 
 func (h *SpeechToTextHandler) ResetRetryCount() int {
-	defer h.mu.Unlock()
-	h.mu.Lock()
-	h.RetryCount = 0
-	return h.RetryCount
+	return h.RetryCounter.Reset()
 }
 
 func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {

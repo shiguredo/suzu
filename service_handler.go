@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 
 	"golang.org/x/exp/slices"
 )
@@ -58,4 +59,33 @@ func (h *serviceHandlerMakers) GetNames(exclude []string) []string {
 	}
 
 	return names
+}
+
+type RetryCounter struct {
+	Count int
+	mu    sync.Mutex
+}
+
+func NewRetryCounter() RetryCounter {
+	return RetryCounter{
+		Count: 0,
+	}
+}
+
+func (r *RetryCounter) Update() int {
+	defer r.mu.Unlock()
+	r.mu.Lock()
+	r.Count++
+	return r.Count
+}
+
+func (r *RetryCounter) Get() int {
+	return r.Count
+}
+
+func (r *RetryCounter) Reset() int {
+	defer r.mu.Unlock()
+	r.mu.Lock()
+	r.Count = 0
+	return r.Count
 }
