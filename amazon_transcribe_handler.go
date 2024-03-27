@@ -45,6 +45,7 @@ func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, s
 type AwsResult struct {
 	ChannelID *string `json:"channel_id,omitempty"`
 	IsPartial *bool   `json:"is_partial,omitempty"`
+	ResultID  *string `json:"result_id,omitempty"`
 	TranscriptionResult
 }
 
@@ -63,6 +64,11 @@ func (ar *AwsResult) WithChannelID(channelID string) *AwsResult {
 
 func (ar *AwsResult) WithIsPartial(isPartial bool) *AwsResult {
 	ar.IsPartial = &isPartial
+	return ar
+}
+
+func (ar *AwsResult) WithResultID(resultID string) *AwsResult {
+	ar.ResultID = &resultID
 	return ar
 }
 
@@ -154,6 +160,9 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 							}
 							if at.Config.AwsResultChannelID {
 								result.WithChannelID(*res.ChannelId)
+							}
+							if at.Config.AwsResultResultID {
+								result.WithResultID(*res.ResultId)
 							}
 							for _, alt := range res.Alternatives {
 								var message string
