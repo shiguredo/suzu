@@ -87,6 +87,7 @@ type Config struct {
 	// 変換結果に含める項目の有無の指定
 	AwsResultChannelID bool `ini:"aws_result_channel_id"`
 	AwsResultIsPartial bool `ini:"aws_result_is_partial"`
+	AwsResultID        bool `ini:"aws_result_id"`
 
 	// Google Cloud Platform
 	GcpCredentialFile                      string   `ini:"gcp_credential_file"`
