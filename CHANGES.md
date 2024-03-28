@@ -11,6 +11,9 @@
 
 ## develop
 
+- [ADD] Amazon Transcribe からの結果の Results[].ResultId をクライアントに返す aws_result_id 設定を追加する
+    - デフォルト値: false
+    - @Hexa
 
 ## 2024.2.0
 
