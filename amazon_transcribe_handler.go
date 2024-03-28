@@ -161,7 +161,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 							if at.Config.AwsResultChannelID {
 								result.WithChannelID(*res.ChannelId)
 							}
-							if at.Config.AwsResultResultID {
+							if at.Config.AwsResultID {
 								result.WithResultID(*res.ResultId)
 							}
 							for _, alt := range res.Alternatives {
