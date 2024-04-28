@@ -4,17 +4,17 @@ go 1.22.2
 
 require (
 	cloud.google.com/go/speech v1.23.0
-	github.com/aws/aws-sdk-go v1.51.25
+	github.com/aws/aws-sdk-go v1.51.30
 	github.com/labstack/echo-contrib v0.17.1
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/pion/randutil v0.1.0
-	github.com/pion/rtp v1.8.5
+	github.com/pion/rtp v1.8.6
 	github.com/rs/zerolog v1.32.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
 	golang.org/x/net v0.24.0
 	golang.org/x/sync v0.7.0
-	google.golang.org/api v0.175.0
+	google.golang.org/api v0.176.1
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/ini.v1 v1.67.0
@@ -23,8 +23,8 @@ require (
 
 require (
 	cloud.google.com/go v0.112.1 // indirect
-	cloud.google.com/go/auth v0.2.2 // indirect
-	cloud.google.com/go/auth/oauth2adapt v0.2.1 // indirect
+	cloud.google.com/go/auth v0.3.0 // indirect
+	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
 	cloud.google.com/go/compute v1.24.0 // indirect
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	cloud.google.com/go/longrunning v0.5.6 // indirect
