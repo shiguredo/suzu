@@ -11,30 +11,31 @@
 
 ## develop
 
+### misc
 
 ## 2024.3.0
 
 - [ADD] Amazon Transcribe からの結果の Results[].ResultId をクライアントに返す aws_result_id 設定を追加する
-    - デフォルト値: false
-    - @Hexa
+  - デフォルト値: false
+  - @Hexa
 
 ## 2024.2.0
 
 - [CHANGE] retry 設定を削除し、リトライ回数を指定する max_retry 設定を追加する
-    - リトライしない場合は、max_retry を設定ファイルから削除するか、または、max_retry = 0 を設定する
-    - デフォルト値: 0 （リトライ無し）
-    - @Hexa
+  - リトライしない場合は、max_retry を設定ファイルから削除するか、または、max_retry = 0 を設定する
+  - デフォルト値: 0 （リトライ無し）
+  - @Hexa
 - [ADD] サービス接続時のエラーによるリトライまでの時間間隔を指定する retry_interval_ms 設定（ミリ秒間隔）を追加する
-    - デフォルト値: 100 （100 ms）
-    - @Hexa
+  - デフォルト値: 100 （100 ms）
+  - @Hexa
 - [ADD] サービス接続時の特定のエラー発生時に、リトライする仕組みを追加する
-    - @Hexa
+  - @Hexa
 - [ADD] ハンドラーにリトライ回数を管理するメソッドを追加する
-    - @Hexa
+  - @Hexa
 - [CHANGE] aws への接続時に、時間をおいて再接続できる可能性がある HTTP ステータスコードが 429 の応答の場合は、指定されたリトライ設定に応じて、再接続を試みるように変更する
-    - @Hexa
+  - @Hexa
 - [CHANGE] aws、または、gcp への接続後にリトライ回数が max_retry を超えた場合は、{"type": "error", "reason": string} をクライアントへ送信する
-    - @Hexa
+  - @Hexa
 
 ## 2024.1.0
 
@@ -46,7 +47,6 @@
   - @Hexa
 - [CHANGE] aws の再接続条件の exception から InternalFailureException を削除する
   - @Hexa
-
 
 ## 2023.5.3
 
@@ -63,7 +63,7 @@
 ## 2023.5.1
 
 - [FIX] HTTP/2 Rapid Reset 対策として Go 1.21.3 以上でリリースバイナリを作成するよう修正する
-  - https://groups.google.com/g/golang-announce/c/iNNxDTCjZvo
+  - <https://groups.google.com/g/golang-announce/c/iNNxDTCjZvo>
   - @voluntas
 
 ## 2023.5.0
