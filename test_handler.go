@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	zlog "github.com/rs/zerolog/log"
 )
@@ -53,6 +54,11 @@ func NewTestResult(channelID, message string) TestResult {
 		},
 		ChannelID: &channelID,
 	}
+}
+
+func (tr *TestResult) SetTimestamp() *TestResult {
+	tr.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
+	return tr
 }
 
 func (h *TestHandler) UpdateRetryCount() int {
@@ -114,6 +120,7 @@ func (h *TestHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeRea
 						return
 					}
 				} else {
+					result.SetTimestamp()
 					if err := encoder.Encode(result); err != nil {
 						w.CloseWithError(err)
 						return

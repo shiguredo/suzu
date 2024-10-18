@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 	zlog "github.com/rs/zerolog/log"
@@ -74,6 +75,11 @@ func (ar *AwsResult) WithResultID(resultID string) *AwsResult {
 
 func (ar *AwsResult) SetMessage(message string) *AwsResult {
 	ar.Message = message
+	return ar
+}
+
+func (ar *AwsResult) SetTimestamp() *AwsResult {
+	ar.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
 	return ar
 }
 
@@ -170,6 +176,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 									message = *alt.Transcript
 								}
 								result.SetMessage(message)
+								result.SetTimestamp()
 								if err := encoder.Encode(result); err != nil {
 									w.CloseWithError(err)
 									return

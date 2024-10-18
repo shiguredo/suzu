@@ -8,6 +8,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 
 	zlog "github.com/rs/zerolog/log"
 
@@ -70,6 +71,11 @@ func (gr *GcpResult) WithStability(stability float32) *GcpResult {
 
 func (gr *GcpResult) SetMessage(message string) *GcpResult {
 	gr.Message = message
+	return gr
+}
+
+func (gr *GcpResult) SetTimestamp() *GcpResult {
+	gr.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
 	return gr
 }
 
@@ -240,6 +246,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 						}
 						transcript := alternative.Transcript
 						result.SetMessage(transcript)
+						result.SetTimestamp()
 						if err := encoder.Encode(result); err != nil {
 							w.CloseWithError(err)
 							return

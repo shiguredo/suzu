@@ -25,9 +25,10 @@ var (
 )
 
 type TranscriptionResult struct {
-	Message string `json:"message,omitempty"`
-	Reason  string `json:"reason,omitempty"`
-	Type    string `json:"type"`
+	Message   string `json:"message,omitempty"`
+	Reason    string `json:"reason,omitempty"`
+	Type      string `json:"type"`
+	Timestamp string `json:"timestamp"`
 }
 
 func NewSuzuErrorResponse(err error) TranscriptionResult {
