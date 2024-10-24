@@ -240,13 +240,6 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 	}
 	defer o.Close()
 
-	if err := o.writeHeaders(); err != nil {
-		if w, ok := oggWriter.(*io.PipeWriter); ok {
-			w.CloseWithError(err)
-		}
-		return err
-	}
-
 	for {
 		buf := make([]byte, FrameSize)
 		n, err := opusReader.Read(buf)
