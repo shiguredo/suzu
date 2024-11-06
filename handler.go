@@ -2,6 +2,7 @@ package suzu
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -230,6 +231,73 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 	}
 }
 
+func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
+	r, w := io.Pipe()
+
+	go func() {
+		defer w.Close()
+
+		length := 0
+		payloadLength := 0
+		var payload []byte
+
+		for {
+			buf := make([]byte, 20+0xffff)
+			n, err := reader.Read(buf)
+			if err != nil {
+				// TODO: ログ出力
+				return
+			}
+
+			payload = append(payload, buf[:n]...)
+			length += n
+
+			if length > 20 {
+				// timestamp(64), sequence number(64), length(32)
+				h := payload[0:20]
+				p := payload[20:length]
+
+				payloadLength = int(binary.BigEndian.Uint32(h[16:20]))
+
+				if length == (20 + payloadLength) {
+					if _, err := w.Write(p); err != nil {
+						// TODO: ログ出力
+						return
+					}
+					payload = []byte{}
+					length = 0
+					continue
+				}
+
+				// payload が足りないのでさらに読み込む
+				if length < (20 + payloadLength) {
+					// 前の payload へ追加して次へ
+					payload = append(payload, p...)
+					continue
+				}
+
+				// 次の frame が含まれている場合
+				if length > (20 + payloadLength) {
+					payload = append(payload, p[:payloadLength]...)
+					if _, err := w.Write(payload); err != nil {
+						// TODO: ログ出力
+						return
+					}
+					// 次の payload 処理へ
+					payload = p[payloadLength:]
+					length = len(payload)
+					continue
+				}
+			} else {
+				// ヘッダー分に足りなければ次の読み込みへ
+				continue
+			}
+		}
+	}()
+
+	return r, nil
+}
+
 func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sampleRate uint32, channelCount uint16, c Config) error {
 	o, err := NewWith(oggWriter, sampleRate, channelCount)
 	if err != nil {
@@ -249,13 +317,30 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 
 	for {
 		buf := make([]byte, FrameSize)
-		n, err := opusReader.Read(buf)
-		if err != nil {
-			if w, ok := oggWriter.(*io.PipeWriter); ok {
-				w.CloseWithError(err)
+		var n int
+		if c.AudioStreamingHeader {
+			r, err := readPacketWithHeader(opusReader)
+			if err != nil {
+				return err
 			}
-			return err
+
+			n, err = r.Read(buf)
+			if err != nil {
+				if w, ok := oggWriter.(*io.PipeWriter); ok {
+					w.CloseWithError(err)
+				}
+				return err
+			}
+		} else {
+			n, err = opusReader.Read(buf)
+			if err != nil {
+				if w, ok := oggWriter.(*io.PipeWriter); ok {
+					w.CloseWithError(err)
+				}
+				return err
+			}
 		}
+
 		if n > 0 {
 			opus := codecs.OpusPacket{}
 			_, err := opus.Unmarshal(buf[:n])
