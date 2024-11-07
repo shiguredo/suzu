@@ -278,8 +278,7 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 
 				// 次の frame が含まれている場合
 				if length > (20 + payloadLength) {
-					payload = append(payload, p[:payloadLength]...)
-					if _, err := w.Write(payload); err != nil {
+					if _, err := w.Write(p[:payloadLength]); err != nil {
 						// TODO: ログ出力
 						return
 					}
