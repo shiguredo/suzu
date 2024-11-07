@@ -351,30 +351,25 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 		return err
 	}
 
+	var r io.Reader
+	if c.AudioStreamingHeader {
+		r, err = readPacketWithHeader(opusReader)
+		if err != nil {
+			return err
+		}
+	} else {
+		r = opusReader
+	}
+
 	for {
 		buf := make([]byte, FrameSize)
 		var n int
-		if c.AudioStreamingHeader {
-			r, err := readPacketWithHeader(opusReader)
-			if err != nil {
-				return err
+		n, err = r.Read(buf)
+		if err != nil {
+			if w, ok := oggWriter.(*io.PipeWriter); ok {
+				w.CloseWithError(err)
 			}
-
-			n, err = r.Read(buf)
-			if err != nil {
-				if w, ok := oggWriter.(*io.PipeWriter); ok {
-					w.CloseWithError(err)
-				}
-				return err
-			}
-		} else {
-			n, err = opusReader.Read(buf)
-			if err != nil {
-				if w, ok := oggWriter.(*io.PipeWriter); ok {
-					w.CloseWithError(err)
-				}
-				return err
-			}
+			return err
 		}
 
 		if n > 0 {
