@@ -235,8 +235,6 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 	r, w := io.Pipe()
 
 	go func() {
-		defer w.Close()
-
 		length := 0
 		payloadLength := 0
 		var payload []byte
@@ -245,7 +243,7 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 			buf := make([]byte, 20+0xffff)
 			n, err := reader.Read(buf)
 			if err != nil {
-				// TODO: ログ出力
+				w.CloseWithError(err)
 				return
 			}
 
@@ -261,7 +259,7 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 
 				if length == (20 + payloadLength) {
 					if _, err := w.Write(p); err != nil {
-						// TODO: ログ出力
+						w.CloseWithError(err)
 						return
 					}
 					payload = []byte{}
@@ -279,7 +277,7 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 				// 次の frame が含まれている場合
 				if length > (20 + payloadLength) {
 					if _, err := w.Write(p[:payloadLength]); err != nil {
-						// TODO: ログ出力
+						w.CloseWithError(err)
 						return
 					}
 					// 次の payload 処理へ
@@ -297,7 +295,7 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 							// すでに次の payload が全てある場合
 							if length == (20 + payloadLength) {
 								if _, err := w.Write(p); err != nil {
-									// TODO: ログ出力
+									w.CloseWithError(err)
 									return
 								}
 								payload = []byte{}
@@ -307,7 +305,7 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 
 							if length > (20 + payloadLength) {
 								if _, err := w.Write(p[:payloadLength]); err != nil {
-									// TODO: ログ出力
+									w.CloseWithError(err)
 									return
 								}
 
