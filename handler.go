@@ -285,6 +285,43 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 					// 次の payload 処理へ
 					payload = p[payloadLength:]
 					length = len(payload)
+
+					// 次の payload がすでにある場合の処理
+					for {
+						if length > 20 {
+							h = payload[0:20]
+							p = payload[20:length]
+
+							payloadLength = int(binary.BigEndian.Uint32(h[16:20]))
+
+							// すでに次の payload が全てある場合
+							if length == (20 + payloadLength) {
+								if _, err := w.Write(p); err != nil {
+									// TODO: ログ出力
+									return
+								}
+								payload = []byte{}
+								length = 0
+								continue
+							}
+
+							if length > (20 + payloadLength) {
+								if _, err := w.Write(p[:payloadLength]); err != nil {
+									// TODO: ログ出力
+									return
+								}
+
+								// 次の payload 処理へ
+								payload = p[payloadLength:]
+								length = len(payload)
+								continue
+							}
+						} else {
+							// payload が足りないので、次の読み込みへ
+							break
+						}
+					}
+
 					continue
 				}
 			} else {
