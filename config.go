@@ -41,6 +41,8 @@ type Config struct {
 	ListenAddr string `ini:"listen_addr"`
 	ListenPort int    `ini:"listen_port"`
 
+	AudioStreamingHeader bool `ini:"audio_streaming_header"`
+
 	TLSFullchainFile    string `ini:"tls_fullchain_file"`
 	TLSPrivkeyFile      string `ini:"tls_privkey_file"`
 	TLSVerifyCacertPath string `ini:"tls_verify_cacert_path"` // クライアント認証用
