@@ -473,7 +473,9 @@ func silentPacket(audioStreamingHeader bool) []byte {
 		unixTime := make([]byte, 8)
 		binary.BigEndian.PutUint64(unixTime, uint64(t.UnixMicro()))
 
-		seqNum := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+		// 0 で固定
+		seqNum := make([]byte, 8)
+
 		length := make([]byte, 4)
 		binary.BigEndian.PutUint32(length, uint32(len(silentPacket)))
 
