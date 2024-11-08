@@ -25,8 +25,8 @@ const (
 	DefaultExporterListenAddr = "0.0.0.0"
 	DefaultExporterListenPort = 5891
 
-	// 100ms
-	DefaultTimeToWaitForOpusPacketMs = 100
+	// 10s
+	DefaultTimeToWaitForOpusPacketMs = 10000
 
 	// リトライ間隔 100ms
 	DefaultRetryIntervalMs = 100
@@ -40,6 +40,8 @@ type Config struct {
 	HTTPS      bool   `ini:"https"`
 	ListenAddr string `ini:"listen_addr"`
 	ListenPort int    `ini:"listen_port"`
+
+	AudioStreamingHeader bool `ini:"audio_streaming_header"`
 
 	TLSFullchainFile    string `ini:"tls_fullchain_file"`
 	TLSPrivkeyFile      string `ini:"tls_privkey_file"`
