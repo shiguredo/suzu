@@ -35,7 +35,10 @@ func TestOpusPacketReader(t *testing.T) {
 		r := readDumpFile(t, "testdata/000.jsonl", 0)
 		defer r.Close()
 
-		reader := NewOpusReader(d, r)
+		c := Config{
+			AudioStreamingHeader: false,
+		}
+		reader := NewOpusReader(c, d, r)
 
 		for {
 			buf := make([]byte, FrameSize)
@@ -54,7 +57,10 @@ func TestOpusPacketReader(t *testing.T) {
 
 		r := NewErrReadCloser(errPacketRead)
 
-		reader := NewOpusReader(d, &r)
+		c := Config{
+			AudioStreamingHeader: false,
+		}
+		reader := NewOpusReader(c, d, &r)
 
 		for {
 			buf := make([]byte, FrameSize)
@@ -72,7 +78,10 @@ func TestOpusPacketReader(t *testing.T) {
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		r.Close()
 
-		reader := NewOpusReader(d, r)
+		c := Config{
+			AudioStreamingHeader: false,
+		}
+		reader := NewOpusReader(c, d, r)
 
 		for {
 			buf := make([]byte, FrameSize)
@@ -92,7 +101,10 @@ func TestOpusPacketReader(t *testing.T) {
 			r.Close()
 		}()
 
-		reader := NewOpusReader(d, r)
+		c := Config{
+			AudioStreamingHeader: false,
+		}
+		reader := NewOpusReader(c, d, r)
 
 		for {
 			buf := make([]byte, FrameSize)
