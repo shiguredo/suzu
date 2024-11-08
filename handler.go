@@ -113,7 +113,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		channelCount := uint16(s.config.ChannelCount)
 
 		d := time.Duration(s.config.TimeToWaitForOpusPacketMs) * time.Millisecond
-		r := NewOpusReader(d, c.Request().Body)
+		r := NewOpusReader(*s.config, d, c.Request().Body)
 		defer r.Close()
 
 		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode, onResultFunc)
@@ -422,7 +422,7 @@ func readPacket(opusReader io.Reader) chan opusRequest {
 	return ch
 }
 
-func NewOpusReader(d time.Duration, opusReader io.ReadCloser) io.ReadCloser {
+func NewOpusReader(c Config, d time.Duration, opusReader io.ReadCloser) io.ReadCloser {
 	r, w := io.Pipe()
 
 	ch := readPacket(opusReader)
@@ -439,7 +439,7 @@ func NewOpusReader(d time.Duration, opusReader io.ReadCloser) io.ReadCloser {
 			var payload []byte
 			select {
 			case <-timer.C:
-				payload = silentPacket()
+				payload = silentPacket(c.AudioStreamingHeader)
 			case req, ok := <-ch:
 				if !ok {
 					w.Close()
@@ -465,6 +465,24 @@ func NewOpusReader(d time.Duration, opusReader io.ReadCloser) io.ReadCloser {
 	return r
 }
 
-func silentPacket() []byte {
-	return []byte{252, 255, 254}
+func silentPacket(audioStreamingHeader bool) []byte {
+	var packet []byte
+	silentPacket := []byte{252, 255, 254}
+	if audioStreamingHeader {
+		t := time.Now().UTC()
+		unixTime := make([]byte, 8)
+		binary.BigEndian.PutUint64(unixTime, uint64(t.UnixMicro()))
+
+		seqNum := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+		length := make([]byte, 4)
+		binary.BigEndian.PutUint32(length, uint32(len(silentPacket)))
+
+		packet = append(unixTime, seqNum...)
+		packet = append(packet, length...)
+		packet = append(packet, silentPacket...)
+	} else {
+		packet = silentPacket
+	}
+
+	return packet
 }
