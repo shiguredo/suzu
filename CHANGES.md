@@ -16,6 +16,8 @@
 - [ADD] クライアントから送られてくるデータにヘッダーが付与されている場合に対応する audio_streaming_header 設定を追加する
   - デフォルト値: false
   - @Hexa
+- [CHANGE] silent packet の送信までのデフォルトの時間を 10 秒に変更する
+  - @Hexa
 
 ### misc
 

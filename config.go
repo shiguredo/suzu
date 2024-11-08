@@ -25,8 +25,8 @@ const (
 	DefaultExporterListenAddr = "0.0.0.0"
 	DefaultExporterListenPort = 5891
 
-	// 100ms
-	DefaultTimeToWaitForOpusPacketMs = 100
+	// 10s
+	DefaultTimeToWaitForOpusPacketMs = 10000
 
 	// リトライ間隔 100ms
 	DefaultRetryIntervalMs = 100
