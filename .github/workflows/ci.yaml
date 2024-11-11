@@ -22,9 +22,6 @@ jobs:
 
       - run: go fmt .
 
-      - name: Patch
-        run: make patch
-
       - uses: dominikh/staticcheck-action@v1.3.1
         with:
           version: "2023.1.6"
