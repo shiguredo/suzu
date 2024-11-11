@@ -231,6 +231,10 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 	}
 }
 
+const (
+	HeaderLength = 20
+)
+
 func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 	r, w := io.Pipe()
 
@@ -240,7 +244,7 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 		var payload []byte
 
 		for {
-			buf := make([]byte, 20+0xffff)
+			buf := make([]byte, HeaderLength+0xffff)
 			n, err := reader.Read(buf)
 			if err != nil {
 				w.CloseWithError(err)
@@ -252,12 +256,12 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 
 			if length > 20 {
 				// timestamp(64), sequence number(64), length(32)
-				h := payload[0:20]
-				p := payload[20:length]
+				h := payload[:HeaderLength]
+				p := payload[HeaderLength:]
 
-				payloadLength = int(binary.BigEndian.Uint32(h[16:20]))
+				payloadLength = int(binary.BigEndian.Uint32(h[16:HeaderLength]))
 
-				if length == (20 + payloadLength) {
+				if length == (HeaderLength + payloadLength) {
 					if _, err := w.Write(p); err != nil {
 						w.CloseWithError(err)
 						return
@@ -268,7 +272,7 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 				}
 
 				// 次の frame が含まれている場合
-				if length > (20 + payloadLength) {
+				if length > (HeaderLength + payloadLength) {
 					if _, err := w.Write(p[:payloadLength]); err != nil {
 						w.CloseWithError(err)
 						return
@@ -279,14 +283,14 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 
 					// 次の payload がすでにある場合の処理
 					for {
-						if length > 20 {
-							h = payload[0:20]
-							p = payload[20:length]
+						if length > HeaderLength {
+							h = payload[:HeaderLength]
+							p = payload[HeaderLength:]
 
-							payloadLength = int(binary.BigEndian.Uint32(h[16:20]))
+							payloadLength = int(binary.BigEndian.Uint32(h[16:HeaderLength]))
 
 							// すでに次の payload が全てある場合
-							if length == (20 + payloadLength) {
+							if length == (HeaderLength + payloadLength) {
 								if _, err := w.Write(p); err != nil {
 									w.CloseWithError(err)
 									return
@@ -296,7 +300,7 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 								continue
 							}
 
-							if length > (20 + payloadLength) {
+							if length > (HeaderLength + payloadLength) {
 								if _, err := w.Write(p[:payloadLength]); err != nil {
 									w.CloseWithError(err)
 									return
