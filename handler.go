@@ -267,13 +267,6 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 					continue
 				}
 
-				// payload が足りないのでさらに読み込む
-				if length < (20 + payloadLength) {
-					// 前の payload へ追加して次へ
-					payload = append(payload, p...)
-					continue
-				}
-
 				// 次の frame が含まれている場合
 				if length > (20 + payloadLength) {
 					if _, err := w.Write(p[:payloadLength]); err != nil {
@@ -319,8 +312,6 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 							break
 						}
 					}
-
-					continue
 				}
 			} else {
 				// ヘッダー分に足りなければ次の読み込みへ
