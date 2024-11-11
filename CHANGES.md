@@ -13,6 +13,16 @@
 
 ### misc
 
+## 2024.4.0
+
+- [ADD] audio streaming header に対応する
+  - @Hexa
+- [ADD] クライアントから送られてくるデータにヘッダーが付与されている場合に対応する audio_streaming_header 設定を追加する
+  - デフォルト値: false
+  - @Hexa
+- [CHANGE] silent packet の送信までのデフォルトの時間を 10 秒に変更する
+  - @Hexa
+
 ## 2024.3.0
 
 - [ADD] Amazon Transcribe からの結果の Results[].ResultId をクライアントに返す aws_result_id 設定を追加する

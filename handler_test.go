@@ -35,7 +35,10 @@ func TestOpusPacketReader(t *testing.T) {
 		r := readDumpFile(t, "testdata/000.jsonl", 0)
 		defer r.Close()
 
-		reader := NewOpusReader(d, r)
+		c := Config{
+			AudioStreamingHeader: false,
+		}
+		reader := NewOpusReader(c, d, r)
 
 		for {
 			buf := make([]byte, FrameSize)
@@ -48,13 +51,42 @@ func TestOpusPacketReader(t *testing.T) {
 		}
 	})
 
+	t.Run("audio streaming header", func(t *testing.T) {
+		d := time.Duration(100) * time.Millisecond
+		r := readDumpFile(t, "testdata/header.jsonl", 0)
+		defer r.Close()
+
+		c := Config{
+			AudioStreamingHeader: true,
+		}
+		reader := NewOpusReader(c, d, r)
+
+		for {
+			buf := make([]byte, FrameSize)
+			_, err := reader.Read(buf)
+			if err != nil {
+				assert.ErrorIs(t, err, io.EOF)
+				break
+			}
+			// seqNum
+			assert.Equal(t, buf[8:16], []byte{0, 0, 0, 0, 0, 0, 0, 0})
+			// length
+			assert.Equal(t, buf[16:20], []byte{0, 0, 0, 3})
+			assert.Equal(t, buf[20:23], []byte{252, 255, 254})
+
+		}
+	})
+
 	t.Run("read error", func(t *testing.T) {
 		d := time.Duration(100) * time.Millisecond
 		errPacketRead := errors.New("packet read error")
 
 		r := NewErrReadCloser(errPacketRead)
 
-		reader := NewOpusReader(d, &r)
+		c := Config{
+			AudioStreamingHeader: false,
+		}
+		reader := NewOpusReader(c, d, &r)
 
 		for {
 			buf := make([]byte, FrameSize)
@@ -72,7 +104,10 @@ func TestOpusPacketReader(t *testing.T) {
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		r.Close()
 
-		reader := NewOpusReader(d, r)
+		c := Config{
+			AudioStreamingHeader: false,
+		}
+		reader := NewOpusReader(c, d, r)
 
 		for {
 			buf := make([]byte, FrameSize)
@@ -92,7 +127,10 @@ func TestOpusPacketReader(t *testing.T) {
 			r.Close()
 		}()
 
-		reader := NewOpusReader(d, r)
+		c := Config{
+			AudioStreamingHeader: false,
+		}
+		reader := NewOpusReader(c, d, r)
 
 		for {
 			buf := make([]byte, FrameSize)

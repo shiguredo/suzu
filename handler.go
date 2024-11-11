@@ -2,6 +2,7 @@ package suzu
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -112,7 +113,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		channelCount := uint16(s.config.ChannelCount)
 
 		d := time.Duration(s.config.TimeToWaitForOpusPacketMs) * time.Millisecond
-		r := NewOpusReader(d, c.Request().Body)
+		r := NewOpusReader(*s.config, d, c.Request().Body)
 		defer r.Close()
 
 		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode, onResultFunc)
@@ -230,6 +231,107 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 	}
 }
 
+func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
+	r, w := io.Pipe()
+
+	go func() {
+		length := 0
+		payloadLength := 0
+		var payload []byte
+
+		for {
+			buf := make([]byte, 20+0xffff)
+			n, err := reader.Read(buf)
+			if err != nil {
+				w.CloseWithError(err)
+				return
+			}
+
+			payload = append(payload, buf[:n]...)
+			length += n
+
+			if length > 20 {
+				// timestamp(64), sequence number(64), length(32)
+				h := payload[0:20]
+				p := payload[20:length]
+
+				payloadLength = int(binary.BigEndian.Uint32(h[16:20]))
+
+				if length == (20 + payloadLength) {
+					if _, err := w.Write(p); err != nil {
+						w.CloseWithError(err)
+						return
+					}
+					payload = []byte{}
+					length = 0
+					continue
+				}
+
+				// payload が足りないのでさらに読み込む
+				if length < (20 + payloadLength) {
+					// 前の payload へ追加して次へ
+					payload = append(payload, p...)
+					continue
+				}
+
+				// 次の frame が含まれている場合
+				if length > (20 + payloadLength) {
+					if _, err := w.Write(p[:payloadLength]); err != nil {
+						w.CloseWithError(err)
+						return
+					}
+					// 次の payload 処理へ
+					payload = p[payloadLength:]
+					length = len(payload)
+
+					// 次の payload がすでにある場合の処理
+					for {
+						if length > 20 {
+							h = payload[0:20]
+							p = payload[20:length]
+
+							payloadLength = int(binary.BigEndian.Uint32(h[16:20]))
+
+							// すでに次の payload が全てある場合
+							if length == (20 + payloadLength) {
+								if _, err := w.Write(p); err != nil {
+									w.CloseWithError(err)
+									return
+								}
+								payload = []byte{}
+								length = 0
+								continue
+							}
+
+							if length > (20 + payloadLength) {
+								if _, err := w.Write(p[:payloadLength]); err != nil {
+									w.CloseWithError(err)
+									return
+								}
+
+								// 次の payload 処理へ
+								payload = p[payloadLength:]
+								length = len(payload)
+								continue
+							}
+						} else {
+							// payload が足りないので、次の読み込みへ
+							break
+						}
+					}
+
+					continue
+				}
+			} else {
+				// ヘッダー分に足りなければ次の読み込みへ
+				continue
+			}
+		}
+	}()
+
+	return r, nil
+}
+
 func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sampleRate uint32, channelCount uint16, c Config) error {
 	o, err := NewWith(oggWriter, sampleRate, channelCount)
 	if err != nil {
@@ -240,15 +342,33 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 	}
 	defer o.Close()
 
+	if err := o.writeHeaders(); err != nil {
+		if w, ok := oggWriter.(*io.PipeWriter); ok {
+			w.CloseWithError(err)
+		}
+		return err
+	}
+
+	var r io.Reader
+	if c.AudioStreamingHeader {
+		r, err = readPacketWithHeader(opusReader)
+		if err != nil {
+			return err
+		}
+	} else {
+		r = opusReader
+	}
+
 	for {
 		buf := make([]byte, FrameSize)
-		n, err := opusReader.Read(buf)
+		n, err := r.Read(buf)
 		if err != nil {
 			if w, ok := oggWriter.(*io.PipeWriter); ok {
 				w.CloseWithError(err)
 			}
 			return err
 		}
+
 		if n > 0 {
 			opus := codecs.OpusPacket{}
 			_, err := opus.Unmarshal(buf[:n])
@@ -302,7 +422,7 @@ func readPacket(opusReader io.Reader) chan opusRequest {
 	return ch
 }
 
-func NewOpusReader(d time.Duration, opusReader io.ReadCloser) io.ReadCloser {
+func NewOpusReader(c Config, d time.Duration, opusReader io.ReadCloser) io.ReadCloser {
 	r, w := io.Pipe()
 
 	ch := readPacket(opusReader)
@@ -319,7 +439,7 @@ func NewOpusReader(d time.Duration, opusReader io.ReadCloser) io.ReadCloser {
 			var payload []byte
 			select {
 			case <-timer.C:
-				payload = silentPacket()
+				payload = silentPacket(c.AudioStreamingHeader)
 			case req, ok := <-ch:
 				if !ok {
 					w.Close()
@@ -345,6 +465,26 @@ func NewOpusReader(d time.Duration, opusReader io.ReadCloser) io.ReadCloser {
 	return r
 }
 
-func silentPacket() []byte {
-	return []byte{252, 255, 254}
+func silentPacket(audioStreamingHeader bool) []byte {
+	var packet []byte
+	silentPacket := []byte{252, 255, 254}
+	if audioStreamingHeader {
+		t := time.Now().UTC()
+		unixTime := make([]byte, 8)
+		binary.BigEndian.PutUint64(unixTime, uint64(t.UnixMicro()))
+
+		// 0 で固定
+		seqNum := make([]byte, 8)
+
+		length := make([]byte, 4)
+		binary.BigEndian.PutUint32(length, uint32(len(silentPacket)))
+
+		packet = append(unixTime, seqNum...)
+		packet = append(packet, length...)
+		packet = append(packet, silentPacket...)
+	} else {
+		packet = silentPacket
+	}
+
+	return packet
 }
