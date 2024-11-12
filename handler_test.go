@@ -29,15 +29,15 @@ func (e *ErrReadCloser) Close() error {
 }
 
 func TestOpusPacketReader(t *testing.T) {
+	c := Config{
+		AudioStreamingHeader: false,
+	}
 
 	t.Run("success", func(t *testing.T) {
 		d := time.Duration(100) * time.Millisecond
 		r := readDumpFile(t, "testdata/000.jsonl", 0)
 		defer r.Close()
 
-		c := Config{
-			AudioStreamingHeader: false,
-		}
 		reader := NewOpusReader(c, d, r)
 
 		for {
@@ -51,41 +51,12 @@ func TestOpusPacketReader(t *testing.T) {
 		}
 	})
 
-	t.Run("audio streaming header", func(t *testing.T) {
-		d := time.Duration(100) * time.Millisecond
-		r := readDumpFile(t, "testdata/header.jsonl", 0)
-		defer r.Close()
-
-		c := Config{
-			AudioStreamingHeader: true,
-		}
-		reader := NewOpusReader(c, d, r)
-
-		for {
-			buf := make([]byte, FrameSize)
-			_, err := reader.Read(buf)
-			if err != nil {
-				assert.ErrorIs(t, err, io.EOF)
-				break
-			}
-			// seqNum
-			assert.Equal(t, buf[8:16], []byte{0, 0, 0, 0, 0, 0, 0, 0})
-			// length
-			assert.Equal(t, buf[16:20], []byte{0, 0, 0, 3})
-			assert.Equal(t, buf[20:23], []byte{252, 255, 254})
-
-		}
-	})
-
 	t.Run("read error", func(t *testing.T) {
 		d := time.Duration(100) * time.Millisecond
 		errPacketRead := errors.New("packet read error")
 
 		r := NewErrReadCloser(errPacketRead)
 
-		c := Config{
-			AudioStreamingHeader: false,
-		}
 		reader := NewOpusReader(c, d, &r)
 
 		for {
@@ -104,9 +75,6 @@ func TestOpusPacketReader(t *testing.T) {
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		r.Close()
 
-		c := Config{
-			AudioStreamingHeader: false,
-		}
 		reader := NewOpusReader(c, d, r)
 
 		for {
@@ -127,9 +95,6 @@ func TestOpusPacketReader(t *testing.T) {
 			r.Close()
 		}()
 
-		c := Config{
-			AudioStreamingHeader: false,
-		}
 		reader := NewOpusReader(c, d, r)
 
 		for {
@@ -142,4 +107,207 @@ func TestOpusPacketReader(t *testing.T) {
 		}
 	})
 
+}
+
+func TestReadPacketWithHeader(t *testing.T) {
+	testCaces := []struct {
+		Name   string
+		Data   [][]byte
+		Expect [][]byte
+	}{
+		{
+			Name: "success",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 254,
+				},
+				{
+					0, 5, 236, 96, 167, 215, 194, 193,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 255,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+				{
+					252, 255, 255,
+				},
+			},
+		},
+		{
+			Name: "multiple data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 254,
+					0, 5, 236, 96, 167, 215, 194, 193,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 255,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+				{
+					252, 255, 255,
+				},
+			},
+		},
+		{
+			Name: "split data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+				},
+				{
+					252, 255, 254,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+			},
+		},
+		{
+			Name: "split data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+				},
+				{
+					0, 0, 0, 3,
+					252, 255, 254,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+			},
+		},
+		{
+			Name: "split data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+				},
+				{
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 254,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+			},
+		},
+		{
+			Name: "split data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+				},
+				{
+					0, 0, 0, 3,
+					252, 255, 254,
+					0, 5, 236, 96, 167, 215, 194, 193,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 255,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+				{
+					252, 255, 255,
+				},
+			},
+		},
+		{
+			Name: "split data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 254,
+					0, 5, 236, 96, 167, 215, 194, 193,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+				},
+				{
+					252, 255, 255,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+				{
+					252, 255, 255,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCaces {
+		t.Run(tc.Name, func(t *testing.T) {
+			reader, writer := io.Pipe()
+			defer reader.Close()
+
+			go func() {
+				defer writer.Close()
+				for _, data := range tc.Data {
+					_, err := writer.Write(data)
+					if err != nil {
+						if assert.ErrorIs(t, err, io.EOF) {
+							break
+						}
+						t.Error(t, err)
+						return
+					}
+				}
+			}()
+
+			r, err := readPacketWithHeader(reader)
+			assert.NoError(t, err)
+
+			i := 0
+			for {
+				buf := make([]byte, HeaderLength+MaxPayloadLength)
+				n, err := r.Read(buf)
+				if err != nil {
+					if assert.ErrorIs(t, err, io.EOF) {
+						break
+					}
+					t.Error(t, err)
+					return
+				}
+
+				assert.Equal(t, tc.Expect[i], buf[:n])
+
+				i += 1
+			}
+
+		})
+	}
 }
