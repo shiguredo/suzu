@@ -16,7 +16,9 @@ import (
 )
 
 const (
-	FrameSize = 1024 * 10
+	FrameSize        = 1024 * 10
+	HeaderLength     = 20
+	MaxPayloadLength = 0xffff
 )
 
 var (
@@ -231,6 +233,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 	}
 }
 
+const ()
+
 func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 	r, w := io.Pipe()
 
@@ -240,7 +244,7 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 		var payload []byte
 
 		for {
-			buf := make([]byte, 20+0xffff)
+			buf := make([]byte, HeaderLength+MaxPayloadLength)
 			n, err := reader.Read(buf)
 			if err != nil {
 				w.CloseWithError(err)
@@ -250,81 +254,61 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 			payload = append(payload, buf[:n]...)
 			length += n
 
-			if length > 20 {
-				// timestamp(64), sequence number(64), length(32)
-				h := payload[0:20]
-				p := payload[20:length]
-
-				payloadLength = int(binary.BigEndian.Uint32(h[16:20]))
-
-				if length == (20 + payloadLength) {
-					if _, err := w.Write(p); err != nil {
-						w.CloseWithError(err)
-						return
-					}
-					payload = []byte{}
-					length = 0
-					continue
-				}
-
-				// payload が足りないのでさらに読み込む
-				if length < (20 + payloadLength) {
-					// 前の payload へ追加して次へ
-					payload = append(payload, p...)
-					continue
-				}
-
-				// 次の frame が含まれている場合
-				if length > (20 + payloadLength) {
-					if _, err := w.Write(p[:payloadLength]); err != nil {
-						w.CloseWithError(err)
-						return
-					}
-					// 次の payload 処理へ
-					payload = p[payloadLength:]
-					length = len(payload)
-
-					// 次の payload がすでにある場合の処理
-					for {
-						if length > 20 {
-							h = payload[0:20]
-							p = payload[20:length]
-
-							payloadLength = int(binary.BigEndian.Uint32(h[16:20]))
-
-							// すでに次の payload が全てある場合
-							if length == (20 + payloadLength) {
-								if _, err := w.Write(p); err != nil {
-									w.CloseWithError(err)
-									return
-								}
-								payload = []byte{}
-								length = 0
-								continue
-							}
-
-							if length > (20 + payloadLength) {
-								if _, err := w.Write(p[:payloadLength]); err != nil {
-									w.CloseWithError(err)
-									return
-								}
-
-								// 次の payload 処理へ
-								payload = p[payloadLength:]
-								length = len(payload)
-								continue
-							}
-						} else {
-							// payload が足りないので、次の読み込みへ
-							break
-						}
-					}
-
-					continue
-				}
-			} else {
-				// ヘッダー分に足りなければ次の読み込みへ
+			// ヘッダー分のデータが揃っていないので、次の読み込みへ
+			if length < HeaderLength {
 				continue
+			}
+
+			// timestamp(64), sequence number(64), length(32)
+			h := payload[:HeaderLength]
+			p := payload[HeaderLength:]
+
+			payloadLength = int(binary.BigEndian.Uint32(h[16:HeaderLength]))
+
+			// payload が足りないので、次の読み込みへ
+			if length < (HeaderLength + payloadLength) {
+				continue
+			}
+
+			if _, err := w.Write(p[:payloadLength]); err != nil {
+				w.CloseWithError(err)
+				return
+			}
+
+			payload = p[payloadLength:]
+			length = len(payload)
+
+			// 全てのデータを書き込んだ場合は次の読み込みへ
+			if length == 0 {
+				continue
+			}
+
+			// 次の frame が含まれている場合
+			for {
+				// ヘッダー分のデータが揃っていないので、次の読み込みへ
+				if length < HeaderLength {
+					break
+				}
+
+				h = payload[:HeaderLength]
+				p = payload[HeaderLength:]
+
+				payloadLength = int(binary.BigEndian.Uint32(h[16:HeaderLength]))
+
+				// payload が足りないので、次の読み込みへ
+				if length < (HeaderLength + payloadLength) {
+					break
+				}
+
+				// データが足りているので payloadLength まで書き込む
+				if _, err := w.Write(p[:payloadLength]); err != nil {
+					w.CloseWithError(err)
+					return
+				}
+
+				// 残りの処理へ
+				payload = p[payloadLength:]
+				length = len(payload)
 			}
 		}
 	}()
