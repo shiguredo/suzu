@@ -1,0 +1,11 @@
+--- util.go.org	2024-10-24 10:53:48
++++ util.go	2024-10-24 10:50:15
+@@ -2,7 +2,7 @@
+ // SPDX-License-Identifier: MIT
+ 
+ // Package util provides auxiliary functions internally used in webrtc package
+-package util
++package suzu
+ 
+ import (
+ 	"errors"

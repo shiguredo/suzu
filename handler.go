@@ -326,13 +326,6 @@ func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sa
 	}
 	defer o.Close()
 
-	if err := o.writeHeaders(); err != nil {
-		if w, ok := oggWriter.(*io.PipeWriter); ok {
-			w.CloseWithError(err)
-		}
-		return err
-	}
-
 	var r io.Reader
 	if c.AudioStreamingHeader {
 		r, err = readPacketWithHeader(opusReader)

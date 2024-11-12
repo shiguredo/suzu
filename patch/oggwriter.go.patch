@@ -1,60 +1,28 @@
---- oggwriter.go.org	2023-01-17 12:52:08
-+++ oggwriter.go	2023-01-17 16:18:23
-@@ -1,5 +1,4 @@
--// Package oggwriter implements OGG media container writer
+--- oggwriter.go.org	2024-10-24 10:52:25
++++ oggwriter.go	2024-10-24 10:49:11
+@@ -2,7 +2,7 @@
+ // SPDX-License-Identifier: MIT
+ 
+ // Package oggwriter implements OGG media container writer
 -package oggwriter
 +package suzu
  
  import (
  	"encoding/binary"
-@@ -20,6 +19,7 @@
- 	idPageSignature                    = "OpusHead"
- 	commentPageSignature               = "OpusTags"
- 	pageHeaderSignature                = "OggS"
-+	vendorName                         = "pion"
+@@ -12,7 +12,6 @@
+ 
+ 	"github.com/pion/rtp"
+ 	"github.com/pion/rtp/codecs"
+-	"github.com/pion/webrtc/v4/internal/util"
  )
  
- var (
-@@ -73,9 +73,6 @@
- 		previousTimestamp:       1,
- 		previousGranulePosition: 1,
- 	}
--	if err := writer.writeHeaders(); err != nil {
--		return nil, err
--	}
+ const (
+@@ -68,7 +67,7 @@
+ 		stream:        out,
+ 		sampleRate:    sampleRate,
+ 		channelCount:  channelCount,
+-		serial:        util.RandUint32(),
++		serial:        RandUint32(),
+ 		checksumTable: generateChecksumTable(),
  
- 	return writer, nil
- }
-@@ -83,7 +80,6 @@
- /*
-     ref: https://tools.ietf.org/html/rfc7845.html
-     https://git.xiph.org/?p=opus-tools.git;a=blob;f=src/opus_header.c#l219
--
-        Page 0         Pages 1 ... n        Pages (n+1) ...
-     +------------+ +---+ +---+ ... +---+ +-----------+ +---------+ +--
-     |            | |   | |   |     |   | |           | |         | |
-@@ -99,7 +95,6 @@
-     |      ID header is contained on a single page
-     |
-     'Beginning Of Stream'
--
-    Figure 1: Example Packet Organization for a Logical Ogg Opus Stream
- */
- 
-@@ -124,11 +119,11 @@
- 	i.pageIndex++
- 
- 	// Comment Header
--	oggCommentHeader := make([]byte, 21)
--	copy(oggCommentHeader[0:], commentPageSignature)        // Magic Signature 'OpusTags'
--	binary.LittleEndian.PutUint32(oggCommentHeader[8:], 5)  // Vendor Length
--	copy(oggCommentHeader[12:], "pion")                     // Vendor name 'pion'
--	binary.LittleEndian.PutUint32(oggCommentHeader[17:], 0) // User Comment List Length
-+	oggCommentHeader := make([]byte, (8 + len(vendorName) + 4 + 4))
-+	copy(oggCommentHeader[0:], commentPageSignature)                             // Magic Signature 'OpusTags'
-+	binary.LittleEndian.PutUint32(oggCommentHeader[8:], uint32(len(vendorName))) // Vendor Length
-+	copy(oggCommentHeader[12:], vendorName)                                      // Vendor name 'pion'
-+	binary.LittleEndian.PutUint32(oggCommentHeader[16:], 0)                      // User Comment List Length
- 
- 	// RFC specifies that the page where the CommentHeader completes should have a granule position of 0
- 	data = i.createPage(oggCommentHeader, pageHeaderTypeContinuationOfStream, 0, i.pageIndex)
+ 		// Timestamp and Granule MUST start from 1
