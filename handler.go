@@ -16,7 +16,9 @@ import (
 )
 
 const (
-	FrameSize = 1024 * 10
+	FrameSize        = 1024 * 10
+	HeaderLength     = 20
+	MaxPayloadLength = 0xffff
 )
 
 var (
@@ -231,9 +233,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 	}
 }
 
-const (
-	HeaderLength = 20
-)
+const ()
 
 func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 	r, w := io.Pipe()
@@ -244,7 +244,7 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 		var payload []byte
 
 		for {
-			buf := make([]byte, HeaderLength+0xffff)
+			buf := make([]byte, HeaderLength+MaxPayloadLength)
 			n, err := reader.Read(buf)
 			if err != nil {
 				w.CloseWithError(err)
