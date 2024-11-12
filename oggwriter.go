@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
+// SPDX-License-Identifier: MIT
+
+// Package oggwriter implements OGG media container writer
 package suzu
 
 import (
@@ -6,7 +10,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/pion/randutil"
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
 )
@@ -19,7 +22,6 @@ const (
 	idPageSignature                    = "OpusHead"
 	commentPageSignature               = "OpusTags"
 	pageHeaderSignature                = "OggS"
-	vendorName                         = "pion"
 )
 
 var (
@@ -65,13 +67,16 @@ func NewWith(out io.Writer, sampleRate uint32, channelCount uint16) (*OggWriter,
 		stream:        out,
 		sampleRate:    sampleRate,
 		channelCount:  channelCount,
-		serial:        randutil.NewMathRandomGenerator().Uint32(),
+		serial:        RandUint32(),
 		checksumTable: generateChecksumTable(),
 
 		// Timestamp and Granule MUST start from 1
 		// Only headers can have 0 values
 		previousTimestamp:       1,
 		previousGranulePosition: 1,
+	}
+	if err := writer.writeHeaders(); err != nil {
+		return nil, err
 	}
 
 	return writer, nil
@@ -80,6 +85,7 @@ func NewWith(out io.Writer, sampleRate uint32, channelCount uint16) (*OggWriter,
 /*
     ref: https://tools.ietf.org/html/rfc7845.html
     https://git.xiph.org/?p=opus-tools.git;a=blob;f=src/opus_header.c#l219
+
        Page 0         Pages 1 ... n        Pages (n+1) ...
     +------------+ +---+ +---+ ... +---+ +-----------+ +---------+ +--
     |            | |   | |   |     |   | |           | |         | |
@@ -95,6 +101,7 @@ func NewWith(out io.Writer, sampleRate uint32, channelCount uint16) (*OggWriter,
     |      ID header is contained on a single page
     |
     'Beginning Of Stream'
+
    Figure 1: Example Packet Organization for a Logical Ogg Opus Stream
 */
 
@@ -119,11 +126,11 @@ func (i *OggWriter) writeHeaders() error {
 	i.pageIndex++
 
 	// Comment Header
-	oggCommentHeader := make([]byte, (8 + len(vendorName) + 4 + 4))
-	copy(oggCommentHeader[0:], commentPageSignature)                             // Magic Signature 'OpusTags'
-	binary.LittleEndian.PutUint32(oggCommentHeader[8:], uint32(len(vendorName))) // Vendor Length
-	copy(oggCommentHeader[12:], vendorName)                                      // Vendor name 'pion'
-	binary.LittleEndian.PutUint32(oggCommentHeader[16:], 0)                      // User Comment List Length
+	oggCommentHeader := make([]byte, 21)
+	copy(oggCommentHeader[0:], commentPageSignature)        // Magic Signature 'OpusTags'
+	binary.LittleEndian.PutUint32(oggCommentHeader[8:], 5)  // Vendor Length
+	copy(oggCommentHeader[12:], "pion")                     // Vendor name 'pion'
+	binary.LittleEndian.PutUint32(oggCommentHeader[17:], 0) // User Comment List Length
 
 	// RFC specifies that the page where the CommentHeader completes should have a granule position of 0
 	data = i.createPage(oggCommentHeader, pageHeaderTypeContinuationOfStream, 0, i.pageIndex)
@@ -141,7 +148,9 @@ const (
 
 func (i *OggWriter) createPage(payload []uint8, headerType uint8, granulePos uint64, pageIndex uint32) []byte {
 	i.lastPayloadSize = len(payload)
-	page := make([]byte, pageHeaderSize+1+i.lastPayloadSize)
+	nSegments := (len(payload) / 255) + 1 // A segment can be at most 255 bytes long.
+
+	page := make([]byte, pageHeaderSize+i.lastPayloadSize+nSegments)
 
 	copy(page[0:], pageHeaderSignature)                 // page headers starts with 'OggS'
 	page[4] = 0                                         // Version
@@ -149,14 +158,23 @@ func (i *OggWriter) createPage(payload []uint8, headerType uint8, granulePos uin
 	binary.LittleEndian.PutUint64(page[6:], granulePos) // granule position
 	binary.LittleEndian.PutUint32(page[14:], i.serial)  // Bitstream serial number
 	binary.LittleEndian.PutUint32(page[18:], pageIndex) // Page sequence number
-	page[26] = 1                                        // Number of segments in page, giving always 1 segment
-	page[27] = uint8(i.lastPayloadSize)                 // Segment Table inserting at 27th position since page header length is 27
-	copy(page[28:], payload)                            // inserting at 28th since Segment Table(1) + header length(27)
+	page[26] = uint8(nSegments)                         // Number of segments in page.
+
+	// Filling segment table with the lacing values.
+	// First (nSegments - 1) values will always be 255.
+	for i := 0; i < nSegments-1; i++ {
+		page[pageHeaderSize+i] = 255
+	}
+	// The last value will be the remainder.
+	page[pageHeaderSize+nSegments-1] = uint8(len(payload) % 255)
+
+	copy(page[pageHeaderSize+nSegments:], payload) // Payload goes after the segment table, so at pageHeaderSize+nSegments.
 
 	var checksum uint32
 	for index := range page {
 		checksum = (checksum << 8) ^ i.checksumTable[byte(checksum>>24)^page[index]]
 	}
+
 	binary.LittleEndian.PutUint32(page[22:], checksum) // Checksum - generating for page data and inserting at 22th position into 32 bits
 
 	return page
