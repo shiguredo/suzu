@@ -11,6 +11,8 @@
 
 ## develop
 
+- [FIX] リリース時の build 前に patch をあてるように修正する
+
 ### misc
 
 ## 2024.5.0
