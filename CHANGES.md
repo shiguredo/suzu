@@ -17,6 +17,8 @@
 
 - [FIX] リリース時の build 前に patch をあてるように修正する
   - @Hexa
+- [ADD] リリース時の build を Makefile にまとめる
+  - @Hexa
 
 ## 2024.5.0
 
