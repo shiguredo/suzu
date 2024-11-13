@@ -1,5 +1,8 @@
 .PHONY: all patch test
 
+LIST := $(GOOS) $(GOARCH)
+SUFFIX := $(shell printf "_%s" $(LIST))
+
 all: patch
 	go build -o bin/suzu cmd/suzu/main.go
 
@@ -10,3 +13,10 @@ patch:
 
 test:
 	@go test -v --race
+
+release: patch
+ifeq ($(SUFFIX),_)
+	CGO_ENABLED=0 go build -o dist/suzu cmd/suzu/main.go
+else
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o dist/suzu$(SUFFIX) cmd/suzu/main.go
+endif
