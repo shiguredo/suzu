@@ -18,11 +18,14 @@ jobs:
 
       - run: go install github.com/tcnksm/ghr@latest
 
+      - name: Patch
+        run: make patch
+
       - name: Build
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/suzu_linux_amd64 cmd/suzu/main.go
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o dist/suzu_darwin_amd64 cmd/suzu/main.go
-          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o dist/suzu_darwin_arm64 cmd/suzu/main.go
+          GOOS=linux GOARCH=amd64 make release
+          GOOS=darwin GOARCH=amd64 make release
+          GOOS=darwin GOARCH=arm64 make release
           gzip dist/*
 
       - name: Release
