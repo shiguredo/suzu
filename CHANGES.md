@@ -11,6 +11,9 @@
 
 ## develop
 
+- [CHANGE] aws の再接続条件の exception に InternalFailureException を追加する
+  - @Hexa
+
 ### misc
 
 ## 2024.5.1
