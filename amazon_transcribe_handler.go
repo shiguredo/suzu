@@ -195,27 +195,8 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 			switch err.(type) {
 			case *transcribestreamingservice.LimitExceededException,
 				*transcribestreamingservice.InternalFailureException:
-				// リトライしない設定の場合、または、max_retry を超えた場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
-				if (at.Config.MaxRetry < 1) || (at.Config.MaxRetry <= h.GetRetryCount()) {
-					if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
-						zlog.Error().
-							Err(err).
-							Str("channel_id", h.ChannelID).
-							Str("connection_id", h.ConnectionID).
-							Send()
-					}
-				}
-
 				err = ErrServerDisconnected
 			default:
-				// 再接続を想定している以外のエラーの場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
-				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
-					zlog.Error().
-						Err(err).
-						Str("channel_id", h.ChannelID).
-						Str("connection_id", h.ConnectionID).
-						Send()
-				}
 			}
 
 			w.CloseWithError(err)
