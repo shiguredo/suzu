@@ -166,7 +166,8 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 					code == codes.InvalidArgument ||
 					code == codes.ResourceExhausted {
 
-					w.CloseWithError(ErrServerDisconnected)
+					err := errors.Join(err, ErrServerDisconnected)
+					w.CloseWithError(err)
 					return
 				}
 

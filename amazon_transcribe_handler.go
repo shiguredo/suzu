@@ -198,8 +198,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 			switch err.(type) {
 			case *transcribestreamingservice.LimitExceededException,
 				*transcribestreamingservice.InternalFailureException:
-				// TODO: 元の err を送信する
-				err = ErrServerDisconnected
+				err = errors.Join(err, ErrServerDisconnected)
 			default:
 			}
 
