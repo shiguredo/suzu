@@ -147,53 +147,28 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 				w.CloseWithError(err)
 				return
 			}
+
 			if status := resp.Error; status != nil {
 				// 音声の長さの上限値に達した場合
+				err := fmt.Errorf("%s", status.GetMessage())
 				code := codes.Code(status.GetCode())
+
+				zlog.Error().
+					Err(err).
+					Str("channel_id", h.ChannelID).
+					Str("connection_id", h.ConnectionID).
+					Int32("code", status.GetCode()).
+					Send()
+
 				if code == codes.OutOfRange ||
 					code == codes.InvalidArgument ||
 					code == codes.ResourceExhausted {
-
-					err := fmt.Errorf(status.GetMessage())
-					zlog.Error().
-						Err(err).
-						Str("channel_id", h.ChannelID).
-						Str("connection_id", h.ConnectionID).
-						Int32("code", status.GetCode()).
-						Send()
-
-					// リトライしない設定の場合、または、max_retry を超えた場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
-					if (stt.Config.MaxRetry < 1) || (stt.Config.MaxRetry <= h.GetRetryCount()) {
-						if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
-							zlog.Error().
-								Err(err).
-								Str("channel_id", h.ChannelID).
-								Str("connection_id", h.ConnectionID).
-								Send()
-						}
-					}
 
 					w.CloseWithError(ErrServerDisconnected)
 					return
 				}
 
-				errMessage := status.GetMessage()
-				zlog.Error().
-					Str("channel_id", h.ChannelID).
-					Str("connection_id", h.ConnectionID).
-					Int32("code", status.GetCode()).
-					Msg(errMessage)
-
-				err := fmt.Errorf(errMessage)
-				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
-					zlog.Error().
-						Err(err).
-						Str("channel_id", h.ChannelID).
-						Str("connection_id", h.ConnectionID).
-						Send()
-				}
-
-				w.Close()
+				w.CloseWithError(err)
 				return
 			}
 
