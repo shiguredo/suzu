@@ -223,14 +223,6 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					return err
 				}
 
-				// 1 度でも接続結果を受け取れた場合はリトライ回数をリセットする
-				serviceHandler.ResetRetryCount()
-				zlog.Debug().
-					Str("channel_id", h.SoraChannelID).
-					Str("connection_id", h.SoraConnectionID).
-					Int("retry_count", serviceHandler.GetRetryCount()).
-					Msg("RESET_RETRY_COUNT")
-
 				// メッセージが空でない場合はクライアントに結果を送信する
 				if n > 0 {
 					if _, err := c.Response().Write(buf[:n]); err != nil {

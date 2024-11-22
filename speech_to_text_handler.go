@@ -115,6 +115,8 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, reader io.Reader) (*io
 		return nil, err
 	}
 
+	h.ResetRetryCount()
+
 	r, w := io.Pipe()
 
 	go func() {
