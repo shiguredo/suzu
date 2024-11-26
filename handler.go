@@ -162,28 +162,11 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							serviceHandler.UpdateRetryCount()
 
 							// 切断検知のために、クライアントから送られてくるパケットは受信し続ける
-							errCh := make(chan error)
 							ctx, cancelPacketDiscard := context.WithCancel(ctx)
 							defer cancelPacketDiscard()
 
-							// TODO: 関数化
-							go func(ctx context.Context) {
-								defer close(errCh)
-
-								// サービス側には接続していないため、パケットは破棄する
-								buf := make([]byte, HeaderLength+MaxPayloadLength)
-								for {
-									select {
-									case <-ctx.Done():
-										return
-									default:
-										if _, err := r.Read(buf); err != nil {
-											errCh <- err
-											return
-										}
-									}
-								}
-							}(ctx)
+							errCh := make(chan error)
+							go discardPacket(ctx, r, errCh)
 
 							// 連続のリトライを避けるために少し待つ
 							retryTimer := time.NewTimer(time.Duration(s.config.RetryIntervalMs) * time.Millisecond)
@@ -192,14 +175,12 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 								retryTimer.Stop()
 								cancelPacketDiscard()
 								// リトライ対象のエラーのため、クライアントとの接続は切らずにリトライする
-								break
+								continue
 							case err := <-errCh:
 								retryTimer.Stop()
 								// リトライする前にクライアントとの接続でエラーが発生した場合は終了する
 								return err
 							}
-
-							continue
 						}
 					}
 					// SuzuError の場合はその Status Code を返す
@@ -351,6 +332,24 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					}
 					c.Response().Flush()
 				}
+			}
+		}
+	}
+}
+
+func discardPacket(ctx context.Context, r io.Reader, errCh chan error) {
+	defer close(errCh)
+
+	// サービス側には接続していないため、パケットは破棄する
+	buf := make([]byte, HeaderLength+MaxPayloadLength)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if _, err := r.Read(buf); err != nil {
+				errCh <- err
+				return
 			}
 		}
 	}
