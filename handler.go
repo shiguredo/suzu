@@ -149,7 +149,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			ctx1, cancel1 := context.WithCancel(ctx)
 			defer cancel1()
 
-			reader, err := serviceHandler.Handle(ctx, r)
+			reader, err := serviceHandler.Handle(ctx1, r)
 			if err != nil {
 				zlog.Error().
 					Err(err).
