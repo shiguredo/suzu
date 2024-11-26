@@ -288,8 +288,7 @@ func TestReadPacketWithHeader(t *testing.T) {
 				}
 			}()
 
-			r, err := readPacketWithHeader(reader)
-			assert.NoError(t, err)
+			r := readPacketWithHeader(reader)
 
 			i := 0
 			for {
