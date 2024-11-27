@@ -146,10 +146,10 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 				Msg("NEW-REQUEST")
 
 			// リトライ時にこれ以降の処理のみを cancel する
-			ctx1, cancel1 := context.WithCancel(ctx)
-			defer cancel1()
+			serviceHandlerCtx, cancelServiceHandler := context.WithCancel(ctx)
+			defer cancelServiceHandler()
 
-			reader, err := serviceHandler.Handle(ctx1, r)
+			reader, err := serviceHandler.Handle(serviceHandlerCtx, r)
 			if err != nil {
 				zlog.Error().
 					Err(err).
@@ -162,11 +162,11 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							serviceHandler.UpdateRetryCount()
 
 							// 切断検知のために、クライアントから送られてくるパケットは受信し続ける
-							ctx2, cancelPacketDiscard := context.WithCancel(ctx1)
+							packetDiscardCtx, cancelPacketDiscard := context.WithCancel(serviceHandlerCtx)
 							defer cancelPacketDiscard()
 
 							errCh := make(chan error)
-							go discardPacket(ctx2, r, errCh)
+							go discardPacket(packetDiscardCtx, r, errCh)
 
 							// 連続のリトライを避けるために少し待つ
 							retryTimer := time.NewTimer(time.Duration(s.config.RetryIntervalMs) * time.Millisecond)
@@ -248,7 +248,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							serviceHandler.UpdateRetryCount()
 
 							// TODO: 必要な場合は連続のリトライを避けるために少し待つ処理を追加する
-							cancel1()
+							cancelServiceHandler()
 							break
 						} else {
 							zlog.Error().
