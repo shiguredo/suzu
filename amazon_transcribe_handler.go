@@ -95,27 +95,10 @@ func (h *AmazonTranscribeHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
+func (h *AmazonTranscribeHandler) Handle(ctx context.Context, packetReader io.Reader) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(h.Config, h.LanguageCode, int64(h.SampleRate), int64(h.ChannelCount))
 
-	oggReader, oggWriter := io.Pipe()
-	go func() {
-		defer oggWriter.Close()
-		if err := opus2ogg(ctx, reader, oggWriter, h.SampleRate, h.ChannelCount, h.Config); err != nil {
-			if !errors.Is(err, io.EOF) {
-				zlog.Error().
-					Err(err).
-					Str("channel_id", h.ChannelID).
-					Str("connection_id", h.ConnectionID).
-					Send()
-			}
-
-			oggWriter.CloseWithError(err)
-			return
-		}
-	}()
-
-	stream, err := at.Start(ctx, oggReader)
+	stream, err := at.Start(ctx, packetReader)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +188,6 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 			w.CloseWithError(err)
 			return
 		}
-
 		w.Close()
 	}()
 
