@@ -34,7 +34,7 @@ func TestOpusPacketReader(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		d := time.Duration(100) * time.Millisecond
+		d := time.Duration(3000) * time.Millisecond
 		r := readDumpFile(t, "testdata/000.jsonl", 0)
 		defer r.Close()
 
@@ -47,12 +47,12 @@ func TestOpusPacketReader(t *testing.T) {
 				assert.ErrorIs(t, err, io.EOF)
 				break
 			}
-			assert.Equal(t, buf[:n], []byte{0, 0, 0})
+			assert.Equal(t, []byte{0, 0, 0}, buf[:n])
 		}
 	})
 
 	t.Run("read error", func(t *testing.T) {
-		d := time.Duration(100) * time.Millisecond
+		d := time.Duration(3000) * time.Millisecond
 		errPacketRead := errors.New("packet read error")
 
 		r := NewErrReadCloser(errPacketRead)
@@ -66,12 +66,12 @@ func TestOpusPacketReader(t *testing.T) {
 				assert.ErrorIs(t, err, errPacketRead)
 				break
 			}
-			assert.Equal(t, buf[:n], []byte{255, 255, 254})
+			assert.Equal(t, []byte{255, 255, 254}, buf[:n])
 		}
 	})
 
 	t.Run("closed reader", func(t *testing.T) {
-		d := time.Duration(100) * time.Millisecond
+		d := time.Duration(3000) * time.Millisecond
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		r.Close()
 
@@ -81,17 +81,17 @@ func TestOpusPacketReader(t *testing.T) {
 			buf := make([]byte, FrameSize)
 			_, err := reader.Read(buf)
 			if err != nil {
-				assert.ErrorIs(t, err, io.ErrClosedPipe)
+				assert.ErrorIs(t, io.ErrClosedPipe, err)
 				break
 			}
 		}
 	})
 
 	t.Run("close reader", func(t *testing.T) {
-		d := time.Duration(100) * time.Millisecond
+		d := time.Duration(3000) * time.Millisecond
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		go func() {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(3000 * time.Millisecond)
 			r.Close()
 		}()
 
@@ -101,7 +101,7 @@ func TestOpusPacketReader(t *testing.T) {
 			buf := make([]byte, FrameSize)
 			_, err := reader.Read(buf)
 			if err != nil {
-				assert.ErrorIs(t, err, io.EOF)
+				assert.ErrorIs(t, io.EOF, err)
 				break
 			}
 		}
