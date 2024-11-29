@@ -105,6 +105,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 
 		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		// すぐにヘッダを送信したい場合はここで c.Response().Flush() を実行する
+		c.Response().Flush()
 
 		ctx := c.Request().Context()
 		// TODO: context.WithCancelCause(ctx) に変更する
@@ -170,7 +171,6 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 						retry:
 							select {
 							case <-retryTimer.C:
-								retryTimer.Stop()
 								zlog.Info().
 									Err(err).
 									Str("channel_id", h.SoraChannelID).
@@ -189,7 +189,6 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 									Str("channel_id", h.SoraChannelID).
 									Str("connection_id", h.SoraConnectionID).
 									Msg("retry interrupted")
-								cancelServiceHandler()
 								// リトライする前にクライアントとの接続でエラーが発生した場合は終了する
 								return fmt.Errorf("%s", "retry interrupted")
 							}
@@ -478,7 +477,7 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 				return
 			case opus, ok := <-opusCh:
 				if !ok {
-					oggWriter.CloseWithError(fmt.Errorf("channel closed1"))
+					oggWriter.CloseWithError(io.EOF)
 					return
 				}
 
