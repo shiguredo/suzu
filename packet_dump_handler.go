@@ -67,7 +67,7 @@ func (h *PacketDumpHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-func (h *PacketDumpHandler) Handle(ctx context.Context, opusCh chan []byte) (*io.PipeReader, error) {
+func (h *PacketDumpHandler) Handle(ctx context.Context, opusCh chan opusChannel) (*io.PipeReader, error) {
 	c := h.Config
 	filename := c.DumpFile
 	channelID := h.ChannelID

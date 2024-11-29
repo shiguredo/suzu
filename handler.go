@@ -424,8 +424,8 @@ func readPacketWithHeader(reader io.Reader) io.Reader {
 	return r
 }
 
-func readOpus(ctx context.Context, reader io.Reader) chan []byte {
-	opusCh := make(chan []byte)
+func readOpus(ctx context.Context, reader io.Reader) chan opusChannel {
+	opusCh := make(chan opusChannel)
 
 	go func() {
 		defer close(opusCh)
@@ -433,16 +433,25 @@ func readOpus(ctx context.Context, reader io.Reader) chan []byte {
 		for {
 			select {
 			case <-ctx.Done():
+				opusCh <- opusChannel{
+					Error: ctx.Err(),
+				}
 				return
 			default:
 				buf := make([]byte, FrameSize)
 				n, err := reader.Read(buf)
 				if err != nil {
+					opusCh <- opusChannel{
+						Error: err,
+					}
 					return
 				}
 
 				if n > 0 {
-					opusCh <- buf[:n]
+					opusCh <- opusChannel{
+						Payload: buf[:n],
+					}
+
 				}
 			}
 		}
@@ -451,7 +460,7 @@ func readOpus(ctx context.Context, reader io.Reader) chan []byte {
 	return opusCh
 }
 
-func opus2ogg(ctx context.Context, opusCh chan []byte, sampleRate uint32, channelCount uint16, c Config) io.ReadCloser {
+func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, channelCount uint16, c Config) io.ReadCloser {
 	oggReader, oggWriter := io.Pipe()
 
 	go func() {
@@ -467,20 +476,25 @@ func opus2ogg(ctx context.Context, opusCh chan []byte, sampleRate uint32, channe
 			case <-ctx.Done():
 				oggWriter.CloseWithError(ctx.Err())
 				return
-			case buf, ok := <-opusCh:
+			case opus, ok := <-opusCh:
 				if !ok {
-					oggWriter.CloseWithError(fmt.Errorf("channel closed"))
+					oggWriter.CloseWithError(fmt.Errorf("channel closed1"))
 					return
 				}
 
-				opus := codecs.OpusPacket{}
-				_, err := opus.Unmarshal(buf)
+				if err := opus.Error; err != nil {
+					oggWriter.CloseWithError(err)
+					return
+				}
+
+				opusPacket := codecs.OpusPacket{}
+				_, err := opusPacket.Unmarshal(opus.Payload)
 				if err != nil {
 					oggWriter.CloseWithError(err)
 					return
 				}
 
-				if err := o.Write(&opus); err != nil {
+				if err := o.Write(&opusPacket); err != nil {
 					oggWriter.CloseWithError(err)
 					return
 				}
@@ -591,7 +605,13 @@ func silentPacket(audioStreamingHeader bool) []byte {
 	return packet
 }
 
-func channelToIOReadCloser(ctx context.Context, ch chan []byte) io.ReadCloser {
+type opusChannel struct {
+	Payload []byte
+	Error   error
+}
+
+// func channelToIOReadCloser(ctx context.Context, ch chan []byte) io.ReadCloser {
+func channelToIOReadCloser(ctx context.Context, ch chan opusChannel) io.ReadCloser {
 	r, w := io.Pipe()
 
 	go func() {
@@ -602,12 +622,18 @@ func channelToIOReadCloser(ctx context.Context, ch chan []byte) io.ReadCloser {
 			case <-ctx.Done():
 				w.CloseWithError(ctx.Err())
 				return
-			case buf, ok := <-ch:
+			case opus, ok := <-ch:
 				if !ok {
-					w.CloseWithError(fmt.Errorf("channel closed"))
+					w.CloseWithError(io.EOF)
 					return
 				}
-				if _, err := w.Write(buf); err != nil {
+
+				if err := opus.Error; err != nil {
+					w.CloseWithError(err)
+					return
+				}
+
+				if _, err := w.Write(opus.Payload); err != nil {
 					w.CloseWithError(err)
 					return
 				}
