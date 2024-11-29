@@ -23,7 +23,6 @@ type AmazonTranscribe struct {
 	Region                            string
 	Debug                             bool
 	Config                            Config
-	Count                             int
 }
 
 func NewAmazonTranscribe(config Config, languageCode string, sampleRateHertz, audioChannelCount int64) *AmazonTranscribe {
