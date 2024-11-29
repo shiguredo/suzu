@@ -63,6 +63,9 @@ func readDumpFile(t *testing.T, filename string, d time.Duration) *io.PipeReader
 			t.Error(err.Error())
 			return
 		}
+
+		// 閉じてしまうとすぐに EOF で切断状態になるため少し待つ
+		time.Sleep(2 * time.Second)
 	}()
 
 	return r
