@@ -152,11 +152,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			serviceHandlerCtx, cancelServiceHandler := context.WithCancel(ctx)
 			defer cancelServiceHandler()
 
-			oggCh := opus2ogg2(serviceHandlerCtx, opusCh, sampleRate, channelCount, *s.config)
-
-			packetReader := readOgg(serviceHandlerCtx, oggCh)
-
-			reader, err := serviceHandler.Handle(serviceHandlerCtx, packetReader)
+			reader, err := serviceHandler.Handle(serviceHandlerCtx, opusCh)
 			if err != nil {
 				zlog.Error().
 					Err(err).
@@ -168,22 +164,34 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 						if s.config.MaxRetry > serviceHandler.GetRetryCount() {
 							serviceHandler.UpdateRetryCount()
 
+							// リトライ対象のエラーのため、クライアントとの接続は切らずにリトライする
 							retryTimer := time.NewTimer(time.Duration(s.config.RetryIntervalMs) * time.Millisecond)
 
 						retry:
 							select {
 							case <-retryTimer.C:
 								retryTimer.Stop()
-								// リトライ対象のエラーのため、クライアントとの接続は切らずにリトライする
+								zlog.Info().
+									Err(err).
+									Str("channel_id", h.SoraChannelID).
+									Str("connection_id", h.SoraConnectionID).
+									Msg("retry")
+								cancelServiceHandler()
 								continue
-							case _, ok := <-oggCh:
+							case _, ok := <-opusCh:
 								if ok {
-									// エラー、または、リトライのタイマーが発火するま繰り返す
+									// channel が閉じるか、または、リトライのタイマーが発火するまで繰り返す
 									goto retry
 								}
 								retryTimer.Stop()
+								zlog.Info().
+									Err(err).
+									Str("channel_id", h.SoraChannelID).
+									Str("connection_id", h.SoraConnectionID).
+									Msg("retry interrupted")
+								cancelServiceHandler()
 								// リトライする前にクライアントとの接続でエラーが発生した場合は終了する
-								return fmt.Errorf("retry error")
+								return fmt.Errorf("%s", "retry interrupted")
 							}
 						}
 					}
@@ -443,52 +451,8 @@ func readOpus(ctx context.Context, reader io.Reader) chan []byte {
 	return opusCh
 }
 
-func readOgg(ctx context.Context, oggCh chan []byte) io.Reader {
-	pr, pw := io.Pipe()
-
-	go func() {
-		defer pw.Close()
-		for {
-			select {
-			case <-ctx.Done():
-				pw.CloseWithError(ctx.Err())
-				return
-			case buf, ok := <-oggCh:
-				if !ok {
-					pw.CloseWithError(fmt.Errorf("channel closed"))
-					return
-				}
-
-				if _, err := pw.Write(buf); err != nil {
-					pw.CloseWithError(err)
-					return
-				}
-			}
-		}
-	}()
-
-	return pr
-}
-
-func opus2ogg2(ctx context.Context, opusCh chan []byte, sampleRate uint32, channelCount uint16, c Config) chan []byte {
+func opus2ogg(ctx context.Context, opusCh chan []byte, sampleRate uint32, channelCount uint16, c Config) io.ReadCloser {
 	oggReader, oggWriter := io.Pipe()
-	oggCh := make(chan []byte)
-
-	go func() {
-		defer close(oggCh)
-
-		for {
-			buf := make([]byte, FrameSize)
-			n, err := oggReader.Read(buf)
-			if err != nil {
-				oggWriter.CloseWithError(err)
-				return
-			}
-			if n > 0 {
-				oggCh <- buf[:n]
-			}
-		}
-	}()
 
 	go func() {
 		o, err := NewWith(oggWriter, sampleRate, channelCount)
@@ -524,66 +488,7 @@ func opus2ogg2(ctx context.Context, opusCh chan []byte, sampleRate uint32, chann
 		}
 	}()
 
-	return oggCh
-}
-
-func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sampleRate uint32, channelCount uint16, c Config) error {
-	o, err := NewWith(oggWriter, sampleRate, channelCount)
-	if err != nil {
-		if w, ok := oggWriter.(*io.PipeWriter); ok {
-			w.CloseWithError(err)
-		}
-		return err
-	}
-	defer o.Close()
-
-	ch := make(chan []byte)
-
-	go func() {
-		defer close(ch)
-
-		for {
-			buf := make([]byte, FrameSize)
-			n, err := opusReader.Read(buf)
-			if err != nil {
-				if w, ok := oggWriter.(*io.PipeWriter); ok {
-					w.CloseWithError(err)
-				}
-				return
-			}
-
-			if n > 0 {
-				ch <- buf[:n]
-			}
-		}
-	}()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case buf, ok := <-ch:
-			if !ok {
-				return nil
-			}
-
-			opus := codecs.OpusPacket{}
-			_, err := opus.Unmarshal(buf)
-			if err != nil {
-				if w, ok := oggWriter.(*io.PipeWriter); ok {
-					w.CloseWithError(err)
-				}
-				return err
-			}
-
-			if err := o.Write(&opus); err != nil {
-				if w, ok := oggWriter.(*io.PipeWriter); ok {
-					w.CloseWithError(err)
-				}
-				return err
-			}
-		}
-	}
+	return oggReader
 }
 
 type opusRequest struct {
@@ -684,4 +589,31 @@ func silentPacket(audioStreamingHeader bool) []byte {
 	}
 
 	return packet
+}
+
+func channelToIOReadCloser(ctx context.Context, ch chan []byte) io.ReadCloser {
+	r, w := io.Pipe()
+
+	go func() {
+		defer w.Close()
+
+		for {
+			select {
+			case <-ctx.Done():
+				w.CloseWithError(ctx.Err())
+				return
+			case buf, ok := <-ch:
+				if !ok {
+					w.CloseWithError(fmt.Errorf("channel closed"))
+					return
+				}
+				if _, err := w.Write(buf); err != nil {
+					w.CloseWithError(err)
+					return
+				}
+			}
+		}
+	}()
+
+	return r
 }

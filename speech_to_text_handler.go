@@ -91,8 +91,10 @@ func (h *SpeechToTextHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-func (h *SpeechToTextHandler) Handle(ctx context.Context, packetReader io.Reader) (*io.PipeReader, error) {
+func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan []byte) (*io.PipeReader, error) {
 	stt := NewSpeechToText(h.Config, h.LanguageCode, int32(h.SampleRate), int32(h.ChannelCount))
+
+	packetReader := opus2ogg(ctx, opusCh, h.SampleRate, h.ChannelCount, h.Config)
 
 	stream, err := stt.Start(ctx, packetReader)
 	if err != nil {

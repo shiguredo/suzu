@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
+	zlog "github.com/rs/zerolog/log"
 )
 
 type AmazonTranscribe struct {
@@ -22,6 +23,7 @@ type AmazonTranscribe struct {
 	Region                            string
 	Debug                             bool
 	Config                            Config
+	Count                             int
 }
 
 func NewAmazonTranscribe(config Config, languageCode string, sampleRateHertz, audioChannelCount int64) *AmazonTranscribe {
@@ -89,7 +91,7 @@ func NewAmazonTranscribeClient(config Config) *transcribestreamingservice.Transc
 	return transcribestreamingservice.New(sess, cfg)
 }
 
-func (at *AmazonTranscribe) Start(ctx context.Context, r io.Reader) (*transcribestreamingservice.StartStreamTranscriptionEventStream, error) {
+func (at *AmazonTranscribe) Start(ctx context.Context, r io.ReadCloser) (*transcribestreamingservice.StartStreamTranscriptionEventStream, error) {
 	config := at.Config
 	client := NewAmazonTranscribeClient(config)
 	input := NewStartStreamTranscriptionInput(at)
@@ -117,9 +119,11 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.Reader) (*transcribe
 	stream := resp.GetStream()
 
 	go func() {
+		defer r.Close()
 		defer stream.Close()
 
 		if err := transcribestreamingservice.StreamAudioFromReader(ctx, stream, FrameSize, r); err != nil {
+			zlog.Error().Err(err).Send()
 			return
 		}
 	}()

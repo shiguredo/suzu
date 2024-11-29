@@ -15,7 +15,7 @@ var (
 )
 
 type serviceHandlerInterface interface {
-	Handle(context.Context, io.Reader) (*io.PipeReader, error)
+	Handle(context.Context, chan []byte) (*io.PipeReader, error)
 	UpdateRetryCount() int
 	GetRetryCount() int
 	ResetRetryCount() int
