@@ -171,7 +171,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 						retry:
 							select {
 							case <-retryTimer.C:
-								zlog.Info().
+								zlog.Debug().
 									Err(err).
 									Str("channel_id", h.SoraChannelID).
 									Str("connection_id", h.SoraConnectionID).
@@ -184,7 +184,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 									goto retry
 								}
 								retryTimer.Stop()
-								zlog.Info().
+								zlog.Debug().
 									Err(err).
 									Str("channel_id", h.SoraChannelID).
 									Str("connection_id", h.SoraConnectionID).
