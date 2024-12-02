@@ -104,7 +104,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			Msg("CONNECTED")
 
 		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		// すぐにヘッダを送信したい場合はここで c.Response().Flush() を実行する
+		// すぐにヘッダを送信したいので c.Response().Flush() を実行する
 		c.Response().Flush()
 
 		ctx := c.Request().Context()
