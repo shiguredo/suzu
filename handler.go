@@ -609,8 +609,7 @@ type opusChannel struct {
 	Error   error
 }
 
-// func channelToIOReadCloser(ctx context.Context, ch chan []byte) io.ReadCloser {
-func channelToIOReadCloser(ctx context.Context, ch chan opusChannel) io.ReadCloser {
+func opusChannelToIOReadCloser(ctx context.Context, ch chan opusChannel) io.ReadCloser {
 	r, w := io.Pipe()
 
 	go func() {

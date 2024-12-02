@@ -76,7 +76,7 @@ func (h *TestHandler) ResetRetryCount() int {
 func (h *TestHandler) Handle(ctx context.Context, opusCh chan opusChannel) (*io.PipeReader, error) {
 	r, w := io.Pipe()
 
-	reader := channelToIOReadCloser(ctx, opusCh)
+	reader := opusChannelToIOReadCloser(ctx, opusCh)
 
 	go func() {
 		encoder := json.NewEncoder(w)

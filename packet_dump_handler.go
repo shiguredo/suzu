@@ -75,7 +75,7 @@ func (h *PacketDumpHandler) Handle(ctx context.Context, opusCh chan opusChannel)
 
 	r, w := io.Pipe()
 
-	reader := channelToIOReadCloser(ctx, opusCh)
+	reader := opusChannelToIOReadCloser(ctx, opusCh)
 
 	go func() {
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
