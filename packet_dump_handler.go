@@ -67,13 +67,15 @@ func (h *PacketDumpHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-func (h *PacketDumpHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
+func (h *PacketDumpHandler) Handle(ctx context.Context, opusCh chan opusChannel) (*io.PipeReader, error) {
 	c := h.Config
 	filename := c.DumpFile
 	channelID := h.ChannelID
 	connectionID := h.ConnectionID
 
 	r, w := io.Pipe()
+
+	reader := opusChannelToIOReadCloser(ctx, opusCh)
 
 	go func() {
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)

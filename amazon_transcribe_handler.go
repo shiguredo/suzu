@@ -95,30 +95,18 @@ func (h *AmazonTranscribeHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) (*io.PipeReader, error) {
+func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusChannel) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(h.Config, h.LanguageCode, int64(h.SampleRate), int64(h.ChannelCount))
 
-	oggReader, oggWriter := io.Pipe()
-	go func() {
-		defer oggWriter.Close()
-		if err := opus2ogg(ctx, reader, oggWriter, h.SampleRate, h.ChannelCount, h.Config); err != nil {
-			if !errors.Is(err, io.EOF) {
-				zlog.Error().
-					Err(err).
-					Str("channel_id", h.ChannelID).
-					Str("connection_id", h.ConnectionID).
-					Send()
-			}
+	packetReader := opus2ogg(ctx, opusCh, h.SampleRate, h.ChannelCount, h.Config)
 
-			oggWriter.CloseWithError(err)
-			return
-		}
-	}()
-
-	stream, err := at.Start(ctx, oggReader)
+	stream, err := at.Start(ctx, packetReader)
 	if err != nil {
 		return nil, err
 	}
+
+	// リクエストが成功した時点でリトライカウントをリセットする
+	h.ResetRetryCount()
 
 	r, w := io.Pipe()
 
@@ -195,33 +183,13 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, reader io.Reader) 
 			switch err.(type) {
 			case *transcribestreamingservice.LimitExceededException,
 				*transcribestreamingservice.InternalFailureException:
-				// リトライしない設定の場合、または、max_retry を超えた場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
-				if (at.Config.MaxRetry < 1) || (at.Config.MaxRetry <= h.GetRetryCount()) {
-					if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
-						zlog.Error().
-							Err(err).
-							Str("channel_id", h.ChannelID).
-							Str("connection_id", h.ConnectionID).
-							Send()
-					}
-				}
-
-				err = ErrServerDisconnected
+				err = errors.Join(err, ErrServerDisconnected)
 			default:
-				// 再接続を想定している以外のエラーの場合はクライアントにエラーを返し、再度接続するかはクライアント側で判断する
-				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
-					zlog.Error().
-						Err(err).
-						Str("channel_id", h.ChannelID).
-						Str("connection_id", h.ConnectionID).
-						Send()
-				}
 			}
 
 			w.CloseWithError(err)
 			return
 		}
-
 		w.Close()
 	}()
 

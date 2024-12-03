@@ -3,6 +3,7 @@ package suzu
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -103,7 +104,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			Msg("CONNECTED")
 
 		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		// すぐにヘッダを送信したい場合はここで c.Response().Flush() を実行する
+		// すぐにヘッダを送信したいので c.Response().Flush() を実行する
+		c.Response().Flush()
 
 		ctx := c.Request().Context()
 		// TODO: context.WithCancelCause(ctx) に変更する
@@ -115,8 +117,18 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		channelCount := uint16(s.config.ChannelCount)
 
 		d := time.Duration(s.config.TimeToWaitForOpusPacketMs) * time.Millisecond
-		r := NewOpusReader(*s.config, d, c.Request().Body)
-		defer r.Close()
+		opusReader := NewOpusReader(*s.config, d, c.Request().Body)
+		defer opusReader.Close()
+
+		var r io.Reader
+		if s.config.AudioStreamingHeader {
+			r = readPacketWithHeader(opusReader)
+		} else {
+			// ヘッダー処理なし
+			r = opusReader
+		}
+
+		opusCh := readOpus(ctx, r)
 
 		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode, onResultFunc)
 		if err != nil {
@@ -137,7 +149,11 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 				Int("retry_count", serviceHandler.GetRetryCount()).
 				Msg("NEW-REQUEST")
 
-			reader, err := serviceHandler.Handle(ctx, r)
+			// リトライ時にこれ以降の処理のみを cancel する
+			serviceHandlerCtx, cancelServiceHandler := context.WithCancel(ctx)
+			defer cancelServiceHandler()
+
+			reader, err := serviceHandler.Handle(serviceHandlerCtx, opusCh)
 			if err != nil {
 				zlog.Error().
 					Err(err).
@@ -149,11 +165,33 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 						if s.config.MaxRetry > serviceHandler.GetRetryCount() {
 							serviceHandler.UpdateRetryCount()
 
-							// 連続のリトライを避けるために少し待つ
-							time.Sleep(time.Duration(s.config.RetryIntervalMs) * time.Millisecond)
-
 							// リトライ対象のエラーのため、クライアントとの接続は切らずにリトライする
-							continue
+							retryTimer := time.NewTimer(time.Duration(s.config.RetryIntervalMs) * time.Millisecond)
+
+						retry:
+							select {
+							case <-retryTimer.C:
+								zlog.Debug().
+									Err(err).
+									Str("channel_id", h.SoraChannelID).
+									Str("connection_id", h.SoraConnectionID).
+									Msg("retry")
+								cancelServiceHandler()
+								continue
+							case _, ok := <-opusCh:
+								if ok {
+									// channel が閉じるか、または、リトライのタイマーが発火するまで繰り返す
+									goto retry
+								}
+								retryTimer.Stop()
+								zlog.Debug().
+									Err(err).
+									Str("channel_id", h.SoraChannelID).
+									Str("connection_id", h.SoraConnectionID).
+									Msg("retry interrupted")
+								// リトライする前にクライアントとの接続でエラーが発生した場合は終了する
+								return fmt.Errorf("%s", "retry interrupted")
+							}
 						}
 					}
 					// SuzuError の場合はその Status Code を返す
@@ -180,14 +218,39 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							Send()
 						return err
 					} else if errors.Is(err, ErrServerDisconnected) {
+						errs := err.(interface{ Unwrap() []error }).Unwrap()
+						// 元の err を取得する
+						err := errs[0]
+
 						if s.config.MaxRetry < 1 {
 							// サーバから切断されたが再接続させない設定の場合
 							zlog.Error().
+								Err(ErrServerDisconnected).
 								Err(err).
 								Str("channel_id", h.SoraChannelID).
 								Str("connection_id", h.SoraConnectionID).
 								Send()
-							return err
+
+							errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
+							if err != nil {
+								zlog.Error().
+									Err(err).
+									Str("channel_id", h.SoraChannelID).
+									Str("connection_id", h.SoraConnectionID).
+									Send()
+								return err
+							}
+
+							if _, err := c.Response().Write(errMessage); err != nil {
+								zlog.Error().
+									Err(err).
+									Str("channel_id", h.SoraChannelID).
+									Str("connection_id", h.SoraConnectionID).
+									Send()
+								return err
+							}
+							c.Response().Flush()
+							return ErrServerDisconnected
 						}
 
 						if s.config.MaxRetry > serviceHandler.GetRetryCount() {
@@ -196,7 +259,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							serviceHandler.UpdateRetryCount()
 
 							// TODO: 必要な場合は連続のリトライを避けるために少し待つ処理を追加する
-
+							cancelServiceHandler()
 							break
 						} else {
 							zlog.Error().
@@ -204,17 +267,63 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 								Str("channel_id", h.SoraChannelID).
 								Str("connection_id", h.SoraConnectionID).
 								Send()
+
+							errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
+							if err != nil {
+								zlog.Error().
+									Err(err).
+									Str("channel_id", h.SoraChannelID).
+									Str("connection_id", h.SoraConnectionID).
+									Send()
+								return err
+							}
+
+							if _, err := c.Response().Write(errMessage); err != nil {
+								zlog.Error().
+									Err(err).
+									Str("channel_id", h.SoraChannelID).
+									Str("connection_id", h.SoraConnectionID).
+									Send()
+								return err
+							}
+							c.Response().Flush()
+
 							// max_retry を超えた場合は終了
 							return c.NoContent(http.StatusOK)
 						}
 					}
 
-					// サーバから切断されたが再度の接続が期待できない場合
-					return err
-				}
+					zlog.Debug().
+						Err(err).
+						Str("channel_id", h.SoraChannelID).
+						Str("connection_id", h.SoraConnectionID).
+						Send()
 
-				// 1 度でも接続結果を受け取れた場合はリトライ回数をリセットする
-				serviceHandler.ResetRetryCount()
+					orgErr := err
+
+					errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
+					if err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.SoraChannelID).
+							Str("connection_id", h.SoraConnectionID).
+							Send()
+						return err
+					}
+
+					if _, err := c.Response().Write(errMessage); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.SoraChannelID).
+							Str("connection_id", h.SoraConnectionID).
+							Send()
+						return err
+					}
+					c.Response().Flush()
+
+					// サーバから切断されたが再度の接続が期待できない場合
+					return orgErr
+				}
 
 				// メッセージが空でない場合はクライアントに結果を送信する
 				if n > 0 {
@@ -233,9 +342,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 	}
 }
 
-const ()
-
-func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
+func readPacketWithHeader(reader io.Reader) io.Reader {
 	r, w := io.Pipe()
 
 	go func() {
@@ -313,57 +420,88 @@ func readPacketWithHeader(reader io.Reader) (io.Reader, error) {
 		}
 	}()
 
-	return r, nil
+	return r
 }
 
-func opus2ogg(ctx context.Context, opusReader io.Reader, oggWriter io.Writer, sampleRate uint32, channelCount uint16, c Config) error {
-	o, err := NewWith(oggWriter, sampleRate, channelCount)
-	if err != nil {
-		if w, ok := oggWriter.(*io.PipeWriter); ok {
-			w.CloseWithError(err)
-		}
-		return err
-	}
-	defer o.Close()
+func readOpus(ctx context.Context, reader io.Reader) chan opusChannel {
+	opusCh := make(chan opusChannel)
 
-	var r io.Reader
-	if c.AudioStreamingHeader {
-		r, err = readPacketWithHeader(opusReader)
-		if err != nil {
-			return err
-		}
-	} else {
-		r = opusReader
-	}
+	go func() {
+		defer close(opusCh)
 
-	for {
-		buf := make([]byte, FrameSize)
-		n, err := r.Read(buf)
-		if err != nil {
-			if w, ok := oggWriter.(*io.PipeWriter); ok {
-				w.CloseWithError(err)
-			}
-			return err
-		}
-
-		if n > 0 {
-			opus := codecs.OpusPacket{}
-			_, err := opus.Unmarshal(buf[:n])
-			if err != nil {
-				if w, ok := oggWriter.(*io.PipeWriter); ok {
-					w.CloseWithError(err)
+		for {
+			select {
+			case <-ctx.Done():
+				opusCh <- opusChannel{
+					Error: ctx.Err(),
 				}
-				return err
-			}
-
-			if err := o.Write(&opus); err != nil {
-				if w, ok := oggWriter.(*io.PipeWriter); ok {
-					w.CloseWithError(err)
+				return
+			default:
+				buf := make([]byte, FrameSize)
+				n, err := reader.Read(buf)
+				if err != nil {
+					opusCh <- opusChannel{
+						Error: err,
+					}
+					return
 				}
-				return err
+
+				if n > 0 {
+					opusCh <- opusChannel{
+						Payload: buf[:n],
+					}
+
+				}
 			}
 		}
-	}
+	}()
+
+	return opusCh
+}
+
+func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, channelCount uint16, c Config) io.ReadCloser {
+	oggReader, oggWriter := io.Pipe()
+
+	go func() {
+		o, err := NewWith(oggWriter, sampleRate, channelCount)
+		if err != nil {
+			oggWriter.CloseWithError(err)
+			return
+		}
+		defer o.Close()
+
+		for {
+			select {
+			case <-ctx.Done():
+				oggWriter.CloseWithError(ctx.Err())
+				return
+			case opus, ok := <-opusCh:
+				if !ok {
+					oggWriter.CloseWithError(io.EOF)
+					return
+				}
+
+				if err := opus.Error; err != nil {
+					oggWriter.CloseWithError(err)
+					return
+				}
+
+				opusPacket := codecs.OpusPacket{}
+				_, err := opusPacket.Unmarshal(opus.Payload)
+				if err != nil {
+					oggWriter.CloseWithError(err)
+					return
+				}
+
+				if err := o.Write(&opusPacket); err != nil {
+					oggWriter.CloseWithError(err)
+					return
+				}
+			}
+		}
+	}()
+
+	return oggReader
 }
 
 type opusRequest struct {
@@ -464,4 +602,42 @@ func silentPacket(audioStreamingHeader bool) []byte {
 	}
 
 	return packet
+}
+
+type opusChannel struct {
+	Payload []byte
+	Error   error
+}
+
+func opusChannelToIOReadCloser(ctx context.Context, ch chan opusChannel) io.ReadCloser {
+	r, w := io.Pipe()
+
+	go func() {
+		defer w.Close()
+
+		for {
+			select {
+			case <-ctx.Done():
+				w.CloseWithError(ctx.Err())
+				return
+			case opus, ok := <-ch:
+				if !ok {
+					w.CloseWithError(io.EOF)
+					return
+				}
+
+				if err := opus.Error; err != nil {
+					w.CloseWithError(err)
+					return
+				}
+
+				if _, err := w.Write(opus.Payload); err != nil {
+					w.CloseWithError(err)
+					return
+				}
+			}
+		}
+	}()
+
+	return r
 }
