@@ -13,6 +13,9 @@
 
 ### misc
 
+- [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
+  - @voluntas
+
 ## 2024.7.0
 
 - [FIX] サービスへの接続が成功してもリトライカウントがリセットされない不具合を修正する
