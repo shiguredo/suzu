@@ -152,11 +152,13 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 							if at.Config.AwsResultID {
 								result.WithResultID(*res.ResultId)
 							}
+
 							for _, alt := range res.Alternatives {
-								var message string
-								if alt.Transcript != nil {
-									message = *alt.Transcript
+								message, ok := buildMessage(at.Config, *alt, *res.IsPartial)
+								if !ok {
+									continue
 								}
+
 								result.SetMessage(message)
 								if err := encoder.Encode(result); err != nil {
 									w.CloseWithError(err)
@@ -194,4 +196,54 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 	}()
 
 	return r, nil
+}
+
+func buildMessage(config Config, alt transcribestreamingservice.Alternative, isPartial bool) (string, bool) {
+	minimumConfidenceScore := config.MinimumConfidenceScore
+	minimumTranscribedTime := config.MinimumTranscribedTime
+
+	var message string
+	if minimumConfidenceScore > 0 {
+		if isPartial {
+			// IsPartial: true の場合は Transcript をそのまま使用する
+			if alt.Transcript != nil {
+				message = *alt.Transcript
+			}
+		} else {
+			items := alt.Items
+
+			for _, item := range items {
+				if item.Confidence != nil {
+					if *item.Confidence < minimumConfidenceScore {
+						// 信頼スコアが低い場合は次へ
+						continue
+					}
+				}
+
+				if (item.StartTime != nil) && (item.EndTime != nil) {
+					if (*item.EndTime - *item.StartTime) > 0 {
+						if (*item.EndTime - *item.StartTime) < minimumTranscribedTime {
+							// 発話時間が短い場合は次へ
+							continue
+						}
+					}
+				}
+
+				message += *item.Content
+			}
+		}
+	} else {
+		// minimumConfidenceScore が設定されていない（0）場合は Transcript をそのまま使用する
+		if alt.Transcript != nil {
+			message = *alt.Transcript
+		}
+	}
+
+	// メッセージが空の場合は次へ
+	if message == "" {
+		return message, false
+	}
+
+	return message, true
+
 }

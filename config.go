@@ -79,6 +79,9 @@ type Config struct {
 	// aws の場合は IsPartial が false, gcp の場合は IsFinal が true の場合にのみ結果を返す指定
 	FinalResultOnly bool `ini:"final_result_only"`
 
+	MinimumConfidenceScore float64 `ini:"minimum_confidence_score"`
+	MinimumTranscribedTime float64 `ini:"minimum_transcribed_time"`
+
 	// Amazon Web Services
 	AwsCredentialFile                    string `ini:"aws_credential_file"`
 	AwsProfile                           string `ini:"aws_profile"`
