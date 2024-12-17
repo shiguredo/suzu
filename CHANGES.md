@@ -11,10 +11,12 @@
 
 ## develop
 
-- [ADD] 採用する結果の信頼スコアの最小値を指定する minimum_confidence_score を追加する（aws のみ有効）
+- [ADD] 採用する結果の信頼スコアの最小値を指定する minimum_confidence_score を追加する
+  - Amazon Transcribe のみ有効
   - デフォルト値: 0（信頼スコアを無視する）
   - @Hexa
-- [ADD] 採用する結果の最小発話期間（秒）を指定する minimum_transcribed_time を追加する（aws のみ有効）
+- [ADD] 採用する結果の最小発話期間（秒）を指定する minimum_transcribed_time を追加する
+  - Amazon Transcribe のみ有効
   - デフォルト値: 0（最小発話期間を無視する）
   - @Hexa
 
