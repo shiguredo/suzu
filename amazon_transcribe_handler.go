@@ -200,7 +200,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 
 func buildMessage(config Config, alt transcribestreamingservice.Alternative, isPartial bool) (string, bool) {
 	minimumConfidenceScore := config.MinimumConfidenceScore
-	minimumTranscribedTimeMs := config.MinimumTranscribedTimeMs
+	minimumTranscribedTime := config.MinimumTranscribedTime
 
 	var message string
 	if minimumConfidenceScore > 0 {
@@ -222,7 +222,7 @@ func buildMessage(config Config, alt transcribestreamingservice.Alternative, isP
 
 				if (item.StartTime != nil) && (item.EndTime != nil) {
 					if (*item.EndTime - *item.StartTime) > 0 {
-						if (*item.EndTime - *item.StartTime) < minimumTranscribedTimeMs {
+						if (*item.EndTime - *item.StartTime) < minimumTranscribedTime {
 							// 発話時間が短い場合は次へ
 							continue
 						}

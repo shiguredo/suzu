@@ -11,6 +11,13 @@
 
 ## develop
 
+- [ADD] 採用する結果の信頼スコアの最小値を指定する minimum_confidence_score を追加する
+  - デフォルト値: 0（信頼スコアを無視する）
+  - @Hexa
+- [ADD] 採用する結果の最小発話期間（秒）を指定する minimum_transcribed_time を追加する
+  - デフォルト値: 0（最小発話期間を無視する）
+  - @Hexa
+
 ### misc
 
 ## 2024.7.0
