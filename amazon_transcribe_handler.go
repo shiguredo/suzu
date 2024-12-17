@@ -153,49 +153,9 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 								result.WithResultID(*res.ResultId)
 							}
 
-							minimumConfidenceScore := at.Config.MinimumConfidenceScore
-							minimumTranscribedTimeMs := at.Config.MinimumTranscribedTimeMs
-
 							for _, alt := range res.Alternatives {
-								items := alt.Items
-
-								var message string
-								if minimumConfidenceScore > 0 {
-									if *res.IsPartial {
-										// IsPartial: true の場合は Transcript をそのまま使用する
-										if alt.Transcript != nil {
-											message = *alt.Transcript
-										}
-									} else {
-										for _, item := range items {
-											if item.Confidence != nil {
-												if *item.Confidence < minimumConfidenceScore {
-													// 信頼スコアが低い場合は次へ
-													continue
-												}
-											}
-
-											if (item.StartTime != nil) && (item.EndTime != nil) {
-												if (*item.EndTime - *item.StartTime) > 0 {
-													if (*item.EndTime - *item.StartTime) < minimumTranscribedTimeMs {
-														// 発話時間が短い場合は次へ
-														continue
-													}
-												}
-											}
-
-											message += *item.Content
-										}
-									}
-								} else {
-									// minimumConfidenceScore が設定されていない（0）場合は Transcript をそのまま使用する
-									if alt.Transcript != nil {
-										message = *alt.Transcript
-									}
-								}
-
-								// メッセージが空の場合は次へ
-								if message == "" {
+								message, ok := buildMessage(at.Config, *alt, *res.IsPartial)
+								if !ok {
 									continue
 								}
 
@@ -236,4 +196,54 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 	}()
 
 	return r, nil
+}
+
+func buildMessage(config Config, alt transcribestreamingservice.Alternative, isPartial bool) (string, bool) {
+	minimumConfidenceScore := config.MinimumConfidenceScore
+	minimumTranscribedTimeMs := config.MinimumTranscribedTimeMs
+
+	var message string
+	if minimumConfidenceScore > 0 {
+		if isPartial {
+			// IsPartial: true の場合は Transcript をそのまま使用する
+			if alt.Transcript != nil {
+				message = *alt.Transcript
+			}
+		} else {
+			items := alt.Items
+
+			for _, item := range items {
+				if item.Confidence != nil {
+					if *item.Confidence < minimumConfidenceScore {
+						// 信頼スコアが低い場合は次へ
+						continue
+					}
+				}
+
+				if (item.StartTime != nil) && (item.EndTime != nil) {
+					if (*item.EndTime - *item.StartTime) > 0 {
+						if (*item.EndTime - *item.StartTime) < minimumTranscribedTimeMs {
+							// 発話時間が短い場合は次へ
+							continue
+						}
+					}
+				}
+
+				message += *item.Content
+			}
+		}
+	} else {
+		// minimumConfidenceScore が設定されていない（0）場合は Transcript をそのまま使用する
+		if alt.Transcript != nil {
+			message = *alt.Transcript
+		}
+	}
+
+	// メッセージが空の場合は次へ
+	if message == "" {
+		return message, false
+	}
+
+	return message, true
+
 }
