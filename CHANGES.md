@@ -11,6 +11,13 @@
 
 ## develop
 
+### misc
+
+- [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
+  - @voluntas
+
+## 2024.8.0
+
 - [ADD] 採用する結果の信頼スコアの最小値を指定する minimum_confidence_score を追加する
   - Amazon Transcribe のみ有効
   - デフォルト値: 0（信頼スコアを無視する）
@@ -19,11 +26,6 @@
   - Amazon Transcribe のみ有効
   - デフォルト値: 0（最小発話期間を無視する）
   - @Hexa
-
-### misc
-
-- [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
-  - @voluntas
 
 ## 2024.7.0
 
