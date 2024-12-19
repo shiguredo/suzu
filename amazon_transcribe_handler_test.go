@@ -36,12 +36,12 @@ func TestBuildMessage(t *testing.T) {
 					Items: []*transcribestreamingservice.Item{
 						{
 							StartTime: aws.Float64(0),
-							EndTime:   aws.Float64(1),
+							EndTime:   aws.Float64(0),
 							Content:   aws.String("test"),
 						},
 						{
 							StartTime: aws.Float64(0),
-							EndTime:   aws.Float64(1),
+							EndTime:   aws.Float64(0),
 							Content:   aws.String("data"),
 						},
 					},
@@ -51,6 +51,242 @@ func TestBuildMessage(t *testing.T) {
 			Expect: Expect{
 				Message: "testdata",
 				Ok:      true,
+			},
+		},
+		{
+			Name: "minimumConfidenceScore is 0",
+			Config: Config{
+				MinimumConfidenceScore: 0,
+			},
+			Input: Input{
+				Alt: transcribestreamingservice.Alternative{
+					Items: []*transcribestreamingservice.Item{
+						{
+							Confidence: aws.Float64(0),
+							StartTime:  aws.Float64(0),
+							EndTime:    aws.Float64(0),
+							Content:    aws.String("test"),
+						},
+						{
+							Confidence: aws.Float64(0),
+							StartTime:  aws.Float64(0),
+							EndTime:    aws.Float64(0),
+							Content:    aws.String("data"),
+						},
+					},
+				},
+				IsPartial: false,
+			},
+			Expect: Expect{
+				Message: "testdata",
+				Ok:      true,
+			},
+		},
+		{
+			Name: "transcribedTime > MinimumTranscribedTime",
+			Config: Config{
+				MinimumTranscribedTime: 0.02,
+				MinimumConfidenceScore: 0,
+			},
+			Input: Input{
+				Alt: transcribestreamingservice.Alternative{
+					Items: []*transcribestreamingservice.Item{
+						{
+							StartTime: aws.Float64(1.00),
+							EndTime:   aws.Float64(1.03),
+							Content:   aws.String("test"),
+						},
+						{
+							StartTime: aws.Float64(1.03),
+							EndTime:   aws.Float64(1.04),
+							Content:   aws.String("data"),
+						},
+						{
+							StartTime: aws.Float64(1.04),
+							EndTime:   aws.Float64(1.06),
+							Content:   aws.String("0"),
+						},
+					},
+				},
+				IsPartial: false,
+			},
+			Expect: Expect{
+				Message: "test0",
+				Ok:      true,
+			},
+		},
+		{
+			Name: "transcribedTime == MinimumTranscribedTime",
+			Config: Config{
+				MinimumTranscribedTime: 0.01,
+				MinimumConfidenceScore: 0,
+			},
+			Input: Input{
+				Alt: transcribestreamingservice.Alternative{
+					Items: []*transcribestreamingservice.Item{
+						{
+							StartTime: aws.Float64(1.00),
+							EndTime:   aws.Float64(1.01),
+							Content:   aws.String("test"),
+						},
+						{
+							StartTime: aws.Float64(1.01),
+							EndTime:   aws.Float64(1.02),
+							Content:   aws.String("data"),
+						},
+						{
+							StartTime: aws.Float64(1.02),
+							EndTime:   aws.Float64(1.03),
+							Content:   aws.String("0"),
+						},
+					},
+				},
+				IsPartial: false,
+			},
+			Expect: Expect{
+				Message: "testdata0",
+				Ok:      true,
+			},
+		},
+		{
+			Name: "transcribedTime < MinimumTranscribedTime",
+			Config: Config{
+				MinimumTranscribedTime: 0.02,
+				MinimumConfidenceScore: 0,
+			},
+			Input: Input{
+				Alt: transcribestreamingservice.Alternative{
+					Items: []*transcribestreamingservice.Item{
+						{
+							StartTime: aws.Float64(1.00),
+							EndTime:   aws.Float64(1.019),
+							Content:   aws.String("test"),
+						},
+						{
+							StartTime: aws.Float64(1.019),
+							EndTime:   aws.Float64(1.038),
+							Content:   aws.String("data"),
+						},
+						{
+							StartTime: aws.Float64(1.038),
+							EndTime:   aws.Float64(1.057),
+							Content:   aws.String("0"),
+						},
+					},
+				},
+				IsPartial: false,
+			},
+			Expect: Expect{
+				Message: "",
+				Ok:      false,
+			},
+		},
+		{
+			Name: "confidence > minimumConfidenceScore ",
+			Config: Config{
+				MinimumConfidenceScore: 0.1,
+				MinimumTranscribedTime: 0,
+			},
+			Input: Input{
+				Alt: transcribestreamingservice.Alternative{
+					Items: []*transcribestreamingservice.Item{
+						{
+							Confidence: aws.Float64(0.11),
+							StartTime:  aws.Float64(0),
+							EndTime:    aws.Float64(0),
+							Content:    aws.String("test"),
+						},
+						{
+							Confidence: aws.Float64(0),
+							StartTime:  aws.Float64(0),
+							EndTime:    aws.Float64(0),
+							Content:    aws.String("data"),
+						},
+						{
+							Confidence: aws.Float64(0.11),
+							StartTime:  aws.Float64(0),
+							EndTime:    aws.Float64(0),
+							Content:    aws.String("1"),
+						},
+					},
+				},
+				IsPartial: false,
+			},
+			Expect: Expect{
+				Message: "test1",
+				Ok:      true,
+			},
+		},
+		{
+			Name: "confidence == minimumConfidenceScore ",
+			Config: Config{
+				MinimumConfidenceScore: 0.1,
+				MinimumTranscribedTime: 0,
+			},
+			Input: Input{
+				Alt: transcribestreamingservice.Alternative{
+					Items: []*transcribestreamingservice.Item{
+						{
+							Confidence: aws.Float64(0.1),
+							StartTime:  aws.Float64(0),
+							EndTime:    aws.Float64(0),
+							Content:    aws.String("test"),
+						},
+						{
+							Confidence: aws.Float64(0.1),
+							StartTime:  aws.Float64(0),
+							EndTime:    aws.Float64(0),
+							Content:    aws.String("data"),
+						},
+						{
+							Confidence: aws.Float64(0.1),
+							StartTime:  aws.Float64(0),
+							EndTime:    aws.Float64(0),
+							Content:    aws.String("1"),
+						},
+					},
+				},
+				IsPartial: false,
+			},
+			Expect: Expect{
+				Message: "testdata1",
+				Ok:      true,
+			},
+		},
+		{
+			Name: "confidence < minimumConfidenceScore ",
+			Config: Config{
+				MinimumConfidenceScore: 0.1,
+				MinimumTranscribedTime: 0,
+			},
+			Input: Input{
+				Alt: transcribestreamingservice.Alternative{
+					Items: []*transcribestreamingservice.Item{
+						{
+							Confidence: aws.Float64(0),
+							StartTime:  aws.Float64(0),
+							EndTime:    aws.Float64(0),
+							Content:    aws.String("test"),
+						},
+						{
+							Confidence: aws.Float64(0.09),
+							StartTime:  aws.Float64(0),
+							EndTime:    aws.Float64(0),
+							Content:    aws.String("data"),
+						},
+						{
+							Confidence: aws.Float64(0.09),
+							StartTime:  aws.Float64(0),
+							EndTime:    aws.Float64(0),
+							Content:    aws.String("1"),
+						},
+					},
+				},
+				IsPartial: false,
+			},
+			Expect: Expect{
+				Message: "",
+				Ok:      false,
 			},
 		},
 	}
