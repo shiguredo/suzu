@@ -206,13 +206,13 @@ func contentFilterByTranscribedTime(config Config, item transcribestreamingservi
 		return true
 	}
 
-	// StartTime または EndTime が nil の場合はフィルタリングしない
-	if (item.StartTime == nil) || (item.EndTime == nil) {
+	// 句読点の場合はフィルタリングしない
+	if *item.Type == transcribestreamingservice.ItemTypePunctuation {
 		return true
 	}
 
-	// 発話時間が 0 の場合はフィルタリングしない（句読点を想定）
-	if *item.EndTime == *item.StartTime {
+	// StartTime または EndTime が nil の場合はフィルタリングしない
+	if (item.StartTime == nil) || (item.EndTime == nil) {
 		return true
 	}
 
@@ -230,6 +230,11 @@ func contentFilterByConfidenceScore(config Config, item transcribestreamingservi
 
 	// isPartial が true の場合はフィルタリングしない
 	if isPartial {
+		return true
+	}
+
+	// 句読点の場合はフィルタリングしない
+	if *item.Type == transcribestreamingservice.ItemTypePunctuation {
 		return true
 	}
 
