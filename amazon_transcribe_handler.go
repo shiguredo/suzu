@@ -251,7 +251,7 @@ func buildMessage(config Config, alt transcribestreamingservice.Alternative, isP
 	var message string
 	items := alt.Items
 
-	// 句読点以外の content が含まれているかどうか
+	// 句読点のみかどうか
 	punctuationOnly := true
 
 	for _, item := range items {
