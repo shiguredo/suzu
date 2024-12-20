@@ -153,6 +153,40 @@ func TestBuildMessage(t *testing.T) {
 					Ok:      false,
 				},
 			},
+			{
+				Name: "punctuation",
+				Config: Config{
+					MinimumTranscribedTime: 0.01,
+					MinimumConfidenceScore: 0,
+				},
+				Input: Input{
+					Alt: transcribestreamingservice.Alternative{
+						Items: []*transcribestreamingservice.Item{
+							{
+								StartTime: aws.Float64(1.00),
+								EndTime:   aws.Float64(1.02),
+								Content:   aws.String("テスト"),
+							},
+							{
+								// 句読点は StartTime と EndTime が同じ
+								StartTime: aws.Float64(1.02),
+								EndTime:   aws.Float64(1.02),
+								Content:   aws.String("、"),
+							},
+							{
+								StartTime: aws.Float64(1.02),
+								EndTime:   aws.Float64(1.04),
+								Content:   aws.String("データ"),
+							},
+						},
+					},
+					IsPartial: false,
+				},
+				Expect: Expect{
+					Message: "テスト、データ",
+					Ok:      true,
+				},
+			},
 		}
 
 		for _, tc := range testCases {
@@ -307,6 +341,43 @@ func TestBuildMessage(t *testing.T) {
 				Expect: Expect{
 					Message: "",
 					Ok:      false,
+				},
+			},
+			{
+				Name: "punctuation",
+				Config: Config{
+					MinimumConfidenceScore: 0.1,
+					MinimumTranscribedTime: 0,
+				},
+				Input: Input{
+					Alt: transcribestreamingservice.Alternative{
+						Items: []*transcribestreamingservice.Item{
+							{
+								Confidence: aws.Float64(0.2),
+								StartTime:  aws.Float64(1.0),
+								EndTime:    aws.Float64(1.02),
+								Content:    aws.String("テスト"),
+							},
+							{
+								// 句読点は Confidence は nil
+								Confidence: nil,
+								StartTime:  aws.Float64(1.02),
+								EndTime:    aws.Float64(1.02),
+								Content:    aws.String("、"),
+							},
+							{
+								Confidence: aws.Float64(0.2),
+								StartTime:  aws.Float64(1.02),
+								EndTime:    aws.Float64(1.04),
+								Content:    aws.String("データ"),
+							},
+						},
+					},
+					IsPartial: false,
+				},
+				Expect: Expect{
+					Message: "テスト、データ",
+					Ok:      true,
 				},
 			},
 		}
