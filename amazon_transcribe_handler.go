@@ -198,37 +198,61 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 	return r, nil
 }
 
-func buildMessage(config Config, alt transcribestreamingservice.Alternative, isPartial bool) (string, bool) {
-	minimumConfidenceScore := config.MinimumConfidenceScore
+func contentFilterByTranscribedTime(config Config, item transcribestreamingservice.Item) bool {
 	minimumTranscribedTime := config.MinimumTranscribedTime
 
+	// minimumTranscribedTime が設定されていない場合はフィルタリングしない
+	if minimumTranscribedTime <= 0 {
+		return true
+	}
+
+	// StartTime または EndTime が nil の場合はフィルタリングしない
+	if (item.StartTime == nil) || (item.EndTime == nil) {
+		return true
+	}
+
+	// 発話時間が 0 の場合はフィルタリングしない（句読点を想定）
+	if *item.EndTime == *item.StartTime {
+		return true
+	}
+
+	// 発話時間が minimumTranscribedTime 未満の場合はフィルタリングする
+	return (*item.EndTime - *item.StartTime) >= minimumTranscribedTime
+}
+
+func contentFilterByConfidenceScore(config Config, item transcribestreamingservice.Item, isPartial bool) bool {
+	minimumConfidenceScore := config.MinimumConfidenceScore
+
+	// minimumConfidenceScore が設定されていない場合はフィルタリングしない
+	if minimumConfidenceScore <= 0 {
+		return true
+	}
+
+	// isPartial が true の場合はフィルタリングしない
+	if isPartial {
+		return true
+	}
+
+	// Confidence が nil の場合はフィルタリングしない
+	if item.Confidence == nil {
+		return true
+	}
+
+	// 信頼スコアが minimumConfidenceScore 未満の場合はフィルタリングする
+	return *item.Confidence >= minimumConfidenceScore
+}
+
+func buildMessage(config Config, alt transcribestreamingservice.Alternative, isPartial bool) (string, bool) {
 	var message string
 	items := alt.Items
 
 	for _, item := range items {
-		// minimumTranscribedTime が設定されている場合のみ時間を評価する
-		if minimumTranscribedTime > 0 {
-			if (item.StartTime != nil) && (item.EndTime != nil) {
-				if (*item.EndTime - *item.StartTime) > 0 {
-					if (*item.EndTime - *item.StartTime) < minimumTranscribedTime {
-						// 発話時間が短い場合は次へ
-						continue
-					}
-				}
-			}
+		if !contentFilterByTranscribedTime(config, *item) {
+			continue
 		}
 
-		// minimumConfidenceScore が設定されている場合のみ信頼スコアを評価する
-		if minimumConfidenceScore > 0 {
-			// isPartial が false の場合のみ信頼スコアを評価する
-			if !isPartial {
-				if item.Confidence != nil {
-					if *item.Confidence < minimumConfidenceScore {
-						// 信頼スコアが低い場合は次へ
-						continue
-					}
-				}
-			}
+		if !contentFilterByConfidenceScore(config, *item, isPartial) {
+			continue
 		}
 
 		message += *item.Content
