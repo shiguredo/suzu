@@ -625,4 +625,107 @@ func TestBuildMessage(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("punctuation", func(t *testing.T) {
+		testCases := []struct {
+			Name   string
+			Config Config
+			Input  Input
+			Expect Expect
+		}{
+			{
+				Name: "pronunciation with punctuation",
+				Config: Config{
+					MinimumConfidenceScore: 0.1,
+					MinimumTranscribedTime: 0.1,
+				},
+				Input: Input{
+					Alt: transcribestreamingservice.Alternative{
+						Items: []*transcribestreamingservice.Item{
+							{
+								Confidence: nil,
+								StartTime:  aws.Float64(0),
+								EndTime:    aws.Float64(0.1),
+								Content:    aws.String("テスト"),
+								Type:       aws.String(transcribestreamingservice.ItemTypePronunciation),
+							},
+							{
+								Confidence: nil,
+								StartTime:  aws.Float64(0.1),
+								EndTime:    aws.Float64(0.1),
+								Content:    aws.String("、"),
+								Type:       aws.String(transcribestreamingservice.ItemTypePunctuation),
+							},
+							{
+								Confidence: nil,
+								StartTime:  aws.Float64(0.1),
+								EndTime:    aws.Float64(0.2),
+								Content:    aws.String("データ"),
+								Type:       aws.String(transcribestreamingservice.ItemTypePronunciation),
+							},
+							{
+								Confidence: nil,
+								StartTime:  aws.Float64(0.2),
+								EndTime:    aws.Float64(0.2),
+								Content:    aws.String("。"),
+								Type:       aws.String(transcribestreamingservice.ItemTypePunctuation),
+							},
+						},
+					},
+					IsPartial: false,
+				},
+				Expect: Expect{
+					Message: "テスト、データ。",
+					Ok:      true,
+				},
+			},
+			{
+				Name: "no pronunciation",
+				Config: Config{
+					MinimumConfidenceScore: 0.1,
+					MinimumTranscribedTime: 0,
+				},
+				Input: Input{
+					Alt: transcribestreamingservice.Alternative{
+						Items: []*transcribestreamingservice.Item{
+							{
+								Confidence: nil,
+								StartTime:  aws.Float64(0),
+								EndTime:    aws.Float64(0),
+								Content:    aws.String("。"),
+								Type:       aws.String(transcribestreamingservice.ItemTypePunctuation),
+							},
+							{
+								Confidence: nil,
+								StartTime:  aws.Float64(0),
+								EndTime:    aws.Float64(0),
+								Content:    aws.String("、"),
+								Type:       aws.String(transcribestreamingservice.ItemTypePunctuation),
+							},
+							{
+								Confidence: nil,
+								StartTime:  aws.Float64(0),
+								EndTime:    aws.Float64(0),
+								Content:    aws.String("。"),
+								Type:       aws.String(transcribestreamingservice.ItemTypePunctuation),
+							},
+						},
+					},
+					IsPartial: false,
+				},
+				Expect: Expect{
+					Message: "",
+					Ok:      false,
+				},
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.Name, func(t *testing.T) {
+				actual, ok := buildMessage(tc.Config, tc.Input.Alt, tc.Input.IsPartial)
+				assert.Equal(t, tc.Expect.Ok, ok)
+				assert.Equal(t, tc.Expect.Message, actual)
+			})
+		}
+	})
 }
