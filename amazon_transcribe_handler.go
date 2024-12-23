@@ -251,8 +251,7 @@ func buildMessage(config Config, alt transcribestreamingservice.Alternative, isP
 	var message string
 	items := alt.Items
 
-	// 句読点のみかどうか
-	punctuationOnly := true
+	includePronunciation := false
 
 	for _, item := range items {
 		if !contentFilterByTranscribedTime(config, *item) {
@@ -264,14 +263,14 @@ func buildMessage(config Config, alt transcribestreamingservice.Alternative, isP
 		}
 
 		if *item.Type == transcribestreamingservice.ItemTypePronunciation {
-			punctuationOnly = false
+			includePronunciation = true
 		}
 
 		message += *item.Content
 	}
 
 	// 各評価の結果、句読点のみかメッセージが空の場合は次へ
-	if punctuationOnly || (message == "") {
+	if !includePronunciation || (message == "") {
 		return "", false
 	}
 
