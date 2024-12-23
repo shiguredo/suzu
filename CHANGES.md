@@ -11,6 +11,11 @@
 
 ## develop
 
+- [CHANGE] minimum_confidence_score と minimum_transcribed_time を独立させて、minimum_confidence_score が無効でも minimum_transcribed_time が有効な場合は minimum_transcribed_time でのフィルタリングが有効になるように変更する
+  - @Hexa
+- [CHANGE] フィルタリングの結果が句読点のみになった場合はクライアントに結果を返さないように変更する
+  - @Hexa
+
 ### misc
 
 - [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
