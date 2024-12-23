@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
@@ -187,6 +188,10 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 				*transcribestreamingservice.InternalFailureException:
 				err = errors.Join(err, ErrServerDisconnected)
 			default:
+				// サーバから切断された場合は再接続を試みる
+				if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
+					err = errors.Join(err, ErrServerDisconnected)
+				}
 			}
 
 			w.CloseWithError(err)

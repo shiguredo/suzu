@@ -11,6 +11,10 @@
 
 ## develop
 
+- [CHANGE] サーバから切断された場合はリトライするように変更する
+  - Amazon Transcribe のみ対象
+  - @Hexa
+
 ### misc
 
 - [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
