@@ -15,13 +15,15 @@
   - @Hexa
 - [CHANGE] フィルタリングの結果が句読点のみになった場合はクライアントに結果を返さないように変更する
   - @Hexa
-- [UPDATE] go.mod の Go のバージョンを 1.23.4 にあげる
-  - @Hexa
 
 ### misc
 
 - [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
   - @voluntas
+- [UPDATE] go.mod の Go のバージョンを 1.23.4 にあげる
+  - @Hexa
+- [UPDATE] GitHub Actions の staticcheck のバージョンを 2024.1.1 に上げる
+  - @Hexa
 
 ## 2024.8.0
 
