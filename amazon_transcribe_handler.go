@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
@@ -187,6 +188,10 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 				*transcribestreamingservice.InternalFailureException:
 				err = errors.Join(err, ErrServerDisconnected)
 			default:
+				// サーバから切断された場合は再接続を試みる
+				if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
+					err = errors.Join(err, ErrServerDisconnected)
+				}
 			}
 
 			w.CloseWithError(err)
@@ -198,52 +203,81 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 	return r, nil
 }
 
-func buildMessage(config Config, alt transcribestreamingservice.Alternative, isPartial bool) (string, bool) {
-	minimumConfidenceScore := config.MinimumConfidenceScore
+func contentFilterByTranscribedTime(config Config, item transcribestreamingservice.Item) bool {
 	minimumTranscribedTime := config.MinimumTranscribedTime
 
-	var message string
-	if minimumConfidenceScore > 0 {
-		if isPartial {
-			// IsPartial: true の場合は Transcript をそのまま使用する
-			if alt.Transcript != nil {
-				message = *alt.Transcript
-			}
-		} else {
-			items := alt.Items
-
-			for _, item := range items {
-				if item.Confidence != nil {
-					if *item.Confidence < minimumConfidenceScore {
-						// 信頼スコアが低い場合は次へ
-						continue
-					}
-				}
-
-				if (item.StartTime != nil) && (item.EndTime != nil) {
-					if (*item.EndTime - *item.StartTime) > 0 {
-						if (*item.EndTime - *item.StartTime) < minimumTranscribedTime {
-							// 発話時間が短い場合は次へ
-							continue
-						}
-					}
-				}
-
-				message += *item.Content
-			}
-		}
-	} else {
-		// minimumConfidenceScore が設定されていない（0）場合は Transcript をそのまま使用する
-		if alt.Transcript != nil {
-			message = *alt.Transcript
-		}
+	// minimumTranscribedTime が設定されていない場合はフィルタリングしない
+	if minimumTranscribedTime <= 0 {
+		return true
 	}
 
-	// メッセージが空の場合は次へ
-	if message == "" {
-		return message, false
+	// 句読点の場合はフィルタリングしない
+	if *item.Type == transcribestreamingservice.ItemTypePunctuation {
+		return true
+	}
+
+	// StartTime または EndTime が nil の場合はフィルタリングしない
+	if (item.StartTime == nil) || (item.EndTime == nil) {
+		return true
+	}
+
+	// 発話時間が minimumTranscribedTime 未満の場合はフィルタリングする
+	return (*item.EndTime - *item.StartTime) >= minimumTranscribedTime
+}
+
+func contentFilterByConfidenceScore(config Config, item transcribestreamingservice.Item, isPartial bool) bool {
+	minimumConfidenceScore := config.MinimumConfidenceScore
+
+	// minimumConfidenceScore が設定されていない場合はフィルタリングしない
+	if minimumConfidenceScore <= 0 {
+		return true
+	}
+
+	// isPartial が true の場合はフィルタリングしない
+	if isPartial {
+		return true
+	}
+
+	// 句読点の場合はフィルタリングしない
+	if *item.Type == transcribestreamingservice.ItemTypePunctuation {
+		return true
+	}
+
+	// Confidence が nil の場合はフィルタリングしない
+	if item.Confidence == nil {
+		return true
+	}
+
+	// 信頼スコアが minimumConfidenceScore 未満の場合はフィルタリングする
+	return *item.Confidence >= minimumConfidenceScore
+}
+
+func buildMessage(config Config, alt transcribestreamingservice.Alternative, isPartial bool) (string, bool) {
+	var message string
+	items := alt.Items
+
+	includePronunciation := false
+
+	for _, item := range items {
+		if !contentFilterByTranscribedTime(config, *item) {
+			continue
+		}
+
+		if !contentFilterByConfidenceScore(config, *item, isPartial) {
+			continue
+		}
+
+		if *item.Type == transcribestreamingservice.ItemTypePronunciation {
+			includePronunciation = true
+		}
+
+		message += *item.Content
+	}
+
+	// 各評価の結果、句読点のみかメッセージが空の場合は次へ
+	if !includePronunciation || (message == "") {
+		return "", false
 	}
 
 	return message, true
-
 }
