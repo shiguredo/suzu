@@ -5,7 +5,6 @@
 初回だけ make init と設定を cp する必要があります。
 
 ```console
-$ make init
 $ cp config_example.ini config.ini
 ```
 
