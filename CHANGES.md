@@ -11,9 +11,6 @@
 
 ## develop
 
-- [CHANGE] Amazon Transcribe 向けの minimum_confidence_score と minimum_transcribed_time が両方ともに無効（0）に設定されていた場合は、フィルタリングしない結果を返すように変更する
-  - @Hexa
-
 ### misc
 
 - [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
@@ -21,6 +18,11 @@
 - [UPDATE] go.mod の Go のバージョンを 1.23.4 にあげる
   - @Hexa
 - [UPDATE] GitHub Actions の staticcheck のバージョンを 2024.1.1 に上げる
+  - @Hexa
+
+## 2024.10.0
+
+- [CHANGE] Amazon Transcribe 向けの minimum_confidence_score と minimum_transcribed_time が両方ともに無効（0）に設定されていた場合は、フィルタリングしない結果を返すように変更する
   - @Hexa
 
 ## 2024.9.0
