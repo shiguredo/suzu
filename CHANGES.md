@@ -11,6 +11,9 @@
 
 ## develop
 
+- [CHANGE] Amazon Transcribe 向けの minimum_confidence_score と minimum_transcribed_time が両方ともに無効（0）に設定されていた場合は、フィルタリングしない結果を返すように変更する
+  - @Hexa
+
 ### misc
 
 - [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する

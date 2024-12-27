@@ -254,6 +254,15 @@ func contentFilterByConfidenceScore(config Config, item transcribestreamingservi
 
 func buildMessage(config Config, alt transcribestreamingservice.Alternative, isPartial bool) (string, bool) {
 	var message string
+
+	minimumTranscribedTime := config.MinimumTranscribedTime
+	minimumConfidenceScore := config.MinimumConfidenceScore
+
+	// 両方無効の場合には全てのメッセージを返す
+	if (minimumTranscribedTime <= 0) && (minimumConfidenceScore <= 0) {
+		return *alt.Transcript, true
+	}
+
 	items := alt.Items
 
 	includePronunciation := false
