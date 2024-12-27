@@ -72,4 +72,4 @@ GCP Speech-to-Text を利用するに当たっての注意事項は [GCP.md](GCP
 ### /dump
 
 この URL を Sora の audio_streaming_url を指定すると、
-音声ストリミーングに流れてくる音声データを JSON 形式でダンプします。
+音声ストリーミングに流れてくる音声データを JSON 形式でダンプします。

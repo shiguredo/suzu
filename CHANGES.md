@@ -20,6 +20,11 @@
 - [UPDATE] GitHub Actions の staticcheck のバージョンを 2024.1.1 に上げる
   - @Hexa
 
+## 2024.10.0
+
+- [CHANGE] Amazon Transcribe 向けの minimum_confidence_score と minimum_transcribed_time が両方ともに無効（0）に設定されていた場合は、フィルタリングしない結果を返すように変更する
+  - @Hexa
+
 ## 2024.9.0
 
 - [CHANGE] Amazon Transcribe 向けの minimum_confidence_score と minimum_transcribed_time を独立させて、minimum_confidence_score が無効でも minimum_transcribed_time が有効な場合は minimum_transcribed_time でのフィルタリングが有効になるように変更する
