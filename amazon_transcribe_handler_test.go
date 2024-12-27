@@ -20,6 +20,58 @@ func TestBuildMessage(t *testing.T) {
 		Ok      bool
 	}
 
+	t.Run("default", func(t *testing.T) {
+		testCases := []struct {
+			Name   string
+			Config Config
+			Input  Input
+			Expect Expect
+		}{
+			{
+				Name: "minimumTranscribedTime == 0 && minimumConfidenceScore == 0",
+				Config: Config{
+					MinimumTranscribedTime: 0,
+					MinimumConfidenceScore: 0,
+				},
+				Input: Input{
+					Alt: transcribestreamingservice.Alternative{
+						Transcript: aws.String("filter is disabled"),
+						Items: []*transcribestreamingservice.Item{
+							{
+								StartTime:  aws.Float64(0),
+								EndTime:    aws.Float64(1),
+								Confidence: aws.Float64(1),
+								Content:    aws.String("test"),
+								Type:       aws.String(transcribestreamingservice.ItemTypePronunciation),
+							},
+							{
+								StartTime:  aws.Float64(0),
+								EndTime:    aws.Float64(1),
+								Confidence: aws.Float64(1),
+								Content:    aws.String("data"),
+								Type:       aws.String(transcribestreamingservice.ItemTypePronunciation),
+							},
+						},
+					},
+					IsPartial: false,
+				},
+				Expect: Expect{
+					Message: "filter is disabled",
+					Ok:      true,
+				},
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.Name, func(t *testing.T) {
+				actual, ok := buildMessage(tc.Config, tc.Input.Alt, tc.Input.IsPartial)
+				assert.Equal(t, tc.Expect.Ok, ok)
+				assert.Equal(t, tc.Expect.Message, actual)
+			})
+		}
+
+	})
+
 	t.Run("minimumTranscribedTime", func(t *testing.T) {
 		testCases := []struct {
 			Name   string
@@ -31,21 +83,24 @@ func TestBuildMessage(t *testing.T) {
 				Name: "minimumTranscribedTime is 0",
 				Config: Config{
 					MinimumTranscribedTime: 0,
+					MinimumConfidenceScore: 0.1,
 				},
 				Input: Input{
 					Alt: transcribestreamingservice.Alternative{
 						Items: []*transcribestreamingservice.Item{
 							{
-								StartTime: aws.Float64(0),
-								EndTime:   aws.Float64(0),
-								Content:   aws.String("test"),
-								Type:      aws.String(transcribestreamingservice.ItemTypePronunciation),
+								StartTime:  aws.Float64(0),
+								EndTime:    aws.Float64(0),
+								Confidence: aws.Float64(1),
+								Content:    aws.String("test"),
+								Type:       aws.String(transcribestreamingservice.ItemTypePronunciation),
 							},
 							{
-								StartTime: aws.Float64(0),
-								EndTime:   aws.Float64(0),
-								Content:   aws.String("data"),
-								Type:      aws.String(transcribestreamingservice.ItemTypePronunciation),
+								StartTime:  aws.Float64(0),
+								EndTime:    aws.Float64(0),
+								Confidence: aws.Float64(1),
+								Content:    aws.String("data"),
+								Type:       aws.String(transcribestreamingservice.ItemTypePronunciation),
 							},
 						},
 					},
@@ -223,6 +278,7 @@ func TestBuildMessage(t *testing.T) {
 				{
 					Name: "minimumConfidenceScore is 0",
 					Config: Config{
+						MinimumTranscribedTime: 0.01,
 						MinimumConfidenceScore: 0,
 					},
 					Input: Input{
@@ -231,14 +287,14 @@ func TestBuildMessage(t *testing.T) {
 								{
 									Confidence: aws.Float64(0),
 									StartTime:  aws.Float64(0),
-									EndTime:    aws.Float64(0),
+									EndTime:    aws.Float64(1),
 									Content:    aws.String("test"),
 									Type:       aws.String(transcribestreamingservice.ItemTypePronunciation),
 								},
 								{
 									Confidence: aws.Float64(0),
 									StartTime:  aws.Float64(0),
-									EndTime:    aws.Float64(0),
+									EndTime:    aws.Float64(1),
 									Content:    aws.String("data"),
 									Type:       aws.String(transcribestreamingservice.ItemTypePronunciation),
 								},
@@ -429,6 +485,7 @@ func TestBuildMessage(t *testing.T) {
 				{
 					Name: "minimumConfidenceScore is 0",
 					Config: Config{
+						MinimumTranscribedTime: 0.01,
 						MinimumConfidenceScore: 0,
 					},
 					Input: Input{
@@ -437,14 +494,14 @@ func TestBuildMessage(t *testing.T) {
 								{
 									Confidence: aws.Float64(0),
 									StartTime:  aws.Float64(0),
-									EndTime:    aws.Float64(0),
+									EndTime:    aws.Float64(1),
 									Content:    aws.String("test"),
 									Type:       aws.String(transcribestreamingservice.ItemTypePronunciation),
 								},
 								{
 									Confidence: aws.Float64(0),
 									StartTime:  aws.Float64(0),
-									EndTime:    aws.Float64(0),
+									EndTime:    aws.Float64(1),
 									Content:    aws.String("data"),
 									Type:       aws.String(transcribestreamingservice.ItemTypePronunciation),
 								},
