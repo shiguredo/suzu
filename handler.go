@@ -467,7 +467,6 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 	oggReader, oggWriter := io.Pipe()
 
 	writers := []io.Writer{}
-	writers = append(writers, oggWriter)
 
 	var f *os.File
 	if c.EnableOggFileOutput {
@@ -481,6 +480,7 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 		}
 		writers = append(writers, f)
 	}
+	writers = append(writers, oggWriter)
 
 	multiWriter := io.MultiWriter(writers...)
 
