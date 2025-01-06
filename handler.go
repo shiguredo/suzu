@@ -469,10 +469,13 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 	writers := []io.Writer{}
 	writers = append(writers, oggWriter)
 
+	var f *os.File
 	if c.EnableOggFileOutput {
 		fileName := fmt.Sprintf("%s_%s.ogg", header.SoraSessionID, header.SoraConnectionID)
 		filePath := path.Join(c.OggDir, fileName)
-		f, err := os.Create(filePath)
+
+		var err error
+		f, err = os.Create(filePath)
 		if err != nil {
 			return nil, err
 		}
@@ -488,6 +491,10 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 			return
 		}
 		defer o.Close()
+
+		if c.EnableOggFileOutput {
+			o.fd = f
+		}
 
 		for {
 			select {
