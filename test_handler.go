@@ -73,7 +73,7 @@ func (h *TestHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-func (h *TestHandler) Handle(ctx context.Context, opusCh chan opusChannel) (*io.PipeReader, error) {
+func (h *TestHandler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
 	r, w := io.Pipe()
 
 	reader := opusChannelToIOReadCloser(ctx, opusCh)

@@ -96,10 +96,13 @@ func (h *AmazonTranscribeHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusChannel) (*io.PipeReader, error) {
+func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(h.Config, h.LanguageCode, int64(h.SampleRate), int64(h.ChannelCount))
 
-	packetReader := opus2ogg(ctx, opusCh, h.SampleRate, h.ChannelCount, h.Config)
+	packetReader, err := opus2ogg(ctx, opusCh, h.SampleRate, h.ChannelCount, h.Config, header)
+	if err != nil {
+		return nil, err
+	}
 
 	stream, err := at.Start(ctx, packetReader)
 	if err != nil {
