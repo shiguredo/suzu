@@ -44,7 +44,7 @@ func NewSuzuErrorResponse(err error) TranscriptionResult {
 }
 
 type soraHeader struct {
-	SoraChannelID string `header:"Sora-Channel-Id"`
+	SoraChannelID string `header:"sora-channel-id"`
 	SoraSessionID string `header:"sora-session-id"`
 	// SoraClientID        string `header:"sora-client-id"`
 	SoraConnectionID string `header:"sora-connection-id"`
