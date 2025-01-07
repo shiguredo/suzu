@@ -470,7 +470,7 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 
 	var f *os.File
 	if c.EnableOggFileOutput {
-		fileName := fmt.Sprintf("%s_%s.ogg", header.SoraSessionID, header.SoraConnectionID)
+		fileName := fmt.Sprintf("%s-%s.ogg", header.SoraSessionID, header.SoraConnectionID)
 		filePath := path.Join(c.OggDir, fileName)
 
 		var err error
