@@ -364,11 +364,7 @@ func TestOggFileWriting(t *testing.T) {
 
 		buf := make([]byte, 4)
 		n, err := f.Read(buf)
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				t.Fatal(err)
-			}
-		}
+		assert.NoError(t, err)
 		assert.Equal(t, []byte(`OggS`), buf[:n])
 	})
 
