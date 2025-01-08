@@ -11,6 +11,13 @@
 
 ## develop
 
+- [ADD] 受信した音声データを Ogg ファイルで保存するかを指定する enable_ogg_file_output を追加する
+  - デフォルト値: false
+  - @Hexa
+- [ADD] 受信した音声データを Ogg ファイルで保存する場合の保存先ディレクトリを指定する ogg_dir を追加する
+  - デフォルト値: .
+  - @Hexa
+
 ### misc
 
 - [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
