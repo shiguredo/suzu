@@ -347,10 +347,29 @@ func TestOggFileWriting(t *testing.T) {
 		}
 		defer reader.Close()
 
+		// ファイルへの書き込み待ち
+		time.Sleep(100 * time.Millisecond)
+
 		filename := fmt.Sprintf("%s-%s.ogg", header.SoraSessionID, header.SoraConnectionID)
 		filePath := filepath.Join(oggDir, filename)
 		_, err = os.Stat(filePath)
 		assert.NoError(t, err)
+
+		// Ogg ファイルのヘッダーを確認
+		f, err := os.Open(filePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+
+		buf := make([]byte, 4)
+		n, err := f.Read(buf)
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				t.Fatal(err)
+			}
+		}
+		assert.Equal(t, []byte(`OggS`), buf[:n])
 	})
 
 	t.Run("disable_ogg_file_output", func(t *testing.T) {
