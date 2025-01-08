@@ -65,6 +65,9 @@ type Config struct {
 	SampleRate   int `ini:"audio_sample_rate"`
 	ChannelCount int `ini:"audio_channel_count"`
 
+	EnableOggFileOutput bool   `ini:"enable_ogg_file_output"`
+	OggDir              string `ini:"ogg_dir"`
+
 	DumpFile string `ini:"dump_file"`
 
 	LogDir              string `ini:"log_dir"`
@@ -172,6 +175,10 @@ func setDefaultsConfig(config *Config) {
 
 	if config.RetryIntervalMs == 0 {
 		config.RetryIntervalMs = DefaultRetryIntervalMs
+	}
+
+	if config.OggDir == "" {
+		config.OggDir = "."
 	}
 }
 
