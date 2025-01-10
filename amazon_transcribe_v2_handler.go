@@ -219,12 +219,6 @@ func contentFilterByTranscribedTimeV2(config Config, item types.Item) bool {
 		return true
 	}
 
-	// TODO: v2 で必須になったため、対応方法を検討する
-	// // StartTime または EndTime が nil の場合はフィルタリングしない
-	// if (item.StartTime == nil) || (item.EndTime == nil) {
-	// 	return true
-	// }
-
 	// 発話時間が minimumTranscribedTime 未満の場合はフィルタリングする
 	return (item.EndTime - item.StartTime) >= minimumTranscribedTime
 }
