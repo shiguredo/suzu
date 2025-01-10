@@ -3,6 +3,7 @@ package suzu
 import (
 	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/service/transcribestreaming/types"
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 )
 
@@ -26,6 +27,14 @@ func GetLanguageCode(serviceType, lang string, f func(string) (string, error)) (
 		for _, languageCode := range transcribestreamingservice.LanguageCode_Values() {
 			if languageCode == lang {
 				return languageCode, nil
+			}
+		}
+		return "", fmt.Errorf("%w: %s", ErrUnsupportedLanguageCode, lang)
+	case "awsv2":
+		lc := new(types.LanguageCode)
+		for _, languageCode := range lc.Values() {
+			if languageCode == types.LanguageCode(lang) {
+				return lang, nil
 			}
 		}
 		return "", fmt.Errorf("%w: %s", ErrUnsupportedLanguageCode, lang)
