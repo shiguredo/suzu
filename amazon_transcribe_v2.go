@@ -78,6 +78,11 @@ func NewAmazonTranscribeClientV2(c Config) (*transcribestreaming.Client, error) 
 
 	ctx := context.TODO()
 
+	var clientLogMode aws.ClientLogMode
+	if c.Debug {
+		clientLogMode = aws.LogSigning | aws.LogRetries | aws.LogRequest | aws.LogRequestWithBody | aws.LogResponse | aws.LogResponseWithBody | aws.LogDeprecatedUsage | aws.LogRequestEventMessage | aws.LogResponseEventMessage
+	}
+
 	var cfg aws.Config
 	if c.AwsProfile != "" {
 		// TODO: logLevel の指定
@@ -87,6 +92,7 @@ func NewAmazonTranscribeClientV2(c Config) (*transcribestreaming.Client, error) 
 			config.WithSharedConfigProfile(c.AwsProfile),
 			config.WithSharedCredentialsFiles([]string{c.AwsCredentialFile}),
 			config.WithHTTPClient(httpClient),
+			config.WithClientLogMode(clientLogMode),
 		)
 		if err != nil {
 			return nil, err
