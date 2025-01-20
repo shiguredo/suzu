@@ -2,10 +2,12 @@ package suzu
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/transcribestreaming"
 	"github.com/aws/aws-sdk-go-v2/service/transcribestreaming/types"
@@ -119,22 +121,30 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser) (*tran
 
 	resp, err := client.StartStreamTranscription(ctx, &input)
 	if err != nil {
-		// TODO: v2 には存在しないため、変更されたエラーに置き換える
-		// if reqErr, ok := err.(awserr.RequestFailure); ok {
-		// 	code := reqErr.StatusCode()
-		// 	message := reqErr.Message()
+		var respErr *awshttp.ResponseError
+		if errors.As(err, &respErr) {
+			code := respErr.HTTPStatusCode()
+			res := respErr.HTTPResponse()
 
-		// 	var retry bool
-		// 	if code == http.StatusTooManyRequests {
-		// 		retry = true
-		// 	}
+			buf := make([]byte, 1024)
+			n, err := res.Body.Read(buf)
+			if err != nil && err != io.EOF {
+				return nil, err
+			}
 
-		// 	return nil, &SuzuError{
-		// 		Code:    code,
-		// 		Message: message,
-		// 		Retry:   retry,
-		// 	}
-		// }
+			message := string(buf[:n])
+
+			var retry bool
+			if code == http.StatusTooManyRequests {
+				retry = true
+			}
+
+			return nil, &SuzuError{
+				Code:    code,
+				Message: message,
+				Retry:   retry,
+			}
+		}
 		return nil, err
 	}
 
