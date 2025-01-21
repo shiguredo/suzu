@@ -87,7 +87,6 @@ func NewAmazonTranscribeClientV2(c Config) (*transcribestreaming.Client, error) 
 
 	var cfg aws.Config
 	if c.AwsProfile != "" {
-		// TODO: logLevel の指定
 		var err error
 		cfg, err = config.LoadDefaultConfig(ctx,
 			config.WithRegion(c.AwsRegion),
