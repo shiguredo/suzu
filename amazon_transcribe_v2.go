@@ -124,15 +124,7 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser) (*tran
 		var respErr *awshttp.ResponseError
 		if errors.As(err, &respErr) {
 			code := respErr.HTTPStatusCode()
-			res := respErr.HTTPResponse()
-
-			buf := make([]byte, 1024)
-			n, err := res.Body.Read(buf)
-			if err != nil && err != io.EOF {
-				return nil, err
-			}
-
-			message := string(buf[:n])
+			message := err.Error()
 
 			var retry bool
 			if code == http.StatusTooManyRequests {
