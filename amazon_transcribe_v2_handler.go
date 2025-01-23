@@ -274,7 +274,7 @@ func buildMessageV2(config Config, alt types.Alternative, isPartial bool) (strin
 			continue
 		}
 
-		if item.Type == types.ItemTypePunctuation {
+		if item.Type == types.ItemTypePronunciation {
 			includePronunciation = true
 		}
 
