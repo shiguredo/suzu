@@ -60,7 +60,7 @@ func NewStartStreamTranscriptionInputV2(at *AmazonTranscribeV2) transcribestream
 		EnableChannelIdentification:       at.EnableChannelIdentification,
 	}
 
-	if !at.EnablePartialResultsStabilization {
+	if at.EnablePartialResultsStabilization {
 		input.PartialResultsStability = types.PartialResultsStability(at.PartialResultsStability)
 	}
 
