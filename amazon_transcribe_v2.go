@@ -51,26 +51,20 @@ func NewStartStreamTranscriptionInputV2(at *AmazonTranscribeV2) transcribestream
 
 	sampleRateHertz := int32(at.MediaSampleRateHertz)
 
-	if !at.EnablePartialResultsStabilization {
-		return transcribestreaming.StartStreamTranscriptionInput{
-			LanguageCode:                      types.LanguageCode(at.LanguageCode),
-			MediaEncoding:                     at.MediaEncoding,
-			MediaSampleRateHertz:              &sampleRateHertz,
-			NumberOfChannels:                  numberOfChannels,
-			EnablePartialResultsStabilization: at.EnablePartialResultsStabilization,
-			EnableChannelIdentification:       at.EnableChannelIdentification,
-		}
-	} else {
-		return transcribestreaming.StartStreamTranscriptionInput{
-			LanguageCode:                      types.LanguageCode(at.LanguageCode),
-			MediaEncoding:                     at.MediaEncoding,
-			MediaSampleRateHertz:              &sampleRateHertz,
-			NumberOfChannels:                  numberOfChannels,
-			EnablePartialResultsStabilization: at.EnablePartialResultsStabilization,
-			PartialResultsStability:           types.PartialResultsStability(at.PartialResultsStability),
-			EnableChannelIdentification:       at.EnableChannelIdentification,
-		}
+	input := transcribestreaming.StartStreamTranscriptionInput{
+		LanguageCode:                      types.LanguageCode(at.LanguageCode),
+		MediaEncoding:                     at.MediaEncoding,
+		MediaSampleRateHertz:              &sampleRateHertz,
+		NumberOfChannels:                  numberOfChannels,
+		EnablePartialResultsStabilization: at.EnablePartialResultsStabilization,
+		EnableChannelIdentification:       at.EnableChannelIdentification,
 	}
+
+	if !at.EnablePartialResultsStabilization {
+		input.PartialResultsStability = types.PartialResultsStability(at.PartialResultsStability)
+	}
+
+	return input
 }
 
 func NewAmazonTranscribeClientV2(c Config) (*transcribestreaming.Client, error) {
