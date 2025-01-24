@@ -19,6 +19,10 @@
 - [ADD] 受信した音声データを Ogg ファイルで保存する場合の保存先ディレクトリを指定する ogg_dir を追加する
   - デフォルト値: .
   - @Hexa
+- [ADD] AWS SDK for Go v2 対応を追加する
+  - suzu 実行時の -service オプションで awsv2 を指定すると AWS SDK for Go v2 を使用する
+    - 実行例: ./bin/suzu -service awsv2
+  - @Hexa
 
 ### misc
 
