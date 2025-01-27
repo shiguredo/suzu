@@ -13,6 +13,7 @@ import (
 )
 
 func init() {
+	NewServiceHandlerFuncs.register("aws", NewAmazonTranscribeV2Handler)
 	NewServiceHandlerFuncs.register("awsv2", NewAmazonTranscribeV2Handler)
 }
 

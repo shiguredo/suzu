@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	NewServiceHandlerFuncs.register("aws", NewAmazonTranscribeHandler)
+	NewServiceHandlerFuncs.register("awsv1", NewAmazonTranscribeHandler)
 }
 
 type AmazonTranscribeHandler struct {
