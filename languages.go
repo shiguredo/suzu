@@ -23,14 +23,14 @@ func GetLanguageCode(serviceType, lang string, f func(string) (string, error)) (
 	}
 
 	switch serviceType {
-	case "aws":
+	case "awsv1":
 		for _, languageCode := range transcribestreamingservice.LanguageCode_Values() {
 			if languageCode == lang {
 				return languageCode, nil
 			}
 		}
 		return "", fmt.Errorf("%w: %s", ErrUnsupportedLanguageCode, lang)
-	case "awsv2":
+	case "aws", "awsv2":
 		lc := new(types.LanguageCode)
 		for _, languageCode := range lc.Values() {
 			if languageCode == types.LanguageCode(lang) {
