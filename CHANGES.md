@@ -20,8 +20,13 @@
   - デフォルト値: .
   - @Hexa
 - [ADD] AWS SDK for Go v2 対応を追加する
-  - suzu 実行時の -service オプションで awsv2 を指定すると AWS SDK for Go v2 を使用する
+  - suzu 実行時に -service オプションを未指定にするか、-service オプションで awsv2、または、aws を指定すると AWS SDK for Go v2 を使用する
     - 実行例: ./bin/suzu -service awsv2
+    - 実行例: ./bin/suzu -service aws
+  - @Hexa
+- [CHANGE] suzu 実行時に指定する -service オプションのデフォルト値の **aws** で使用する AWS SDK for Go を、AWS SDK for Go v1 から AWS SDK for Go v2 に変更する
+  - 以前のバージョンと同様に AWS SDK for Go v1 を使用する場合は、-service オプションで **awsv1** を指定する
+  - awsv1 は、AWS SDK for Go v1 のサポート終了の 2025-07-31 を目処に廃止します
   - @Hexa
 
 ### misc
