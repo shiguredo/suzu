@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
 	"github.com/shiguredo/suzu"
@@ -17,7 +18,7 @@ func main() {
 
 	// bin/suzu -C config.ini
 	configFilePath := flag.String("C", "./config.ini", "設定ファイルへのパス")
-	serviceType := flag.String("service", "aws", fmt.Sprintf("音声文字変換のサービス（%s）", strings.Join(suzu.NewServiceHandlerFuncs.GetNames([]string{"test", "dump"}), ", ")))
+	serviceType := flag.String("service", "aws", fmt.Sprintf("音声文字変換のサービス（%s）", strings.Join(serviceNames(), ", ")))
 	flag.Parse()
 
 	if *showVersion {
@@ -58,4 +59,10 @@ func main() {
 	if err := g.Wait(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func serviceNames() []string {
+	names := suzu.NewServiceHandlerFuncs.GetNames([]string{"test", "dump"})
+	sort.Strings(names)
+	return names
 }
