@@ -8,15 +8,16 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
+	"github.com/aws/aws-sdk-go-v2/service/transcribestreaming/types"
 	zlog "github.com/rs/zerolog/log"
 )
 
 func init() {
-	NewServiceHandlerFuncs.register("awsv1", NewAmazonTranscribeHandler)
+	NewServiceHandlerFuncs.register("aws", NewAmazonTranscribeV2Handler)
+	NewServiceHandlerFuncs.register("awsv2", NewAmazonTranscribeV2Handler)
 }
 
-type AmazonTranscribeHandler struct {
+type AmazonTranscribeV2Handler struct {
 	Config Config
 
 	ChannelID    string
@@ -30,8 +31,8 @@ type AmazonTranscribeHandler struct {
 	OnResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error
 }
 
-func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
-	return &AmazonTranscribeHandler{
+func NewAmazonTranscribeV2Handler(config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) serviceHandlerInterface {
+	return &AmazonTranscribeV2Handler{
 		Config:       config,
 		ChannelID:    channelID,
 		ConnectionID: connectionID,
@@ -43,61 +44,61 @@ func NewAmazonTranscribeHandler(config Config, channelID, connectionID string, s
 	}
 }
 
-type AwsResult struct {
+type AwsResultV2 struct {
 	ChannelID *string `json:"channel_id,omitempty"`
 	IsPartial *bool   `json:"is_partial,omitempty"`
 	ResultID  *string `json:"result_id,omitempty"`
 	TranscriptionResult
 }
 
-func NewAwsResult() AwsResult {
-	return AwsResult{
+func NewAwsResultV2() AwsResultV2 {
+	return AwsResultV2{
 		TranscriptionResult: TranscriptionResult{
 			Type: "aws",
 		},
 	}
 }
 
-func (ar *AwsResult) WithChannelID(channelID string) *AwsResult {
+func (ar *AwsResultV2) WithChannelID(channelID string) *AwsResultV2 {
 	ar.ChannelID = &channelID
 	return ar
 }
 
-func (ar *AwsResult) WithIsPartial(isPartial bool) *AwsResult {
+func (ar *AwsResultV2) WithIsPartial(isPartial bool) *AwsResultV2 {
 	ar.IsPartial = &isPartial
 	return ar
 }
 
-func (ar *AwsResult) WithResultID(resultID string) *AwsResult {
+func (ar *AwsResultV2) WithResultID(resultID string) *AwsResultV2 {
 	ar.ResultID = &resultID
 	return ar
 }
 
-func (ar *AwsResult) SetMessage(message string) *AwsResult {
+func (ar *AwsResultV2) SetMessage(message string) *AwsResultV2 {
 	ar.Message = message
 	return ar
 }
 
-func (h *AmazonTranscribeHandler) UpdateRetryCount() int {
+func (h *AmazonTranscribeV2Handler) UpdateRetryCount() int {
 	defer h.mu.Unlock()
 	h.mu.Lock()
 	h.RetryCount++
 	return h.RetryCount
 }
 
-func (h *AmazonTranscribeHandler) GetRetryCount() int {
+func (h *AmazonTranscribeV2Handler) GetRetryCount() int {
 	return h.RetryCount
 }
 
-func (h *AmazonTranscribeHandler) ResetRetryCount() int {
+func (h *AmazonTranscribeV2Handler) ResetRetryCount() int {
 	defer h.mu.Unlock()
 	h.mu.Lock()
 	h.RetryCount = 0
 	return h.RetryCount
 }
 
-func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
-	at := NewAmazonTranscribe(h.Config, h.LanguageCode, int64(h.SampleRate), int64(h.ChannelCount))
+func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
+	at := NewAmazonTranscribeV2(h.Config, h.LanguageCode, int64(h.SampleRate), int64(h.ChannelCount))
 
 	packetReader, err := opus2ogg(ctx, opusCh, h.SampleRate, h.ChannelCount, h.Config, header)
 	if err != nil {
@@ -124,9 +125,9 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 				break L
 			case event := <-stream.Events():
 				switch e := event.(type) {
-				case *transcribestreamingservice.TranscriptEvent:
+				case *types.TranscriptResultStreamMemberTranscriptEvent:
 					if h.OnResultFunc != nil {
-						if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, e.Transcript.Results); err != nil {
+						if err := h.OnResultFunc(ctx, w, h.ChannelID, h.ConnectionID, h.LanguageCode, e.Value.Transcript.Results); err != nil {
 							if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
 								zlog.Error().
 									Err(err).
@@ -138,17 +139,17 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 							return
 						}
 					} else {
-						for _, res := range e.Transcript.Results {
+						for _, res := range e.Value.Transcript.Results {
 							if at.Config.FinalResultOnly {
 								// IsPartial: true の場合は結果を返さない
-								if *res.IsPartial {
+								if res.IsPartial {
 									continue
 								}
 							}
 
 							result := NewAwsResult()
 							if at.Config.AwsResultIsPartial {
-								result.WithIsPartial(*res.IsPartial)
+								result.WithIsPartial(res.IsPartial)
 							}
 							if at.Config.AwsResultChannelID {
 								result.WithChannelID(*res.ChannelId)
@@ -158,7 +159,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 							}
 
 							for _, alt := range res.Alternatives {
-								message, ok := buildMessage(at.Config, *alt, *res.IsPartial)
+								message, ok := buildMessageV2(at.Config, alt, res.IsPartial)
 								if !ok {
 									continue
 								}
@@ -187,8 +188,8 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 
 			// 復帰が不可能なエラー以外は再接続を試みる
 			switch err.(type) {
-			case *transcribestreamingservice.LimitExceededException,
-				*transcribestreamingservice.InternalFailureException:
+			case *types.LimitExceededException,
+				*types.InternalFailureException:
 				err = errors.Join(err, ErrServerDisconnected)
 			default:
 				// サーバから切断された場合は再接続を試みる
@@ -206,7 +207,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 	return r, nil
 }
 
-func contentFilterByTranscribedTime(config Config, item transcribestreamingservice.Item) bool {
+func contentFilterByTranscribedTimeV2(config Config, item types.Item) bool {
 	minimumTranscribedTime := config.MinimumTranscribedTime
 
 	// minimumTranscribedTime が設定されていない場合はフィルタリングしない
@@ -215,20 +216,15 @@ func contentFilterByTranscribedTime(config Config, item transcribestreamingservi
 	}
 
 	// 句読点の場合はフィルタリングしない
-	if *item.Type == transcribestreamingservice.ItemTypePunctuation {
-		return true
-	}
-
-	// StartTime または EndTime が nil の場合はフィルタリングしない
-	if (item.StartTime == nil) || (item.EndTime == nil) {
+	if item.Type == types.ItemTypePunctuation {
 		return true
 	}
 
 	// 発話時間が minimumTranscribedTime 未満の場合はフィルタリングする
-	return (*item.EndTime - *item.StartTime) >= minimumTranscribedTime
+	return (item.EndTime - item.StartTime) >= minimumTranscribedTime
 }
 
-func contentFilterByConfidenceScore(config Config, item transcribestreamingservice.Item, isPartial bool) bool {
+func contentFilterByConfidenceScoreV2(config Config, item types.Item, isPartial bool) bool {
 	minimumConfidenceScore := config.MinimumConfidenceScore
 
 	// minimumConfidenceScore が設定されていない場合はフィルタリングしない
@@ -242,7 +238,7 @@ func contentFilterByConfidenceScore(config Config, item transcribestreamingservi
 	}
 
 	// 句読点の場合はフィルタリングしない
-	if *item.Type == transcribestreamingservice.ItemTypePunctuation {
+	if item.Type == types.ItemTypePunctuation {
 		return true
 	}
 
@@ -255,7 +251,7 @@ func contentFilterByConfidenceScore(config Config, item transcribestreamingservi
 	return *item.Confidence >= minimumConfidenceScore
 }
 
-func buildMessage(config Config, alt transcribestreamingservice.Alternative, isPartial bool) (string, bool) {
+func buildMessageV2(config Config, alt types.Alternative, isPartial bool) (string, bool) {
 	var message string
 
 	minimumTranscribedTime := config.MinimumTranscribedTime
@@ -271,15 +267,15 @@ func buildMessage(config Config, alt transcribestreamingservice.Alternative, isP
 	includePronunciation := false
 
 	for _, item := range items {
-		if !contentFilterByTranscribedTime(config, *item) {
+		if !contentFilterByTranscribedTimeV2(config, item) {
 			continue
 		}
 
-		if !contentFilterByConfidenceScore(config, *item, isPartial) {
+		if !contentFilterByConfidenceScoreV2(config, item, isPartial) {
 			continue
 		}
 
-		if *item.Type == transcribestreamingservice.ItemTypePronunciation {
+		if item.Type == types.ItemTypePronunciation {
 			includePronunciation = true
 		}
 
