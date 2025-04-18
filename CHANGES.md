@@ -33,10 +33,10 @@
 
 - [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
   - @voluntas
-- [UPDATE] go.mod の Go のバージョンを 1.23.4 にあげる
-  - @Hexa
-- [UPDATE] GitHub Actions の staticcheck のバージョンを 2024.1.1 に上げる
-  - @Hexa
+- [UPDATE] go.mod の Go のバージョンを 1.24.2 にあげる
+  - @Hexa @voluntas
+- [UPDATE] GitHub Actions の staticcheck のバージョンを 2025.1.1 に上げる
+  - @Hexa @voluntas
 
 ## 2024.10.0
 
