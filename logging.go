@@ -33,7 +33,13 @@ func InitLogger(config *Config) error {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
-	if config.Debug && config.LogStdout {
+	if config.Debug && config.DebugConsoleLog {
+		// デバッグコンソールを JSON 形式で出力
+		if config.DebugConsoleLogJSON {
+			log.Logger = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+			return nil
+		}
+
 		writer := zerolog.ConsoleWriter{
 			Out: os.Stdout,
 			FormatTimestamp: func(i interface{}) string {
@@ -45,30 +51,35 @@ func InitLogger(config *Config) error {
 		}
 		prettyFormat(&writer)
 		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
-	} else if config.LogStdout {
-		writer := os.Stdout
-		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
-	} else {
-		var logRotateMaxSize, logRotateMaxBackups, logRotateMaxAge int
-		if config.LogRotateMaxSize == 0 {
-			logRotateMaxSize = DefaultLogRotateMaxSize
-		}
-		if config.LogRotateMaxBackups == 0 {
-			logRotateMaxBackups = DefaultLogRotateMaxBackups
-		}
-		if config.LogRotateMaxAge == 0 {
-			logRotateMaxAge = DefaultLogRotateMaxAge
-		}
 
-		writer := &lumberjack.Logger{
-			Filename:   logPath,
-			MaxSize:    logRotateMaxSize,
-			MaxBackups: logRotateMaxBackups,
-			MaxAge:     logRotateMaxAge,
-			Compress:   false,
-		}
-		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
+		return nil
 	}
+
+	if config.LogStdout {
+		log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
+		return nil
+	}
+
+	// ファイル書き込み
+	var logRotateMaxSize, logRotateMaxBackups, logRotateMaxAge int
+	if config.LogRotateMaxSize == 0 {
+		logRotateMaxSize = DefaultLogRotateMaxSize
+	}
+	if config.LogRotateMaxBackups == 0 {
+		logRotateMaxBackups = DefaultLogRotateMaxBackups
+	}
+	if config.LogRotateMaxAge == 0 {
+		logRotateMaxAge = DefaultLogRotateMaxAge
+	}
+
+	writer := &lumberjack.Logger{
+		Filename:   logPath,
+		MaxSize:    logRotateMaxSize,
+		MaxBackups: logRotateMaxBackups,
+		MaxAge:     logRotateMaxAge,
+		Compress:   false,
+	}
+	log.Logger = zerolog.New(writer).With().Timestamp().Logger()
 
 	return nil
 }

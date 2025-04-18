@@ -77,6 +77,9 @@ type Config struct {
 	LogRotateMaxBackups int    `ini:"log_rotate_max_backups"`
 	LogRotateMaxAge     int    `ini:"log_rotate_max_age"`
 
+	DebugConsoleLog     bool `ini:"debug_console_log"`
+	DebugConsoleLogJSON bool `ini:"debug_console_log_json"`
+
 	TimeToWaitForOpusPacketMs int `ini:"time_to_wait_for_opus_packet_ms"`
 
 	// aws の場合は IsPartial が false, gcp の場合は IsFinal が true の場合にのみ結果を返す指定
@@ -220,6 +223,9 @@ func ShowConfig(config *Config) {
 	zlog.Info().Int("log_rotate_max_size", config.LogRotateMaxSize).Msg("CONF")
 	zlog.Info().Int("log_rotate_max_backups", config.LogRotateMaxBackups).Msg("CONF")
 	zlog.Info().Int("log_rotate_max_age", config.LogRotateMaxAge).Msg("CONF")
+
+	zlog.Info().Bool("debug_console_log", config.DebugConsoleLog).Msg("CONF")
+	zlog.Info().Bool("debug_console_log_json", config.DebugConsoleLogJSON).Msg("CONF")
 
 	zlog.Info().Bool("https", config.HTTPS).Msg("CONF")
 	zlog.Info().Str("listen_addr", config.ListenAddr).Msg("CONF")
