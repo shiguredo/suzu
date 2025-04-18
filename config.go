@@ -16,11 +16,9 @@ const (
 	defaultLogDir  = "."
 	defaultLogName = "suzu.jsonl"
 
-	// megabytes
 	defaultLogRotateMaxSize    = 200
 	defaultLogRotateMaxBackups = 7
-	// days
-	defaultLogRotateMaxAge = 30
+	defaultLogRotateMaxAge     = 30
 
 	defaultExporterListenAddr = "0.0.0.0"
 	defaultExporterListenPort = 5891
@@ -72,6 +70,7 @@ type Config struct {
 
 	LogDir              string `ini:"log_dir"`
 	LogName             string `ini:"log_name"`
+	LogLevel            string `ini:"log_level"`
 	LogStdout           bool   `ini:"log_stdout"`
 	LogRotateMaxSize    int    `ini:"log_rotate_max_size"`
 	LogRotateMaxBackups int    `ini:"log_rotate_max_backups"`
