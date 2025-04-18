@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/smithy-go"
 	"github.com/labstack/echo/v4"
 	"github.com/pion/rtp/codecs"
 	zlog "github.com/rs/zerolog/log"
@@ -201,6 +202,31 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					// SuzuError の場合はその Status Code を返す
 					return c.NoContent(err.Code)
 				}
+
+				var oe *smithy.OperationError
+				if errors.As(err, &oe) {
+					errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
+					if err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.SoraChannelID).
+							Str("connection_id", h.SoraConnectionID).
+							Send()
+						return err
+					}
+
+					if _, err := c.Response().Write(errMessage); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.SoraChannelID).
+							Str("connection_id", h.SoraConnectionID).
+							Send()
+						return err
+					}
+
+					return err
+				}
+
 				// SuzuError 以外の場合は 500 を返す
 				return echo.NewHTTPError(http.StatusInternalServerError, err)
 			}
