@@ -60,24 +60,12 @@ func InitLogger(config *Config) error {
 		return nil
 	}
 
-	// ファイル書き込み
-	var logRotateMaxSize, logRotateMaxBackups, logRotateMaxAge int
-	if config.LogRotateMaxSize == 0 {
-		logRotateMaxSize = DefaultLogRotateMaxSize
-	}
-	if config.LogRotateMaxBackups == 0 {
-		logRotateMaxBackups = DefaultLogRotateMaxBackups
-	}
-	if config.LogRotateMaxAge == 0 {
-		logRotateMaxAge = DefaultLogRotateMaxAge
-	}
-
 	writer := &lumberjack.Logger{
 		Filename:   logPath,
-		MaxSize:    logRotateMaxSize,
-		MaxBackups: logRotateMaxBackups,
-		MaxAge:     logRotateMaxAge,
-		Compress:   false,
+		MaxSize:    config.LogRotateMaxSize,
+		MaxBackups: config.LogRotateMaxBackups,
+		MaxAge:     config.LogRotateMaxAge,
+		Compress:   config.LogRotateCompress,
 	}
 	log.Logger = zerolog.New(writer).With().Timestamp().Logger()
 
