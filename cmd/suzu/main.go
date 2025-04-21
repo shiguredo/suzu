@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	zlog "github.com/rs/zerolog/log"
 	"github.com/shiguredo/suzu"
 	"golang.org/x/sync/errgroup"
 )
@@ -33,11 +34,15 @@ func main() {
 	}
 
 	// ロガー初期化
-	err = suzu.InitLogger(config)
+	suzu.InitLogger(config)
+
+	logger, err := suzu.NewLogger(config)
 	if err != nil {
 		// ロガー初期化に失敗したら Fatal で終了
 		log.Fatal("cannot parse config file, err=", err)
 	}
+	// グローバルロガーを設定
+	zlog.Logger = *logger
 
 	suzu.ShowConfig(config)
 

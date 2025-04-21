@@ -68,14 +68,14 @@ type Config struct {
 
 	DumpFile string `ini:"dump_file"`
 
-	LogDir              string `ini:"log_dir"`
-	LogName             string `ini:"log_name"`
-	LogLevel            string `ini:"log_level"`
-	LogStdout           bool   `ini:"log_stdout"`
-	LogRotateMaxSize    int    `ini:"log_rotate_max_size"`
-	LogRotateMaxBackups int    `ini:"log_rotate_max_backups"`
-	LogRotateMaxAge     int    `ini:"log_rotate_max_age"`
-	LogRotateCompress   bool   `ini:"log_rotate_compress"`
+	LogDir    string `ini:"log_dir"`
+	LogName   string `ini:"log_name"`
+	LogStdout bool   `ini:"log_stdout"`
+
+	LogRotateMaxSize    int  `ini:"log_rotate_max_size"`
+	LogRotateMaxBackups int  `ini:"log_rotate_max_backups"`
+	LogRotateMaxAge     int  `ini:"log_rotate_max_age"`
+	LogRotateCompress   bool `ini:"log_rotate_compress"`
 
 	DebugConsoleLog     bool `ini:"debug_console_log"`
 	DebugConsoleLogJSON bool `ini:"debug_console_log_json"`
@@ -223,7 +223,7 @@ func ShowConfig(config *Config) {
 	zlog.Info().Int("log_rotate_max_size", config.LogRotateMaxSize).Msg("CONF")
 	zlog.Info().Int("log_rotate_max_backups", config.LogRotateMaxBackups).Msg("CONF")
 	zlog.Info().Int("log_rotate_max_age", config.LogRotateMaxAge).Msg("CONF")
-
+	zlog.Info().Bool("log_rotate_compress", config.LogRotateCompress).Msg("CONF")
 	zlog.Info().Bool("debug_console_log", config.DebugConsoleLog).Msg("CONF")
 	zlog.Info().Bool("debug_console_log_json", config.DebugConsoleLogJSON).Msg("CONF")
 

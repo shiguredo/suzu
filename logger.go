@@ -8,17 +8,10 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func InitLogger(config *Config) error {
-	if f, err := os.Stat(config.LogDir); os.IsNotExist(err) || !f.IsDir() {
-		return err
-	}
-
-	logPath := fmt.Sprintf("%s/%s", config.LogDir, config.LogName)
-
+func InitLogger(config *Config) {
 	// https://github.com/rs/zerolog/issues/77
 	zerolog.TimestampFunc = func() time.Time {
 		return time.Now().UTC()
@@ -31,12 +24,14 @@ func InitLogger(config *Config) error {
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
+}
 
+func NewLogger(config *Config) (*zerolog.Logger, error) {
 	if config.Debug && config.DebugConsoleLog {
 		// デバッグコンソールを JSON 形式で出力
 		if config.DebugConsoleLogJSON {
-			log.Logger = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
-			return nil
+			logger := zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+			return &logger, nil
 		}
 
 		writer := zerolog.ConsoleWriter{
@@ -49,15 +44,20 @@ func InitLogger(config *Config) error {
 			NoColor: false,
 		}
 		prettyFormat(&writer)
-		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
-
-		return nil
+		logger := zerolog.New(writer).With().Caller().Timestamp().Logger()
+		return &logger, nil
 	}
 
 	if config.LogStdout {
-		log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
-		return nil
+		logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+		return &logger, nil
 	}
+
+	if f, err := os.Stat(config.LogDir); os.IsNotExist(err) || !f.IsDir() {
+		return nil, err
+	}
+
+	logPath := fmt.Sprintf("%s/%s", config.LogDir, config.LogName)
 
 	writer := &lumberjack.Logger{
 		Filename:   logPath,
@@ -66,9 +66,9 @@ func InitLogger(config *Config) error {
 		MaxAge:     config.LogRotateMaxAge,
 		Compress:   config.LogRotateCompress,
 	}
-	log.Logger = zerolog.New(writer).With().Timestamp().Logger()
+	logger := zerolog.New(writer).With().Timestamp().Logger()
 
-	return nil
+	return &logger, nil
 }
 
 // 現時点での prettyFormat
