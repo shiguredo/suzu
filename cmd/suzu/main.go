@@ -36,7 +36,7 @@ func main() {
 	// ロガー初期化
 	suzu.InitLogger(config)
 
-	logger, err := suzu.NewLogger(config)
+	logger, err := suzu.NewLogger(config, config.LogName, "suzu")
 	if err != nil {
 		// ロガー初期化に失敗したら Fatal で終了
 		log.Fatal("cannot parse config file, err=", err)

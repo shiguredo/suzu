@@ -26,11 +26,11 @@ func InitLogger(config *Config) {
 	}
 }
 
-func NewLogger(config *Config) (*zerolog.Logger, error) {
+func NewLogger(config *Config, logFilename string, logDomain string) (*zerolog.Logger, error) {
 	if config.Debug && config.DebugConsoleLog {
 		// デバッグコンソールを JSON 形式で出力
 		if config.DebugConsoleLogJSON {
-			logger := zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+			logger := zerolog.New(os.Stdout).With().Caller().Timestamp().Str("domain", logDomain).Logger()
 			return &logger, nil
 		}
 
@@ -44,12 +44,12 @@ func NewLogger(config *Config) (*zerolog.Logger, error) {
 			NoColor: false,
 		}
 		prettyFormat(&writer)
-		logger := zerolog.New(writer).With().Caller().Timestamp().Logger()
+		logger := zerolog.New(writer).With().Caller().Timestamp().Str("domain", logDomain).Logger()
 		return &logger, nil
 	}
 
 	if config.LogStdout {
-		logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+		logger := zerolog.New(os.Stdout).With().Timestamp().Str("domain", logDomain).Logger()
 		return &logger, nil
 	}
 
@@ -57,7 +57,7 @@ func NewLogger(config *Config) (*zerolog.Logger, error) {
 		return nil, err
 	}
 
-	logPath := fmt.Sprintf("%s/%s", config.LogDir, config.LogName)
+	logPath := fmt.Sprintf("%s/%s", config.LogDir, logFilename)
 
 	writer := &lumberjack.Logger{
 		Filename:   logPath,
@@ -66,7 +66,7 @@ func NewLogger(config *Config) (*zerolog.Logger, error) {
 		MaxAge:     config.LogRotateMaxAge,
 		Compress:   config.LogRotateCompress,
 	}
-	logger := zerolog.New(writer).With().Timestamp().Logger()
+	logger := zerolog.New(writer).With().Timestamp().Str("domain", logDomain).Logger()
 
 	return &logger, nil
 }

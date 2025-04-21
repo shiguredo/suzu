@@ -15,6 +15,9 @@
   - 以前のバージョンと同様に AWS SDK for Go v1 を使用する場合は、-service オプションで **awsv1** を指定する
   - awsv1 は、AWS SDK for Go v1 のサポート終了の 2025-07-31 を目処に廃止します
   - @Hexa
+- [ADD] `"domain": "suzu"` をログに含めるようにする
+  - 複数のログを標準出力する際に判別できるようにする
+  - @voluntas
 - [ADD] デバッグコンソールログを出力する `debug_console_log` を追加する
   - デフォルト false
   - `debug` が `true` かつ `debug_console_log` が `true` の場合は、コンソールログにデバッグログを出力する
