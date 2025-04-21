@@ -5,3 +5,6 @@ tmp/*
 
 config.ini
 suzu.jsonl
+
+# 自動生成
+util.go

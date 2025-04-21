@@ -8,18 +8,10 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-// InitLogger ロガーを初期化する
-func InitLogger(config *Config) error {
-	if f, err := os.Stat(config.LogDir); os.IsNotExist(err) || !f.IsDir() {
-		return err
-	}
-
-	logPath := fmt.Sprintf("%s/%s", config.LogDir, config.LogName)
-
+func InitLogger(config *Config) {
 	// https://github.com/rs/zerolog/issues/77
 	zerolog.TimestampFunc = func() time.Time {
 		return time.Now().UTC()
@@ -32,8 +24,16 @@ func InitLogger(config *Config) error {
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
+}
 
-	if config.Debug && config.LogStdout {
+func NewLogger(config *Config, logFilename string, logDomain string) (*zerolog.Logger, error) {
+	if config.Debug && config.DebugConsoleLog {
+		// デバッグコンソールを JSON 形式で出力
+		if config.DebugConsoleLogJSON {
+			logger := zerolog.New(os.Stdout).With().Caller().Timestamp().Str("domain", logDomain).Logger()
+			return &logger, nil
+		}
+
 		writer := zerolog.ConsoleWriter{
 			Out: os.Stdout,
 			FormatTimestamp: func(i interface{}) string {
@@ -44,33 +44,31 @@ func InitLogger(config *Config) error {
 			NoColor: false,
 		}
 		prettyFormat(&writer)
-		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
-	} else if config.LogStdout {
-		writer := os.Stdout
-		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
-	} else {
-		var logRotateMaxSize, logRotateMaxBackups, logRotateMaxAge int
-		if config.LogRotateMaxSize == 0 {
-			logRotateMaxSize = DefaultLogRotateMaxSize
-		}
-		if config.LogRotateMaxBackups == 0 {
-			logRotateMaxBackups = DefaultLogRotateMaxBackups
-		}
-		if config.LogRotateMaxAge == 0 {
-			logRotateMaxAge = DefaultLogRotateMaxAge
-		}
-
-		writer := &lumberjack.Logger{
-			Filename:   logPath,
-			MaxSize:    logRotateMaxSize,
-			MaxBackups: logRotateMaxBackups,
-			MaxAge:     logRotateMaxAge,
-			Compress:   false,
-		}
-		log.Logger = zerolog.New(writer).With().Caller().Timestamp().Logger()
+		logger := zerolog.New(writer).With().Caller().Timestamp().Str("domain", logDomain).Logger()
+		return &logger, nil
 	}
 
-	return nil
+	if config.LogStdout {
+		logger := zerolog.New(os.Stdout).With().Timestamp().Str("domain", logDomain).Logger()
+		return &logger, nil
+	}
+
+	if f, err := os.Stat(config.LogDir); os.IsNotExist(err) || !f.IsDir() {
+		return nil, err
+	}
+
+	logPath := fmt.Sprintf("%s/%s", config.LogDir, logFilename)
+
+	writer := &lumberjack.Logger{
+		Filename:   logPath,
+		MaxSize:    config.LogRotateMaxSize,
+		MaxBackups: config.LogRotateMaxBackups,
+		MaxAge:     config.LogRotateMaxAge,
+		Compress:   config.LogRotateCompress,
+	}
+	logger := zerolog.New(writer).With().Timestamp().Str("domain", logDomain).Logger()
+
+	return &logger, nil
 }
 
 // 現時点での prettyFormat
