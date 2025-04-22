@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/smithy-go"
 	"github.com/labstack/echo/v4"
 	"github.com/pion/rtp/codecs"
 	zlog "github.com/rs/zerolog/log"
@@ -203,9 +202,9 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					return c.NoContent(err.Code)
 				}
 
-				var oe *smithy.OperationError
-				if errors.As(err, &oe) {
-					errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
+				var suzuConfErr *SuzuConfError
+				if errors.As(err, &suzuConfErr) {
+					errMessage, err := json.Marshal(NewSuzuErrorResponse(suzuConfErr))
 					if err != nil {
 						zlog.Error().
 							Err(err).
@@ -223,8 +222,6 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							Send()
 						return err
 					}
-
-					return err
 				}
 
 				// SuzuError 以外の場合は 500 を返す
