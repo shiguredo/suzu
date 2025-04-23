@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/transcribestreamingservice"
 	zlog "github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 )
 
 type AmazonTranscribe struct {
@@ -24,6 +25,14 @@ type AmazonTranscribe struct {
 	Debug                             bool
 	Config                            Config
 }
+
+var (
+	// リトライの対象外にする設定関連のエラーのリスト
+	awsV1ConfErrList = []string{
+		aws.ErrMissingRegion.Error(),
+		aws.ErrMissingEndpoint.Error(),
+	}
+)
 
 func NewAmazonTranscribe(config Config, languageCode string, sampleRateHertz, audioChannelCount int64) *AmazonTranscribe {
 	return &AmazonTranscribe{
@@ -97,6 +106,10 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.ReadCloser) (*transc
 
 	resp, err := client.StartStreamTranscriptionWithContext(ctx, &input)
 	if err != nil {
+		if slices.Contains(awsV1ConfErrList, err.Error()) {
+			return nil, NewSuzuConfError(err)
+		}
+
 		if reqErr, ok := err.(awserr.RequestFailure); ok {
 			code := reqErr.StatusCode()
 			message := reqErr.Message()
