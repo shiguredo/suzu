@@ -95,7 +95,9 @@ func NewAmazonTranscribeClientV2(c Config) (*transcribestreaming.Client, error) 
 		}
 	} else {
 		var err error
-		cfg, err = config.LoadDefaultConfig(ctx)
+		cfg, err = config.LoadDefaultConfig(ctx,
+			config.WithRegion(c.AwsRegion),
+		)
 		if err != nil {
 			return nil, err
 		}
