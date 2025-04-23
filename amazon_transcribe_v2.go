@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -135,10 +134,8 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser) (*tran
 
 		var oe *smithy.OperationError
 		if errors.As(err, &oe) {
-			// TODO: 他のエラーも考慮する
-			if strings.Contains(oe.Error(), "Invalid Configuration:") {
-				return nil, NewSuzuConfError(oe)
-			}
+			// smithy.OperationError の場合は、リトライしない
+			return nil, NewSuzuConfError(oe)
 		}
 
 		return nil, err
