@@ -11,7 +11,24 @@
 
 ## develop
 
-- [ADD] 受信した音声データを Ogg ファイルで保存するかを指定する enable_ogg_file_output を追加する
+- [CHANGE] suzu 実行時に指定する -service オプションのデフォルト値の **aws** で使用する AWS SDK for Go を、AWS SDK for Go v1 から AWS SDK for Go v2 に変更する
+  - 以前のバージョンと同様に AWS SDK for Go v1 を使用する場合は、-service オプションで **awsv1** を指定する
+  - awsv1 は、AWS SDK for Go v1 のサポート終了の 2025-07-31 を目処に廃止します
+  - @Hexa
+- [ADD] `"domain": "suzu"` をログに含めるようにする
+  - 複数のログを標準出力する際に判別できるようにする
+  - @voluntas
+- [ADD] デバッグコンソールログを出力する `debug_console_log` を追加する
+  - デフォルト false
+  - `debug` が `true` かつ `debug_console_log` が `true` の場合は、コンソールログにデバッグログを出力する
+  - @voluntas
+- [ADD] デバッグコンソールログを JSON 形式で出力する `debug_console_log_json` を追加する
+  - デフォルトは false
+  - @voluntas
+- [ADD] ログローテーション時に圧縮するかをどうかを指定する `log_rotate_compress` を追加する
+  - デフォルトは false
+  - @voluntas
+- [ADD] 受信した音声データを Ogg ファイルで保存するかを指定する `enable_ogg_file_output` を追加する
   - 保存するファイル名は、sora-session-id ヘッダーと sora-connection-id ヘッダーの値を使用して作成する
     - ${sora-session-id}-${sora-connection-id}.ogg
   - デフォルト値: false
@@ -24,19 +41,15 @@
     - 実行例: ./bin/suzu -service awsv2
     - 実行例: ./bin/suzu -service aws
   - @Hexa
-- [CHANGE] suzu 実行時に指定する -service オプションのデフォルト値の **aws** で使用する AWS SDK for Go を、AWS SDK for Go v1 から AWS SDK for Go v2 に変更する
-  - 以前のバージョンと同様に AWS SDK for Go v1 を使用する場合は、-service オプションで **awsv1** を指定する
-  - awsv1 は、AWS SDK for Go v1 のサポート終了の 2025-07-31 を目処に廃止します
-  - @Hexa
 
 ### misc
 
 - [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
   - @voluntas
-- [UPDATE] go.mod の Go のバージョンを 1.23.4 にあげる
-  - @Hexa
-- [UPDATE] GitHub Actions の staticcheck のバージョンを 2024.1.1 に上げる
-  - @Hexa
+- [UPDATE] go.mod の Go のバージョンを 1.24.2 にあげる
+  - @Hexa @voluntas
+- [UPDATE] GitHub Actions の staticcheck のバージョンを 2025.1.1 に上げる
+  - @Hexa @voluntas
 
 ## 2024.10.0
 
