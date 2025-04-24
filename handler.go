@@ -222,6 +222,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							Send()
 						return err
 					}
+					c.Response().Flush()
 				}
 
 				// SuzuError 以外の場合は 500 を返す
