@@ -15,9 +15,50 @@
 
 - [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
   - @voluntas
-- [UPDATE] go.mod の Go のバージョンを 1.23.4 にあげる
+- [UPDATE] go.mod の Go のバージョンを 1.24.2 にあげる
+  - @Hexa @voluntas
+- [UPDATE] GitHub Actions の staticcheck のバージョンを 2025.1.1 に上げる
+  - @Hexa @voluntas
+
+## 2024.11.0
+
+- [CHANGE] suzu 実行時に指定する -service オプションのデフォルト値の **aws** で使用する AWS SDK for Go を、AWS SDK for Go v1 から AWS SDK for Go v2 に変更する
+  - 以前のバージョンと同様に AWS SDK for Go v1 を使用する場合は、-service オプションで **awsv1** を指定する
+  - awsv1 は、AWS SDK for Go v1 のサポート終了の 2025-07-31 を目処に廃止します
   - @Hexa
-- [UPDATE] GitHub Actions の staticcheck のバージョンを 2024.1.1 に上げる
+- [CHANGE] awsv1 指定時に、Region または Endpoint が見つからかなった場合は再接続は困難とみなし、クライアントへ {"type": "error", "reason": string} を送信して処理を終了するように変更する
+  - @Hexa
+- [CHANGE] aws, awsv2 指定時に、Region または Endpoint が見つからない等の OperationError が発生した場合は再接続は困難とみなし、クライアントへ {"type": "error", "reason": string} を送信して処理を終了するように変更する
+  - @Hexa
+- [CHANGE] gcp 指定時に、speech client 作成時にエラーが発生した場合は再接続は困難とみなし、クライアントへ {"type": "error", "reason": string} を送信して処理を終了するように変更する
+  - @Hexa
+- [ADD] `"domain": "suzu"` をログに含めるようにする
+  - 複数のログを標準出力する際に判別できるようにする
+  - @voluntas
+- [ADD] デバッグコンソールログを出力する `debug_console_log` を追加する
+  - デフォルト false
+  - `debug` が `true` かつ `debug_console_log` が `true` の場合は、コンソールログにデバッグログを出力する
+  - @voluntas
+- [ADD] デバッグコンソールログを JSON 形式で出力する `debug_console_log_json` を追加する
+  - デフォルトは false
+  - @voluntas
+- [ADD] ログローテーション時に圧縮するかをどうかを指定する `log_rotate_compress` を追加する
+  - デフォルトは false
+  - @voluntas
+- [ADD] 受信した音声データを Ogg ファイルで保存するかを指定する `enable_ogg_file_output` を追加する
+  - 保存するファイル名は、sora-session-id ヘッダーと sora-connection-id ヘッダーの値を使用して作成する
+    - ${sora-session-id}-${sora-connection-id}.ogg
+  - デフォルト値: false
+  - @Hexa
+- [ADD] 受信した音声データを Ogg ファイルで保存する場合の保存先ディレクトリを指定する ogg_dir を追加する
+  - デフォルト値: .
+  - @Hexa
+- [ADD] AWS SDK for Go v2 対応を追加する
+  - suzu 実行時に -service オプションを未指定にするか、-service オプションで awsv2、または、aws を指定すると AWS SDK for Go v2 を使用する
+    - 実行例: ./bin/suzu -service awsv2
+    - 実行例: ./bin/suzu -service aws
+  - @Hexa
+- [FIX] aws, awsv2 指定時に、config.ini に aws_profile が指定されていない場合でも、config.ini に指定された aws_region を使用するように修正する
   - @Hexa
 
 ## 2024.10.0

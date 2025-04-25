@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -41,6 +43,16 @@ func NewSuzuErrorResponse(err error) TranscriptionResult {
 	}
 }
 
+type soraHeader struct {
+	SoraChannelID string `header:"sora-channel-id"`
+	SoraSessionID string `header:"sora-session-id"`
+	// SoraClientID        string `header:"sora-client-id"`
+	SoraConnectionID string `header:"sora-connection-id"`
+	// SoraAudioCodecType  string `header:"sora-audio-codec-type"`
+	// SoraAudioSampleRate int64  `header:"sora-audio-sample-rate"`
+	SoraAudioStreamingLanguageCode string `header:"sora-audio-streaming-language-code"`
+}
+
 func getServiceHandler(serviceType string, config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) (serviceHandlerInterface, error) {
 	newHandlerFunc, err := NewServiceHandlerFuncs.get(serviceType)
 	if err != nil {
@@ -65,15 +77,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			return echo.NewHTTPError(http.StatusBadRequest)
 		}
 
-		h := struct {
-			SoraChannelID string `header:"Sora-Channel-Id"`
-			// SoraSessionID       string `header:"sora-session-id"`
-			// SoraClientID        string `header:"sora-client-id"`
-			SoraConnectionID string `header:"sora-connection-id"`
-			// SoraAudioCodecType  string `header:"sora-audio-codec-type"`
-			// SoraAudioSampleRate int64  `header:"sora-audio-sample-rate"`
-			SoraAudioStreamingLanguageCode string `header:"sora-audio-streaming-language-code"`
-		}{}
+		h := soraHeader{}
 		if err := (&echo.DefaultBinder{}).BindHeaders(c, &h); err != nil {
 			zlog.Error().
 				Err(err).
@@ -153,7 +157,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			serviceHandlerCtx, cancelServiceHandler := context.WithCancel(ctx)
 			defer cancelServiceHandler()
 
-			reader, err := serviceHandler.Handle(serviceHandlerCtx, opusCh)
+			reader, err := serviceHandler.Handle(serviceHandlerCtx, opusCh, h)
 			if err != nil {
 				zlog.Error().
 					Err(err).
@@ -197,6 +201,33 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					// SuzuError の場合はその Status Code を返す
 					return c.NoContent(err.Code)
 				}
+
+				// SuzuConfError の場合は、設定不備等で復帰が困難な場合を想定しているため、
+				// type: error のエラーメッセージをクライアントに返して、リトライ対象から外す
+				var suzuConfErr *SuzuConfError
+				if errors.As(err, &suzuConfErr) {
+					errMessage, err := json.Marshal(NewSuzuErrorResponse(suzuConfErr))
+					if err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.SoraChannelID).
+							Str("connection_id", h.SoraConnectionID).
+							Send()
+						return err
+					}
+
+					// 切断前にクライアントに type: error のエラーメッセージを返す
+					if _, err := c.Response().Write(errMessage); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.SoraChannelID).
+							Str("connection_id", h.SoraConnectionID).
+							Send()
+						return err
+					}
+					c.Response().Flush()
+				}
+
 				// SuzuError 以外の場合は 500 を返す
 				return echo.NewHTTPError(http.StatusInternalServerError, err)
 			}
@@ -459,16 +490,38 @@ func readOpus(ctx context.Context, reader io.Reader) chan opusChannel {
 	return opusCh
 }
 
-func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, channelCount uint16, c Config) io.ReadCloser {
+func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, channelCount uint16, c Config, header soraHeader) (io.ReadCloser, error) {
 	oggReader, oggWriter := io.Pipe()
 
+	writers := []io.Writer{}
+
+	var f *os.File
+	if c.EnableOggFileOutput {
+		fileName := fmt.Sprintf("%s-%s.ogg", header.SoraSessionID, header.SoraConnectionID)
+		filePath := path.Join(c.OggDir, fileName)
+
+		var err error
+		f, err = os.Create(filePath)
+		if err != nil {
+			return nil, err
+		}
+		writers = append(writers, f)
+	}
+	writers = append(writers, oggWriter)
+
+	multiWriter := io.MultiWriter(writers...)
+
 	go func() {
-		o, err := NewWith(oggWriter, sampleRate, channelCount)
+		o, err := NewWith(multiWriter, sampleRate, channelCount)
 		if err != nil {
 			oggWriter.CloseWithError(err)
 			return
 		}
 		defer o.Close()
+
+		if c.EnableOggFileOutput {
+			o.fd = f
+		}
 
 		for {
 			select {
@@ -501,7 +554,7 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 		}
 	}()
 
-	return oggReader
+	return oggReader, nil
 }
 
 type opusRequest struct {

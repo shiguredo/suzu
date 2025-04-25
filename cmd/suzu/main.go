@@ -5,8 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
+	zlog "github.com/rs/zerolog/log"
 	"github.com/shiguredo/suzu"
 	"golang.org/x/sync/errgroup"
 )
@@ -17,7 +19,7 @@ func main() {
 
 	// bin/suzu -C config.ini
 	configFilePath := flag.String("C", "./config.ini", "設定ファイルへのパス")
-	serviceType := flag.String("service", "aws", fmt.Sprintf("音声文字変換のサービス（%s）", strings.Join(suzu.NewServiceHandlerFuncs.GetNames([]string{"test", "dump"}), ", ")))
+	serviceType := flag.String("service", "aws", fmt.Sprintf("音声文字変換のサービス（%s）", strings.Join(serviceNames(), ", ")))
 	flag.Parse()
 
 	if *showVersion {
@@ -32,11 +34,15 @@ func main() {
 	}
 
 	// ロガー初期化
-	err = suzu.InitLogger(config)
+	suzu.InitLogger(config)
+
+	logger, err := suzu.NewLogger(config, config.LogName, "suzu")
 	if err != nil {
 		// ロガー初期化に失敗したら Fatal で終了
 		log.Fatal("cannot parse config file, err=", err)
 	}
+	// グローバルロガーを設定
+	zlog.Logger = *logger
 
 	suzu.ShowConfig(config)
 
@@ -58,4 +64,10 @@ func main() {
 	if err := g.Wait(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func serviceNames() []string {
+	names := suzu.NewServiceHandlerFuncs.GetNames([]string{"test", "dump"})
+	sort.Strings(names)
+	return names
 }

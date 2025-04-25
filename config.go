@@ -13,23 +13,21 @@ import (
 var Version string
 
 const (
-	DefaultLogDir  = "."
-	DefaultLogName = "suzu.jsonl"
+	defaultLogDir  = "."
+	defaultLogName = "suzu.jsonl"
 
-	// megabytes
-	DefaultLogRotateMaxSize    = 200
-	DefaultLogRotateMaxBackups = 7
-	// days
-	DefaultLogRotateMaxAge = 30
+	defaultLogRotateMaxSize    = 200
+	defaultLogRotateMaxBackups = 7
+	defaultLogRotateMaxAge     = 30
 
-	DefaultExporterListenAddr = "0.0.0.0"
-	DefaultExporterListenPort = 5891
+	defaultExporterListenAddr = "0.0.0.0"
+	defaultExporterListenPort = 5891
 
 	// 10s
-	DefaultTimeToWaitForOpusPacketMs = 10000
+	defaultTimeToWaitForOpusPacketMs = 10000
 
 	// リトライ間隔 100ms
-	DefaultRetryIntervalMs = 100
+	defaultRetryIntervalMs = 100
 )
 
 type Config struct {
@@ -65,14 +63,22 @@ type Config struct {
 	SampleRate   int `ini:"audio_sample_rate"`
 	ChannelCount int `ini:"audio_channel_count"`
 
+	EnableOggFileOutput bool   `ini:"enable_ogg_file_output"`
+	OggDir              string `ini:"ogg_dir"`
+
 	DumpFile string `ini:"dump_file"`
 
-	LogDir              string `ini:"log_dir"`
-	LogName             string `ini:"log_name"`
-	LogStdout           bool   `ini:"log_stdout"`
-	LogRotateMaxSize    int    `ini:"log_rotate_max_size"`
-	LogRotateMaxBackups int    `ini:"log_rotate_max_backups"`
-	LogRotateMaxAge     int    `ini:"log_rotate_max_age"`
+	LogDir    string `ini:"log_dir"`
+	LogName   string `ini:"log_name"`
+	LogStdout bool   `ini:"log_stdout"`
+
+	LogRotateMaxSize    int  `ini:"log_rotate_max_size"`
+	LogRotateMaxBackups int  `ini:"log_rotate_max_backups"`
+	LogRotateMaxAge     int  `ini:"log_rotate_max_age"`
+	LogRotateCompress   bool `ini:"log_rotate_compress"`
+
+	DebugConsoleLog     bool `ini:"debug_console_log"`
+	DebugConsoleLogJSON bool `ini:"debug_console_log_json"`
 
 	TimeToWaitForOpusPacketMs int `ini:"time_to_wait_for_opus_packet_ms"`
 
@@ -139,39 +145,43 @@ func setDefaultsConfig(config *Config) {
 	config.Version = Version
 
 	if config.LogDir == "" {
-		config.LogDir = DefaultLogDir
+		config.LogDir = defaultLogDir
 	}
 
 	if config.LogName == "" {
-		config.LogName = DefaultLogName
+		config.LogName = defaultLogName
 	}
 
 	if config.LogRotateMaxSize == 0 {
-		config.LogRotateMaxSize = DefaultLogRotateMaxSize
+		config.LogRotateMaxSize = defaultLogRotateMaxSize
 	}
 
 	if config.LogRotateMaxBackups == 0 {
-		config.LogRotateMaxBackups = DefaultLogRotateMaxBackups
+		config.LogRotateMaxBackups = defaultLogRotateMaxBackups
 	}
 
 	if config.LogRotateMaxAge == 0 {
-		config.LogRotateMaxAge = DefaultLogRotateMaxAge
+		config.LogRotateMaxAge = defaultLogRotateMaxAge
 	}
 
 	if config.ExporterListenAddr == "" {
-		config.ExporterListenAddr = DefaultExporterListenAddr
+		config.ExporterListenAddr = defaultExporterListenAddr
 	}
 
 	if config.ExporterListenPort == 0 {
-		config.ExporterListenPort = DefaultExporterListenPort
+		config.ExporterListenPort = defaultExporterListenPort
 	}
 
 	if config.TimeToWaitForOpusPacketMs == 0 {
-		config.TimeToWaitForOpusPacketMs = DefaultTimeToWaitForOpusPacketMs
+		config.TimeToWaitForOpusPacketMs = defaultTimeToWaitForOpusPacketMs
 	}
 
 	if config.RetryIntervalMs == 0 {
-		config.RetryIntervalMs = DefaultRetryIntervalMs
+		config.RetryIntervalMs = defaultRetryIntervalMs
+	}
+
+	if config.OggDir == "" {
+		config.OggDir = "."
 	}
 }
 
@@ -213,6 +223,9 @@ func ShowConfig(config *Config) {
 	zlog.Info().Int("log_rotate_max_size", config.LogRotateMaxSize).Msg("CONF")
 	zlog.Info().Int("log_rotate_max_backups", config.LogRotateMaxBackups).Msg("CONF")
 	zlog.Info().Int("log_rotate_max_age", config.LogRotateMaxAge).Msg("CONF")
+	zlog.Info().Bool("log_rotate_compress", config.LogRotateCompress).Msg("CONF")
+	zlog.Info().Bool("debug_console_log", config.DebugConsoleLog).Msg("CONF")
+	zlog.Info().Bool("debug_console_log_json", config.DebugConsoleLogJSON).Msg("CONF")
 
 	zlog.Info().Bool("https", config.HTTPS).Msg("CONF")
 	zlog.Info().Str("listen_addr", config.ListenAddr).Msg("CONF")
