@@ -28,6 +28,7 @@ type AmazonTranscribe struct {
 
 var (
 	// リトライの対象外にする設定関連のエラーのリスト
+	// 他のエラーもリトライの対象外にする場合は、ここに追加する
 	awsV1ConfErrList = []string{
 		aws.ErrMissingRegion.Error(),
 		aws.ErrMissingEndpoint.Error(),
