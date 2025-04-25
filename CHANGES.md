@@ -11,6 +11,17 @@
 
 ## develop
 
+### misc
+
+- [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
+  - @voluntas
+- [UPDATE] go.mod の Go のバージョンを 1.24.2 にあげる
+  - @Hexa @voluntas
+- [UPDATE] GitHub Actions の staticcheck のバージョンを 2025.1.1 に上げる
+  - @Hexa @voluntas
+
+## 2024.11.0
+
 - [CHANGE] suzu 実行時に指定する -service オプションのデフォルト値の **aws** で使用する AWS SDK for Go を、AWS SDK for Go v1 から AWS SDK for Go v2 に変更する
   - 以前のバージョンと同様に AWS SDK for Go v1 を使用する場合は、-service オプションで **awsv1** を指定する
   - awsv1 は、AWS SDK for Go v1 のサポート終了の 2025-07-31 を目処に廃止します
@@ -49,15 +60,6 @@
   - @Hexa
 - [FIX] aws, awsv2 指定時に、config.ini に aws_profile が指定されていない場合でも、config.ini に指定された aws_region を使用するように修正する
   - @Hexa
-
-### misc
-
-- [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
-  - @voluntas
-- [UPDATE] go.mod の Go のバージョンを 1.24.2 にあげる
-  - @Hexa @voluntas
-- [UPDATE] GitHub Actions の staticcheck のバージョンを 2025.1.1 に上げる
-  - @Hexa @voluntas
 
 ## 2024.10.0
 
