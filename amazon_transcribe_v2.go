@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/transcribestreaming"
 	"github.com/aws/aws-sdk-go-v2/service/transcribestreaming/types"
+	"github.com/aws/smithy-go"
 
 	zlog "github.com/rs/zerolog/log"
 )
@@ -94,7 +95,9 @@ func NewAmazonTranscribeClientV2(c Config) (*transcribestreaming.Client, error) 
 		}
 	} else {
 		var err error
-		cfg, err = config.LoadDefaultConfig(ctx)
+		cfg, err = config.LoadDefaultConfig(ctx,
+			config.WithRegion(c.AwsRegion),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -130,6 +133,13 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser) (*tran
 				Retry:   retry,
 			}
 		}
+
+		var oe *smithy.OperationError
+		if errors.As(err, &oe) {
+			// smithy.OperationError の場合は、リトライしない
+			return nil, NewSuzuConfError(oe)
+		}
+
 		return nil, err
 	}
 

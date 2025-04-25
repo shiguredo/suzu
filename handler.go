@@ -201,6 +201,33 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					// SuzuError の場合はその Status Code を返す
 					return c.NoContent(err.Code)
 				}
+
+				// SuzuConfError の場合は、設定不備等で復帰が困難な場合を想定しているため、
+				// type: error のエラーメッセージをクライアントに返して、リトライ対象から外す
+				var suzuConfErr *SuzuConfError
+				if errors.As(err, &suzuConfErr) {
+					errMessage, err := json.Marshal(NewSuzuErrorResponse(suzuConfErr))
+					if err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.SoraChannelID).
+							Str("connection_id", h.SoraConnectionID).
+							Send()
+						return err
+					}
+
+					// 切断前にクライアントに type: error のエラーメッセージを返す
+					if _, err := c.Response().Write(errMessage); err != nil {
+						zlog.Error().
+							Err(err).
+							Str("channel_id", h.SoraChannelID).
+							Str("connection_id", h.SoraConnectionID).
+							Send()
+						return err
+					}
+					c.Response().Flush()
+				}
+
 				// SuzuError 以外の場合は 500 を返す
 				return echo.NewHTTPError(http.StatusInternalServerError, err)
 			}
