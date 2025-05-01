@@ -96,6 +96,40 @@ func (h *AmazonTranscribeHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
+func (h *AmazonTranscribeHandler) IsErrorForRetryTarget(err error) bool {
+	isRetry := false
+
+	// retry_targets が設定されていない場合は固定のエラー判定処理へ
+	retryTargets := h.Config.RetryTargets
+
+	// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
+	if retryTargets != "" {
+		// retry_targets = BadRequestException,ConflictException のように指定されている想定
+		retryTargetList := strings.Split(retryTargets, ",")
+		// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
+		for _, target := range retryTargetList {
+			if strings.Contains(err.Error(), target) {
+				isRetry = true
+				break
+			}
+		}
+	}
+
+	// 復帰が不可能なエラー以外は再接続を試みる
+	switch err.(type) {
+	case *transcribestreamingservice.LimitExceededException,
+		*transcribestreamingservice.InternalFailureException:
+		isRetry = true
+	default:
+		// サーバから切断された場合は再接続を試みる
+		if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
+			isRetry = true
+		}
+	}
+
+	return isRetry
+}
+
 func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
 	at := NewAmazonTranscribe(h.Config, h.LanguageCode, int64(h.SampleRate), int64(h.ChannelCount))
 
@@ -185,16 +219,8 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 				Int("retry_count", h.GetRetryCount()).
 				Send()
 
-			// 復帰が不可能なエラー以外は再接続を試みる
-			switch err.(type) {
-			case *transcribestreamingservice.LimitExceededException,
-				*transcribestreamingservice.InternalFailureException:
+			if ok := h.IsErrorForRetryTarget(err); ok {
 				err = errors.Join(err, ErrServerDisconnected)
-			default:
-				// サーバから切断された場合は再接続を試みる
-				if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
-					err = errors.Join(err, ErrServerDisconnected)
-				}
 			}
 
 			w.CloseWithError(err)
