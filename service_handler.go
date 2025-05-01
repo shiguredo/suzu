@@ -19,6 +19,7 @@ type serviceHandlerInterface interface {
 	UpdateRetryCount() int
 	GetRetryCount() int
 	ResetRetryCount() int
+	IsRetry(any) bool
 }
 
 type newServiceHandlerFunc func(Config, string, string, uint32, uint16, string, any) serviceHandlerInterface
