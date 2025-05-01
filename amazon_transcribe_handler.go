@@ -96,35 +96,41 @@ func (h *AmazonTranscribeHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-func (h *AmazonTranscribeHandler) IsErrorForRetryTarget(err error) bool {
-	// retry_targets が設定されていない場合は固定のエラー判定処理へ
-	retryTargets := h.Config.RetryTargets
+func (h *AmazonTranscribeHandler) IsRetry(args any) bool {
+	switch err := args.(type) {
+	case error:
+		// retry_targets が設定されていない場合は固定のエラー判定処理へ
+		retryTargets := h.Config.RetryTargets
 
-	// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-	if retryTargets != "" {
-		// retry_targets = BadRequestException,ConflictException のように指定されている想定
-		retryTargetList := strings.Split(retryTargets, ",")
 		// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-		for _, target := range retryTargetList {
-			if strings.Contains(err.Error(), target) {
+		if retryTargets != "" {
+			// retry_targets = BadRequestException,ConflictException のように指定されている想定
+			retryTargetList := strings.Split(retryTargets, ",")
+			// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
+			for _, target := range retryTargetList {
+				if strings.Contains(err.Error(), target) {
+					return true
+				}
+			}
+		}
+
+		// 復帰が不可能なエラー以外は再接続を試みる
+		switch err.(type) {
+		case *transcribestreamingservice.LimitExceededException,
+			*transcribestreamingservice.InternalFailureException:
+			return true
+		default:
+			// サーバから切断された場合は再接続を試みる
+			if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
 				return true
 			}
 		}
-	}
 
-	// 復帰が不可能なエラー以外は再接続を試みる
-	switch err.(type) {
-	case *transcribestreamingservice.LimitExceededException,
-		*transcribestreamingservice.InternalFailureException:
-		return true
+		return false
 	default:
-		// サーバから切断された場合は再接続を試みる
-		if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
-			return true
-		}
+		// args が error 型でない場合は、リトライの対象外とする
+		return false
 	}
-
-	return false
 }
 
 func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
@@ -216,7 +222,7 @@ func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusCh
 				Int("retry_count", h.GetRetryCount()).
 				Send()
 
-			if ok := h.IsErrorForRetryTarget(err); ok {
+			if ok := h.IsRetry(err); ok {
 				err = errors.Join(err, ErrServerDisconnected)
 			}
 

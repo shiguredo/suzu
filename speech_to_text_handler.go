@@ -91,6 +91,59 @@ func (h *SpeechToTextHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
+func (h *SpeechToTextHandler) IsRetry(args any) bool {
+	switch err := args.(type) {
+	case error:
+		// retry_targets が設定されていない場合は固定のエラー判定処理へ
+		retryTargets := h.Config.RetryTargets
+
+		// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
+		if retryTargets != "" {
+			// retry_targets = BadRequestException,ConflictException のように指定されている想定
+			retryTargetList := strings.Split(retryTargets, ",")
+			// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
+			for _, target := range retryTargetList {
+				if strings.Contains(err.Error(), target) {
+					return true
+				}
+			}
+		}
+
+		if (strings.Contains(err.Error(), "code = OutOfRange")) ||
+			(strings.Contains(err.Error(), "code = InvalidArgument")) ||
+			(strings.Contains(err.Error(), "code = ResourceExhausted")) {
+			return true
+		}
+	case codes.Code:
+		code := err
+
+		// retry_targets が設定されていない場合は固定のエラー判定処理へ
+		retryTargets := h.Config.RetryTargets
+
+		// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
+		if retryTargets != "" {
+			// retry_targets = BadRequestException,ConflictException のように指定されている想定
+			retryTargetList := strings.Split(retryTargets, ",")
+			// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
+			for _, target := range retryTargetList {
+				if strings.Contains(code.String(), target) {
+					return true
+				}
+			}
+		}
+
+		if code == codes.OutOfRange ||
+			code == codes.InvalidArgument ||
+			code == codes.ResourceExhausted {
+			return true
+		}
+	default:
+		// 引数が error 型ではない場合はリトライしない
+	}
+
+	return false
+}
+
 func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
 	stt := NewSpeechToText(h.Config, h.LanguageCode, int32(h.SampleRate), int32(h.ChannelCount))
 
@@ -120,11 +173,8 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan opusChanne
 					Str("connection_id", h.ConnectionID).
 					Send()
 
-				if (strings.Contains(err.Error(), "code = OutOfRange")) ||
-					(strings.Contains(err.Error(), "code = InvalidArgument")) ||
-					(strings.Contains(err.Error(), "code = ResourceExhausted")) {
-					w.CloseWithError(ErrServerDisconnected)
-					return
+				if ok := h.IsRetry(err); ok {
+					err = errors.Join(err, ErrServerDisconnected)
 				}
 
 				if err := encoder.Encode(NewSuzuErrorResponse(err)); err != nil {
@@ -151,11 +201,8 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan opusChanne
 					Int32("code", status.GetCode()).
 					Send()
 
-				if code == codes.OutOfRange ||
-					code == codes.InvalidArgument ||
-					code == codes.ResourceExhausted {
-
-					err := errors.Join(err, ErrServerDisconnected)
+				if ok := h.IsRetry(code); ok {
+					err = errors.Join(err, ErrServerDisconnected)
 					w.CloseWithError(err)
 					return
 				}
