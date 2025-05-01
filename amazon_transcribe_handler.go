@@ -97,8 +97,6 @@ func (h *AmazonTranscribeHandler) ResetRetryCount() int {
 }
 
 func (h *AmazonTranscribeHandler) IsErrorForRetryTarget(err error) bool {
-	isRetry := false
-
 	// retry_targets が設定されていない場合は固定のエラー判定処理へ
 	retryTargets := h.Config.RetryTargets
 
@@ -109,8 +107,7 @@ func (h *AmazonTranscribeHandler) IsErrorForRetryTarget(err error) bool {
 		// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
 		for _, target := range retryTargetList {
 			if strings.Contains(err.Error(), target) {
-				isRetry = true
-				break
+				return true
 			}
 		}
 	}
@@ -119,15 +116,15 @@ func (h *AmazonTranscribeHandler) IsErrorForRetryTarget(err error) bool {
 	switch err.(type) {
 	case *transcribestreamingservice.LimitExceededException,
 		*transcribestreamingservice.InternalFailureException:
-		isRetry = true
+		return true
 	default:
 		// サーバから切断された場合は再接続を試みる
 		if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
-			isRetry = true
+			return true
 		}
 	}
 
-	return isRetry
+	return false
 }
 
 func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
