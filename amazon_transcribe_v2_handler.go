@@ -10,7 +10,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/transcribestreaming/types"
 	zlog "github.com/rs/zerolog/log"
-	"golang.org/x/exp/slices"
 )
 
 func init() {
@@ -109,10 +108,11 @@ func (h *AmazonTranscribeV2Handler) IsRetry(args any) bool {
 			// retry_targets = BadRequestException,ConflictException のように指定されている想定
 			retryTargetList := strings.Split(retryTargets, ",")
 			// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-			if slices.Contains(retryTargetList, err.Error()) {
-				return true
+			for _, target := range retryTargetList {
+				if strings.Contains(err.Error(), target) {
+					return true
+				}
 			}
-
 		}
 
 		switch err.(type) {
