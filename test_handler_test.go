@@ -405,15 +405,6 @@ func TestSpeechHandler(t *testing.T) {
 		languageCode := "ja-JP"
 		onResultFunc := func(context.Context, io.WriteCloser, string, string, string, any) error { return nil }
 
-		config := Config{
-			Debug:         true,
-			ListenAddr:    "127.0.0.1",
-			ListenPort:    48080,
-			SkipBasicAuth: true,
-			LogStdout:     true,
-			RetryTargets:  "",
-		}
-
 		testCases := []struct {
 			Name         string
 			RetryTargets string
@@ -442,6 +433,10 @@ func TestSpeechHandler(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.Name, func(t *testing.T) {
+				config := Config{
+					RetryTargets: tc.RetryTargets,
+				}
+
 				serviceHandler, err := getServiceHandler(serviceType, config, channelID, connectionID, sampleRate, channelCount, languageCode, onResultFunc)
 				assert.NoError(t, err)
 
