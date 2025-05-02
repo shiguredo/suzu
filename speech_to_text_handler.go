@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	zlog "github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 
 	"google.golang.org/grpc/codes"
 )
@@ -102,10 +103,8 @@ func (h *SpeechToTextHandler) IsRetry(args any) bool {
 			// retry_targets = BadRequestException,ConflictException のように指定されている想定
 			retryTargetList := strings.Split(retryTargets, ",")
 			// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-			for _, target := range retryTargetList {
-				if strings.Contains(err.Error(), target) {
-					return true
-				}
+			if slices.Contains(retryTargetList, err.Error()) {
+				return true
 			}
 		}
 
@@ -125,10 +124,8 @@ func (h *SpeechToTextHandler) IsRetry(args any) bool {
 			// retry_targets = BadRequestException,ConflictException のように指定されている想定
 			retryTargetList := strings.Split(retryTargets, ",")
 			// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-			for _, target := range retryTargetList {
-				if strings.Contains(code.String(), target) {
-					return true
-				}
+			if slices.Contains(retryTargetList, code.String()) {
+				return true
 			}
 		}
 
