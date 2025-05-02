@@ -811,13 +811,25 @@ func TestRetry(t *testing.T) {
 			Expect:       false,
 		},
 		{
-			Name:         "unexpected error",
+			Name:         "match",
 			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
 			Error:        errors.New("UNEXPECTED-ERROR"),
 			Expect:       true,
 		},
 		{
-			Name:         "mismatched error",
+			Name:         "match",
+			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+			Error:        errors.New("BAD-REQUEST"),
+			Expect:       true,
+		},
+		{
+			Name:         "partial match",
+			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+			Error:        errors.New("UUNEXPECTED-ERRORR"),
+			Expect:       true,
+		},
+		{
+			Name:         "mismatch",
 			RetryTargets: "UNEXPECTED-ERROR",
 			Error:        errors.New("ERROR"),
 			Expect:       false,
