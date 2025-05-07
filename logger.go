@@ -19,6 +19,13 @@ func InitLogger(config *Config) {
 
 	zerolog.TimeFieldFormat = "2006-01-02T15:04:05.000000Z"
 
+	if config.LogMessageKeyName != "" {
+		zerolog.MessageFieldName = config.LogMessageKeyName
+	}
+	if config.LogTimestampKeyName != "" {
+		zerolog.TimestampFieldName = config.LogTimestampKeyName
+	}
+
 	if config.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
