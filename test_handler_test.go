@@ -405,6 +405,7 @@ func TestSpeechHandler(t *testing.T) {
 		languageCode := "ja-JP"
 		onResultFunc := func(context.Context, io.WriteCloser, string, string, string, any) error { return nil }
 
+		// このハンドラではリトライしないため、常に false を返す
 		testCases := []struct {
 			Name         string
 			RetryTargets string
