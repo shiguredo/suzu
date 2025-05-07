@@ -99,28 +99,23 @@ func (h *AmazonTranscribeV2Handler) ResetRetryCount() int {
 
 func (h *AmazonTranscribeV2Handler) IsRetryTarget(args any) bool {
 	switch err := args.(type) {
+	case *types.LimitExceededException,
+		*types.InternalFailureException:
+		return true
 	case error:
-		switch err.(type) {
-		case *types.LimitExceededException,
-			*types.InternalFailureException:
+		// サーバから切断された場合は再接続を試みる
+		if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
 			return true
-		default:
-			// サーバから切断された場合は再接続を試みる
-			if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
-				return true
-			}
 		}
 
 		// retry_targets に設定されているエラーの場合はリトライする
 		if isRetryTargetByConfig(h.Config, err.Error()) {
 			return true
 		}
-
-		return false
 	default:
-		// 引数が error 型ではない場合はリトライしない
-		return false
 	}
+
+	return false
 }
 
 func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {

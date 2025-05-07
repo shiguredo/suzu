@@ -97,29 +97,24 @@ func (h *AmazonTranscribeHandler) ResetRetryCount() int {
 }
 
 func (h *AmazonTranscribeHandler) IsRetryTarget(args any) bool {
+	// 復帰が不可能なエラー以外は再接続を試みる
 	switch err := args.(type) {
+	case *transcribestreamingservice.LimitExceededException,
+		*transcribestreamingservice.InternalFailureException:
+		return true
 	case error:
-		// 復帰が不可能なエラー以外は再接続を試みる
-		switch err.(type) {
-		case *transcribestreamingservice.LimitExceededException,
-			*transcribestreamingservice.InternalFailureException:
+		// サーバから切断された場合は再接続を試みる
+		if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
 			return true
-		default:
-			// サーバから切断された場合は再接続を試みる
-			if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
-				return true
-			}
 		}
 
 		if isRetryTargetByConfig(h.Config, err.Error()) {
 			return true
 		}
-
-		return false
 	default:
-		// args が error 型でない場合は、リトライの対象外とする
-		return false
 	}
+
+	return false
 }
 
 func (h *AmazonTranscribeHandler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
