@@ -11,6 +11,8 @@
 
 ## develop
 
+## 2025.1.0
+
 - [ADD] ログのメッセージキー名を指定する `log_message_key_name` を追加する
   - デフォルトは `message`
   - @voluntas
