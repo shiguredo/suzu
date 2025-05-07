@@ -845,7 +845,7 @@ func TestRetry(t *testing.T) {
 			serviceHandler, err := getServiceHandler("awsv2", config, channelID, connectionID, sampleRate, channelCount, languageCode, onResultFunc)
 			assert.NoError(t, err)
 
-			assert.Equal(t, tc.Expect, serviceHandler.IsRetry(tc.Error))
+			assert.Equal(t, tc.Expect, serviceHandler.IsRetryTarget(tc.Error))
 		})
 	}
 }

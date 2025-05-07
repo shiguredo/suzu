@@ -419,7 +419,7 @@ func TestSpeechHandler(t *testing.T) {
 			},
 			{
 				Name:         "unexpected error",
-				RetryTargets: "UNEXPECTED-ERROR",
+				RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
 				Error:        errors.New("UNEXPECTED-ERROR"),
 				Expect:       false,
 			},
@@ -440,7 +440,7 @@ func TestSpeechHandler(t *testing.T) {
 				serviceHandler, err := getServiceHandler(serviceType, config, channelID, connectionID, sampleRate, channelCount, languageCode, onResultFunc)
 				assert.NoError(t, err)
 
-				assert.Equal(t, tc.Expect, serviceHandler.IsRetry(tc.Error))
+				assert.Equal(t, tc.Expect, serviceHandler.IsRetryTarget(tc.Error))
 			})
 		}
 	})

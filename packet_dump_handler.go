@@ -67,8 +67,8 @@ func (h *PacketDumpHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-// IsRetry は本ハンドラでは使用しないため、常に false を返す
-func (h *PacketDumpHandler) IsRetry(any) bool {
+// IsRetryTarget は本ハンドラでは使用しないため、常に false を返す
+func (h *PacketDumpHandler) IsRetryTarget(any) bool {
 	return false
 }
 

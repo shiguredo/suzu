@@ -91,50 +91,28 @@ func (h *SpeechToTextHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-func (h *SpeechToTextHandler) IsRetry(args any) bool {
+func (h *SpeechToTextHandler) IsRetryTarget(args any) bool {
 	switch err := args.(type) {
 	case error:
-		// retry_targets が設定されていない場合は固定のエラー判定処理へ
-		retryTargets := h.Config.RetryTargets
-
-		// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-		if retryTargets != "" {
-			// retry_targets = BadRequestException,ConflictException のように指定されている想定
-			retryTargetList := strings.Split(retryTargets, ",")
-			// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-			for _, target := range retryTargetList {
-				if strings.Contains(err.Error(), target) {
-					return true
-				}
-			}
-		}
-
 		if (strings.Contains(err.Error(), "code = OutOfRange")) ||
 			(strings.Contains(err.Error(), "code = InvalidArgument")) ||
 			(strings.Contains(err.Error(), "code = ResourceExhausted")) {
 			return true
 		}
+
+		if isRetryTargetByConfig(h.Config, err.Error()) {
+			return true
+		}
 	case codes.Code:
 		code := err
-
-		// retry_targets が設定されていない場合は固定のエラー判定処理へ
-		retryTargets := h.Config.RetryTargets
-
-		// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-		if retryTargets != "" {
-			// retry_targets = BadRequestException,ConflictException のように指定されている想定
-			retryTargetList := strings.Split(retryTargets, ",")
-			// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-			for _, target := range retryTargetList {
-				if strings.Contains(code.String(), target) {
-					return true
-				}
-			}
-		}
 
 		if code == codes.OutOfRange ||
 			code == codes.InvalidArgument ||
 			code == codes.ResourceExhausted {
+			return true
+		}
+
+		if isRetryTargetByConfig(h.Config, code.String()) {
 			return true
 		}
 	default:
@@ -173,7 +151,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan opusChanne
 					Str("connection_id", h.ConnectionID).
 					Send()
 
-				if ok := h.IsRetry(err); ok {
+				if h.IsRetryTarget(err) {
 					err = errors.Join(err, ErrServerDisconnected)
 				}
 
@@ -201,7 +179,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan opusChanne
 					Int32("code", status.GetCode()).
 					Send()
 
-				if ok := h.IsRetry(code); ok {
+				if h.IsRetryTarget(code) {
 					err = errors.Join(err, ErrServerDisconnected)
 					w.CloseWithError(err)
 					return

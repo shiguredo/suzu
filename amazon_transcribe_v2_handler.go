@@ -97,24 +97,9 @@ func (h *AmazonTranscribeV2Handler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-func (h *AmazonTranscribeV2Handler) IsRetry(args any) bool {
+func (h *AmazonTranscribeV2Handler) IsRetryTarget(args any) bool {
 	switch err := args.(type) {
 	case error:
-		// retry_targets が設定されていない場合は固定のエラー判定処理へ
-		retryTargets := h.Config.RetryTargets
-
-		// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-		if retryTargets != "" {
-			// retry_targets = BadRequestException,ConflictException のように指定されている想定
-			retryTargetList := strings.Split(retryTargets, ",")
-			// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-			for _, target := range retryTargetList {
-				if strings.Contains(err.Error(), target) {
-					return true
-				}
-			}
-		}
-
 		switch err.(type) {
 		case *types.LimitExceededException,
 			*types.InternalFailureException:
@@ -124,6 +109,11 @@ func (h *AmazonTranscribeV2Handler) IsRetry(args any) bool {
 			if strings.Contains(err.Error(), "http2: server sent GOAWAY and closed the connection;") {
 				return true
 			}
+		}
+
+		// retry_targets に設定されているエラーの場合はリトライする
+		if isRetryTargetByConfig(h.Config, err.Error()) {
+			return true
 		}
 
 		return false
@@ -222,7 +212,7 @@ func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus
 				Int("retry_count", h.GetRetryCount()).
 				Send()
 
-			if ok := h.IsRetry(err); ok {
+			if ok := h.IsRetryTarget(err); ok {
 				err = errors.Join(err, ErrServerDisconnected)
 			}
 
