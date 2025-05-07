@@ -77,6 +77,9 @@ type Config struct {
 	LogRotateMaxAge     int  `ini:"log_rotate_max_age"`
 	LogRotateCompress   bool `ini:"log_rotate_compress"`
 
+	LogMessageKeyName   string `ini:"log_message_key_name"`
+	LogTimestampKeyName string `ini:"log_timestamp_key_name"`
+
 	DebugConsoleLog     bool `ini:"debug_console_log"`
 	DebugConsoleLogJSON bool `ini:"debug_console_log_json"`
 
