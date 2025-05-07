@@ -790,7 +790,7 @@ func TestBuildMessageV2(t *testing.T) {
 	})
 }
 
-func TestRetry(t *testing.T) {
+func TestIsRetryTargetForAmazonTranscribeV2(t *testing.T) {
 	channelID := "test-channel-id"
 	connectionID := "test-connection-id"
 	sampleRate := uint32(48000)
@@ -801,7 +801,7 @@ func TestRetry(t *testing.T) {
 	testCases := []struct {
 		Name         string
 		RetryTargets string
-		Error        error
+		Error        any
 		Expect       bool
 	}{
 		{
@@ -833,6 +833,18 @@ func TestRetry(t *testing.T) {
 			RetryTargets: "UNEXPECTED-ERROR",
 			Error:        errors.New("ERROR"),
 			Expect:       false,
+		},
+		{
+			Name:         "LimitExceededException",
+			RetryTargets: "UNEXPECTED-ERROR",
+			Error:        &types.LimitExceededException{},
+			Expect:       true,
+		},
+		{
+			Name:         "InternalFailureException",
+			RetryTargets: "UNEXPECTED-ERROR",
+			Error:        &types.InternalFailureException{},
+			Expect:       true,
 		},
 	}
 
