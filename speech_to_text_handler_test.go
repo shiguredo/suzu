@@ -90,6 +90,12 @@ func TestIsRetryTargetForSpeechToText(t *testing.T) {
 			Error:        codes.ResourceExhausted,
 			Expect:       true,
 		},
+		{
+			Name:         "Internal",
+			RetryTargets: "UNEXPECTED-ERROR,Internal",
+			Error:        codes.Internal,
+			Expect:       true,
+		},
 	}
 
 	for _, tc := range testCases {

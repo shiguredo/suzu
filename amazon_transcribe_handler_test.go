@@ -830,20 +830,32 @@ func TestIsRetryTargetForAmazonTranscribe(t *testing.T) {
 		},
 		{
 			Name:         "mismatch",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
 			Error:        errors.New("ERROR"),
 			Expect:       false,
 		},
 		{
 			Name:         "LimitExceededException",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
 			Error:        &transcribestreamingservice.LimitExceededException{},
 			Expect:       true,
 		},
 		{
 			Name:         "InternalFailureException",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
 			Error:        &transcribestreamingservice.InternalFailureException{},
+			Expect:       true,
+		},
+		{
+			Name:         "BadRequestException",
+			RetryTargets: "UNEXPECTED-ERROR,BadRequestException",
+			Error:        &transcribestreamingservice.BadRequestException{},
+			Expect:       true,
+		},
+		{
+			Name:         "http2: server sent GOAWAY and closed the connection",
+			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+			Error:        errors.New("http2: server sent GOAWAY and closed the connection;"),
 			Expect:       true,
 		},
 	}
