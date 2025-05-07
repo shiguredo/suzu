@@ -11,6 +11,12 @@
 
 ## develop
 
+- [ADD] リトライ対象の固定のエラー以外に、config.ini に設定したメッセージに該当するエラーメッセージ受信時にもリトライ対象とする `retry_targets` の設定を追加する
+  - デフォルトは "" （未指定）
+  - 対象のエラーメッセージを複数指定する場合はカンマ（,）区切りで指定する
+    - 例: retry_targets = ERROR1,ERROR2,ERROR3
+  - @Hexa
+
 ### misc
 
 - [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
