@@ -73,7 +73,7 @@ func (h *TestHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
-// IsRetryTarget は本ハンドラでは使用しないため、常に false を返す
+// IsRetryTarget は本ハンドラではリトライしないため、常に false を返す
 func (h *TestHandler) IsRetryTarget(any) bool {
 	return false
 }
