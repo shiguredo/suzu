@@ -17,6 +17,15 @@
     - 例: retry_targets = ERROR1,ERROR2,ERROR3
   - @Hexa
 
+## 2025.1.0
+
+- [ADD] ログのメッセージキー名を指定する `log_message_key_name` を追加する
+  - デフォルトは `message`
+  - @voluntas
+- [ADD] ログのタイムスタンプキー名を指定する `log_timestamp_key_name` を追加する
+  - デフォルトは `time`
+  - @voluntas
+
 ### misc
 
 - [CHANGE] GitHub Actions の ubuntu-latest を ubuntu-24.04 に変更する
