@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"golang.org/x/exp/slices"
 )
@@ -19,6 +20,7 @@ type serviceHandlerInterface interface {
 	UpdateRetryCount() int
 	GetRetryCount() int
 	ResetRetryCount() int
+	IsRetryTarget(any) bool
 }
 
 type newServiceHandlerFunc func(Config, string, string, uint32, uint16, string, any) serviceHandlerInterface
@@ -47,4 +49,21 @@ func (sh *newServiceHandlerFuncs) GetNames(exclude []string) []string {
 	}
 
 	return names
+}
+
+// message が retry_targets に含まれているかどうかを判定する
+func isRetryTargetByConfig(config Config, message string) bool {
+	// retry_targets が設定されていない場合は固定のエラー判定処理へ
+	retryTargets := config.RetryTargets
+
+	// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
+	if len(retryTargets) > 0 {
+		for _, target := range retryTargets {
+			if strings.Contains(message, target) {
+				return true
+			}
+		}
+	}
+
+	return false
 }

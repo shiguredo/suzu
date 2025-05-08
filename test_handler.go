@@ -73,6 +73,11 @@ func (h *TestHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
+// IsRetryTarget は本ハンドラではリトライしないため、常に false を返す
+func (h *TestHandler) IsRetryTarget(any) bool {
+	return false
+}
+
 func (h *TestHandler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
 	r, w := io.Pipe()
 

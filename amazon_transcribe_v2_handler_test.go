@@ -1,6 +1,9 @@
 package suzu
 
 import (
+	"context"
+	"errors"
+	"io"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -785,4 +788,70 @@ func TestBuildMessageV2(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestIsRetryTargetForAmazonTranscribeV2(t *testing.T) {
+	channelID := "test-channel-id"
+	connectionID := "test-connection-id"
+	sampleRate := uint32(48000)
+	channelCount := uint16(2)
+	languageCode := "ja-JP"
+	onResultFunc := func(context.Context, io.WriteCloser, string, string, string, any) error { return nil }
+
+	testCases := []struct {
+		Name         string
+		RetryTargets []string
+		Error        any
+		Expect       bool
+	}{
+		{
+			Name:         "match",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
+			Error:        errors.New("UNEXPECTED-ERROR"),
+			Expect:       true,
+		},
+		{
+			Name:         "mismatch",
+			RetryTargets: []string{"UNEXPECTED-ERROR"},
+			Error:        errors.New("ERROR"),
+			Expect:       false,
+		},
+		{
+			Name:         "LimitExceededException",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
+			Error:        &types.LimitExceededException{},
+			Expect:       true,
+		},
+		{
+			Name:         "InternalFailureException",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
+			Error:        &types.InternalFailureException{},
+			Expect:       true,
+		},
+		{
+			Name:         "BadRequestException",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BadRequestException"},
+			Error:        &types.BadRequestException{},
+			Expect:       true,
+		},
+		{
+			Name:         "http2: server sent GOAWAY and closed the connection",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
+			Error:        errors.New("http2: server sent GOAWAY and closed the connection;"),
+			Expect:       true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			config := Config{
+				RetryTargets: tc.RetryTargets,
+			}
+
+			serviceHandler, err := getServiceHandler("awsv2", config, channelID, connectionID, sampleRate, channelCount, languageCode, onResultFunc)
+			assert.NoError(t, err)
+
+			assert.Equal(t, tc.Expect, serviceHandler.IsRetryTarget(tc.Error))
+		})
+	}
 }

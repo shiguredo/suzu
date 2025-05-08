@@ -67,6 +67,11 @@ func (h *PacketDumpHandler) ResetRetryCount() int {
 	return h.RetryCount
 }
 
+// IsRetryTarget は本ハンドラではリトライしないため、常に false を返す
+func (h *PacketDumpHandler) IsRetryTarget(any) bool {
+	return false
+}
+
 func (h *PacketDumpHandler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
 	c := h.Config
 	filename := c.DumpFile
