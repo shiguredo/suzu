@@ -408,25 +408,25 @@ func TestSpeechHandler(t *testing.T) {
 		// このハンドラではリトライしないため、常に false を返す
 		testCases := []struct {
 			Name         string
-			RetryTargets string
+			RetryTargets []string
 			Error        error
 			Expect       bool
 		}{
 			{
 				Name:         "retry target is empty",
-				RetryTargets: "",
+				RetryTargets: []string{},
 				Error:        errors.New(""),
 				Expect:       false,
 			},
 			{
 				Name:         "match",
-				RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+				RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
 				Error:        errors.New("UNEXPECTED-ERROR"),
 				Expect:       false,
 			},
 			{
 				Name:         "mismatched error",
-				RetryTargets: "UNEXPECTED-ERROR",
+				RetryTargets: []string{"UNEXPECTED-ERROR"},
 				Error:        errors.New("ERROR"),
 				Expect:       false,
 			},

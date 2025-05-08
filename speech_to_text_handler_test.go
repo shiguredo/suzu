@@ -20,61 +20,61 @@ func TestIsRetryTargetForSpeechToText(t *testing.T) {
 
 	testCases := []struct {
 		Name         string
-		RetryTargets string
+		RetryTargets []string
 		Error        any
 		Expect       bool
 	}{
 		{
 			Name:         "match",
-			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
 			Error:        errors.New("UNEXPECTED-ERROR"),
 			Expect:       true,
 		},
 		{
 			Name:         "mismatch",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: []string{"UNEXPECTED-ERROR"},
 			Error:        errors.New("ERROR"),
 			Expect:       false,
 		},
 		{
 			Name:         "code = OutOfRange",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: []string{"UNEXPECTED-ERROR"},
 			Error:        errors.New("code = OutOfRange"),
 			Expect:       true,
 		},
 		{
 			Name:         "code = InvalidArgument",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: []string{"UNEXPECTED-ERROR"},
 			Error:        errors.New("code = InvalidArgument"),
 			Expect:       true,
 		},
 		{
 			Name:         "code = ResourceExhausted",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: []string{"UNEXPECTED-ERROR"},
 			Error:        errors.New("code = ResourceExhausted"),
 			Expect:       true,
 		},
 		{
 			Name:         "codes.OutOfRange",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: []string{"UNEXPECTED-ERROR"},
 			Error:        codes.OutOfRange,
 			Expect:       true,
 		},
 		{
 			Name:         "codes.InvalidArgument",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: []string{"UNEXPECTED-ERROR"},
 			Error:        codes.InvalidArgument,
 			Expect:       true,
 		},
 		{
 			Name:         "codes.ResourceExhausted",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: []string{"UNEXPECTED-ERROR"},
 			Error:        codes.ResourceExhausted,
 			Expect:       true,
 		},
 		{
 			Name:         "Internal",
-			RetryTargets: "UNEXPECTED-ERROR,Internal",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "Internal"},
 			Error:        codes.Internal,
 			Expect:       true,
 		},

@@ -49,9 +49,9 @@ type Config struct {
 	HTTP2MaxReadFrameSize     uint32 `ini:"http2_max_read_frame_size"`
 	HTTP2IdleTimeout          uint32 `ini:"http2_idle_timeout"`
 
-	MaxRetry        int    `ini:"max_retry"`
-	RetryIntervalMs int    `ini:"retry_interval_ms"`
-	RetryTargets    string `ini:"retry_targets"`
+	MaxRetry        int      `ini:"max_retry"`
+	RetryIntervalMs int      `ini:"retry_interval_ms"`
+	RetryTargets    []string `ini:"retry_targets"`
 
 	ExporterHTTPS      bool   `ini:"exporter_https"`
 	ExporterListenAddr string `ini:"exporter_listen_addr"`

@@ -800,43 +800,43 @@ func TestIsRetryTargetForAmazonTranscribeV2(t *testing.T) {
 
 	testCases := []struct {
 		Name         string
-		RetryTargets string
+		RetryTargets []string
 		Error        any
 		Expect       bool
 	}{
 		{
 			Name:         "match",
-			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
 			Error:        errors.New("UNEXPECTED-ERROR"),
 			Expect:       true,
 		},
 		{
 			Name:         "mismatch",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: []string{"UNEXPECTED-ERROR"},
 			Error:        errors.New("ERROR"),
 			Expect:       false,
 		},
 		{
 			Name:         "LimitExceededException",
-			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
 			Error:        &types.LimitExceededException{},
 			Expect:       true,
 		},
 		{
 			Name:         "InternalFailureException",
-			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
 			Error:        &types.InternalFailureException{},
 			Expect:       true,
 		},
 		{
 			Name:         "BadRequestException",
-			RetryTargets: "UNEXPECTED-ERROR,BadRequestException",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BadRequestException"},
 			Error:        &types.BadRequestException{},
 			Expect:       true,
 		},
 		{
 			Name:         "http2: server sent GOAWAY and closed the connection",
-			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
 			Error:        errors.New("http2: server sent GOAWAY and closed the connection;"),
 			Expect:       true,
 		},

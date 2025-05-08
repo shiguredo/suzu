@@ -57,11 +57,8 @@ func isRetryTargetByConfig(config Config, message string) bool {
 	retryTargets := config.RetryTargets
 
 	// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-	if retryTargets != "" {
-		// retry_targets = BadRequestException,ConflictException のように指定されている想定
-		retryTargetList := strings.Split(retryTargets, ",")
-		// retry_targets が設定されている場合は、リトライ対象のエラーかどうかを判定する
-		for _, target := range retryTargetList {
+	if len(retryTargets) > 0 {
+		for _, target := range retryTargets {
 			if strings.Contains(message, target) {
 				return true
 			}

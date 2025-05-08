@@ -19,43 +19,43 @@ func TestIsRetryTarget(t *testing.T) {
 
 	testCases := []struct {
 		Name         string
-		RetryTargets string
+		RetryTargets []string
 		Error        any
 		Expect       bool
 	}{
 		{
 			Name:         "retry target is empty",
-			RetryTargets: "",
+			RetryTargets: []string{},
 			Error:        errors.New(""),
 			Expect:       false,
 		},
 		{
 			Name:         "match",
-			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
 			Error:        errors.New("UNEXPECTED-ERROR"),
 			Expect:       true,
 		},
 		{
 			Name:         "match",
-			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
 			Error:        errors.New("BAD-REQUEST"),
 			Expect:       true,
 		},
 		{
 			Name:         "match",
-			RetryTargets: "UNEXPECTED ERROR,BAD REQUEST",
+			RetryTargets: []string{"UNEXPECTED ERROR", "BAD REQUEST"},
 			Error:        errors.New("BAD REQUEST"),
 			Expect:       true,
 		},
 		{
 			Name:         "partial match",
-			RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
+			RetryTargets: []string{"UNEXPECTED-ERROR", "BAD-REQUEST"},
 			Error:        errors.New("UUNEXPECTED-ERRORR"),
 			Expect:       true,
 		},
 		{
 			Name:         "mismatch",
-			RetryTargets: "UNEXPECTED-ERROR",
+			RetryTargets: []string{"UNEXPECTED-ERROR"},
 			Error:        errors.New("ERROR"),
 			Expect:       false,
 		},
