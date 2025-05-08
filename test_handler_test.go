@@ -397,7 +397,7 @@ func TestSpeechHandler(t *testing.T) {
 
 	})
 
-	t.Run("IsRetry", func(t *testing.T) {
+	t.Run("IsRetryTarget", func(t *testing.T) {
 		channelID := "test-channel-id"
 		connectionID := "test-connection-id"
 		sampleRate := uint32(48000)
@@ -419,7 +419,7 @@ func TestSpeechHandler(t *testing.T) {
 				Expect:       false,
 			},
 			{
-				Name:         "unexpected error",
+				Name:         "match",
 				RetryTargets: "UNEXPECTED-ERROR,BAD-REQUEST",
 				Error:        errors.New("UNEXPECTED-ERROR"),
 				Expect:       false,

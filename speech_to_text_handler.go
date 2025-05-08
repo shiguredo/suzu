@@ -116,7 +116,7 @@ func (h *SpeechToTextHandler) IsRetryTarget(args any) bool {
 			return true
 		}
 	default:
-		// 引数が error 型ではない場合はリトライしない
+		// error, codes.Code ではない場合はリトライしない
 	}
 
 	return false
