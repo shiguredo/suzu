@@ -13,6 +13,8 @@
 
 - [UPDATE] aws, awsv1, awsv2 指定時に、接続時にサーバから送られてきた Session-Id をログ出力に追加する
   - @Hexa
+- [ADD] リリースに linux arm64 を追加する
+  - @voluntas
 
 ## 2025.2.0
 
