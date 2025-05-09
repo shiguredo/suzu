@@ -11,6 +11,9 @@
 
 ## develop
 
+- [UPDATE] aws, awsv1, awsv2 指定時に、接続時にサーバから送られてきた Session-Id をログ出力に追加する
+  - @Hexa
+
 ## 2025.2.0
 
 - [ADD] リトライ対象の固定のエラー以外に、config.ini に設定したメッセージに該当するエラーメッセージ受信時にもリトライ対象とする `retry_targets` の設定を追加する

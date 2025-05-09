@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -154,6 +155,7 @@ func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus
 									Err(err).
 									Str("channel_id", h.ChannelID).
 									Str("connection_id", h.ConnectionID).
+									Str("session_id", at.SessionID).
 									Send()
 							}
 							w.CloseWithError(err)
@@ -204,11 +206,13 @@ func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus
 				Err(err).
 				Str("channel_id", h.ChannelID).
 				Str("connection_id", h.ConnectionID).
+				Str("session_id", at.SessionID).
 				Int("retry_count", h.GetRetryCount()).
 				Send()
 
 			if ok := h.IsRetryTarget(err); ok {
-				err = errors.Join(err, ErrServerDisconnected)
+				errWithSessionID := fmt.Errorf("%w (session_id: %s)", err, at.SessionID)
+				err = errors.Join(errWithSessionID, ErrServerDisconnected)
 			}
 
 			w.CloseWithError(err)
