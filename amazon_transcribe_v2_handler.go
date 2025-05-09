@@ -154,6 +154,7 @@ func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus
 									Err(err).
 									Str("channel_id", h.ChannelID).
 									Str("connection_id", h.ConnectionID).
+									Str("session_id", at.SessionID).
 									Send()
 							}
 							w.CloseWithError(err)
@@ -204,6 +205,7 @@ func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus
 				Err(err).
 				Str("channel_id", h.ChannelID).
 				Str("connection_id", h.ConnectionID).
+				Str("session_id", at.SessionID).
 				Int("retry_count", h.GetRetryCount()).
 				Send()
 

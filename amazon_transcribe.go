@@ -22,6 +22,7 @@ type AmazonTranscribe struct {
 	EnableChannelIdentification       bool
 	PartialResultsStability           string
 	Region                            string
+	SessionID                         string
 	Debug                             bool
 	Config                            Config
 }
@@ -127,6 +128,10 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.ReadCloser) (*transc
 			}
 		}
 		return nil, err
+	}
+
+	if resp.SessionId != nil {
+		at.SessionID = *resp.SessionId
 	}
 
 	stream := resp.GetStream()
