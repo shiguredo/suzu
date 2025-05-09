@@ -25,6 +25,7 @@ type AmazonTranscribeV2 struct {
 	EnableChannelIdentification       bool
 	PartialResultsStability           string
 	Region                            string
+	SessionID                         string
 	Debug                             bool
 	Config                            Config
 }
@@ -143,13 +144,17 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser) (*tran
 		return nil, err
 	}
 
+	if resp.SessionId != nil {
+		at.SessionID = *resp.SessionId
+	}
+
 	stream := resp.GetStream()
 
 	go func() {
 		defer r.Close()
 		defer func() {
 			if err := stream.Close(); err != nil {
-				zlog.Error().Err(err).Send()
+				zlog.Error().Err(err).Str("session_id", at.SessionID).Send()
 			}
 		}()
 
@@ -158,7 +163,7 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser) (*tran
 			n, err := r.Read(frame)
 			if err != nil {
 				if err != io.EOF {
-					zlog.Error().Err(err).Send()
+					zlog.Error().Err(err).Str("session_id", at.SessionID).Send()
 				}
 				break
 			}
@@ -169,7 +174,7 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser) (*tran
 					},
 				})
 				if err != nil {
-					zlog.Error().Err(err).Send()
+					zlog.Error().Err(err).Str("session_id", at.SessionID).Send()
 					break
 				}
 			}
