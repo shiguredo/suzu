@@ -141,7 +141,7 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.ReadCloser) (*transc
 		defer stream.Close()
 
 		if err := transcribestreamingservice.StreamAudioFromReader(ctx, stream, FrameSize, r); err != nil {
-			zlog.Error().Err(err).Send()
+			zlog.Error().Err(err).Str("session_id", at.SessionID).Send()
 			return
 		}
 	}()

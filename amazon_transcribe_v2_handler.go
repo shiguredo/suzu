@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -210,7 +211,8 @@ func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus
 				Send()
 
 			if ok := h.IsRetryTarget(err); ok {
-				err = errors.Join(err, ErrServerDisconnected)
+				errWithSessionID := fmt.Errorf("%w (session_id: %s)", err, at.SessionID)
+				err = errors.Join(errWithSessionID, ErrServerDisconnected)
 			}
 
 			w.CloseWithError(err)
