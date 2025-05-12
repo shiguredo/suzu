@@ -594,39 +594,61 @@ func NewOpusReader(c Config, d time.Duration, opusReader io.ReadCloser) io.ReadC
 	r, w := io.Pipe()
 
 	ch := readPacket(opusReader)
-
 	go func() {
-		timer := time.NewTimer(d)
-		defer func() {
-			if !timer.Stop() {
-				<-timer.C
-			}
-		}()
+		if c.DisableSilentPacket {
+			for {
+				var payload []byte
+				select {
+				case req, ok := <-ch:
+					if !ok {
+						w.Close()
+						return
+					}
+					if err := req.Error; err != nil {
+						w.CloseWithError(err)
+						return
+					}
 
-		for {
-			var payload []byte
-			select {
-			case <-timer.C:
-				payload = silentPacket(c.AudioStreamingHeader)
-			case req, ok := <-ch:
-				if !ok {
-					w.Close()
-					return
+					payload = req.Payload
 				}
-				if err := req.Error; err != nil {
+
+				if _, err := w.Write(payload); err != nil {
 					w.CloseWithError(err)
-					return
+					opusReader.Close()
+				}
+			}
+		} else {
+			timer := time.NewTimer(d)
+			defer func() {
+				if !timer.Stop() {
+					<-timer.C
+				}
+			}()
+
+			for {
+				var payload []byte
+				select {
+				case <-timer.C:
+					payload = silentPacket(c.AudioStreamingHeader)
+				case req, ok := <-ch:
+					if !ok {
+						w.Close()
+						return
+					}
+					if err := req.Error; err != nil {
+						w.CloseWithError(err)
+						return
+					}
+
+					payload = req.Payload
+				}
+				if _, err := w.Write(payload); err != nil {
+					w.CloseWithError(err)
+					opusReader.Close()
 				}
 
-				payload = req.Payload
+				timer.Reset(d)
 			}
-
-			if _, err := w.Write(payload); err != nil {
-				w.CloseWithError(err)
-				opusReader.Close()
-			}
-
-			timer.Reset(d)
 		}
 	}()
 
