@@ -597,22 +597,17 @@ func NewOpusReader(c Config, d time.Duration, opusReader io.ReadCloser) io.ReadC
 	go func() {
 		if c.DisableSilentPacket {
 			for {
-				var payload []byte
-				select {
-				case req, ok := <-ch:
-					if !ok {
-						w.Close()
-						return
-					}
-					if err := req.Error; err != nil {
-						w.CloseWithError(err)
-						return
-					}
-
-					payload = req.Payload
+				req, ok := <-ch
+				if !ok {
+					w.Close()
+					return
+				}
+				if err := req.Error; err != nil {
+					w.CloseWithError(err)
+					return
 				}
 
-				if _, err := w.Write(payload); err != nil {
+				if _, err := w.Write(req.Payload); err != nil {
 					w.CloseWithError(err)
 					opusReader.Close()
 				}
