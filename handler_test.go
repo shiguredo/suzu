@@ -55,6 +55,64 @@ func TestOpusPacketReader(t *testing.T) {
 		}
 	})
 
+	t.Run("silent packet", func(t *testing.T) {
+		d := time.Duration(500) * time.Millisecond
+		r := readDumpFile(t, "testdata/000.jsonl", 3000*time.Millisecond)
+		defer r.Close()
+
+		reader := NewOpusReader(c, d, r)
+
+		count := 0
+		for {
+			buf := make([]byte, FrameSize)
+			n, err := reader.Read(buf)
+			if err != nil {
+				assert.ErrorIs(t, err, io.EOF)
+				break
+			}
+
+			if count < 5 {
+				// パケットを受信までは silent packet は 5 回分
+				assert.Equal(t, []byte{252, 255, 254}, buf[:n])
+			} else {
+				// パケットを受信
+				assert.Equal(t, []byte{0, 0, 0}, buf[:n])
+				break
+			}
+
+			count += 1
+		}
+		assert.Equal(t, 5, count)
+	})
+
+	t.Run("success without silent packet", func(t *testing.T) {
+		d := time.Duration(100) * time.Millisecond
+		r := readDumpFile(t, "testdata/000.jsonl", 1000*time.Millisecond)
+		defer r.Close()
+
+		c := Config{
+			AudioStreamingHeader: false,
+			DisableSilentPacket:  true,
+		}
+		reader := NewOpusReader(c, d, r)
+
+		count := 0
+		for {
+			buf := make([]byte, FrameSize)
+			n, err := reader.Read(buf)
+			if err != nil {
+				assert.ErrorIs(t, err, io.EOF)
+				break
+			}
+			// silent packet を無効にしているので、silent packet は来ない
+			assert.Equal(t, []byte{0, 0, 0}, buf[:n])
+
+			count += 1
+		}
+		// testdata/000.jsonl は 9 パケット分
+		assert.Equal(t, 9, count)
+	})
+
 	t.Run("read error", func(t *testing.T) {
 		d := time.Duration(3000) * time.Millisecond
 		errPacketRead := errors.New("packet read error")
