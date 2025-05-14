@@ -253,107 +253,113 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 						// 元の err を取得する
 						err := errs[0]
 
-						if s.config.MaxRetry < 1 {
-							// サーバから切断されたが再接続させない設定の場合
-							zlog.Error().
-								Err(ErrServerDisconnected).
-								Err(err).
-								Str("channel_id", h.SoraChannelID).
-								Str("connection_id", h.SoraConnectionID).
-								Send()
+						// disable_silent_packet が false の場合は、リトライ対象のエラーとして扱う
+						if !s.config.DisableSilentPacket {
+							if s.config.MaxRetry < 1 {
+								// サーバから切断されたが再接続させない設定の場合
+								zlog.Error().
+									Err(ErrServerDisconnected).
+									Err(err).
+									Str("channel_id", h.SoraChannelID).
+									Str("connection_id", h.SoraConnectionID).
+									Send()
 
-							errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
-							if err != nil {
+								errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
+								if err != nil {
+									zlog.Error().
+										Err(err).
+										Str("channel_id", h.SoraChannelID).
+										Str("connection_id", h.SoraConnectionID).
+										Send()
+									return err
+								}
+
+								if _, err := c.Response().Write(errMessage); err != nil {
+									zlog.Error().
+										Err(err).
+										Str("channel_id", h.SoraChannelID).
+										Str("connection_id", h.SoraConnectionID).
+										Send()
+									return err
+								}
+								c.Response().Flush()
+								return ErrServerDisconnected
+							}
+
+							if s.config.MaxRetry > serviceHandler.GetRetryCount() {
+								// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
+
+								serviceHandler.UpdateRetryCount()
+
+								// TODO: 必要な場合は連続のリトライを避けるために少し待つ処理を追加する
+								cancelServiceHandler()
+								break
+							} else {
 								zlog.Error().
 									Err(err).
 									Str("channel_id", h.SoraChannelID).
 									Str("connection_id", h.SoraConnectionID).
 									Send()
-								return err
+
+								errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
+								if err != nil {
+									zlog.Error().
+										Err(err).
+										Str("channel_id", h.SoraChannelID).
+										Str("connection_id", h.SoraConnectionID).
+										Send()
+									return err
+								}
+
+								if _, err := c.Response().Write(errMessage); err != nil {
+									zlog.Error().
+										Err(err).
+										Str("channel_id", h.SoraChannelID).
+										Str("connection_id", h.SoraConnectionID).
+										Send()
+									return err
+								}
+								c.Response().Flush()
+
+								// max_retry を超えた場合は終了
+								return c.NoContent(http.StatusOK)
 							}
-
-							if _, err := c.Response().Write(errMessage); err != nil {
-								zlog.Error().
-									Err(err).
-									Str("channel_id", h.SoraChannelID).
-									Str("connection_id", h.SoraConnectionID).
-									Send()
-								return err
-							}
-							c.Response().Flush()
-							return ErrServerDisconnected
-						}
-
-						if s.config.MaxRetry > serviceHandler.GetRetryCount() {
-							// サーバから切断されたが再度接続できる可能性があるため、接続を試みる
-
-							serviceHandler.UpdateRetryCount()
-
-							// TODO: 必要な場合は連続のリトライを避けるために少し待つ処理を追加する
-							cancelServiceHandler()
-							break
 						} else {
+							// disable_silent_packet が true の場合は type: error のエラーメッセージをクライアントに送信しない
+							return echo.NewHTTPError(http.StatusInternalServerError, err)
+						}
+					} else {
+						zlog.Debug().
+							Err(err).
+							Str("channel_id", h.SoraChannelID).
+							Str("connection_id", h.SoraConnectionID).
+							Send()
+
+						orgErr := err
+
+						// サーバから切断されたが再度の接続が期待できないため type: error のエラーメッセージをクライアントに送信する
+						errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
+						if err != nil {
 							zlog.Error().
 								Err(err).
 								Str("channel_id", h.SoraChannelID).
 								Str("connection_id", h.SoraConnectionID).
 								Send()
-
-							errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
-							if err != nil {
-								zlog.Error().
-									Err(err).
-									Str("channel_id", h.SoraChannelID).
-									Str("connection_id", h.SoraConnectionID).
-									Send()
-								return err
-							}
-
-							if _, err := c.Response().Write(errMessage); err != nil {
-								zlog.Error().
-									Err(err).
-									Str("channel_id", h.SoraChannelID).
-									Str("connection_id", h.SoraConnectionID).
-									Send()
-								return err
-							}
-							c.Response().Flush()
-
-							// max_retry を超えた場合は終了
-							return c.NoContent(http.StatusOK)
+							return err
 						}
+
+						if _, err := c.Response().Write(errMessage); err != nil {
+							zlog.Error().
+								Err(err).
+								Str("channel_id", h.SoraChannelID).
+								Str("connection_id", h.SoraConnectionID).
+								Send()
+							return err
+						}
+						c.Response().Flush()
+
+						return orgErr
 					}
-
-					zlog.Debug().
-						Err(err).
-						Str("channel_id", h.SoraChannelID).
-						Str("connection_id", h.SoraConnectionID).
-						Send()
-
-					orgErr := err
-
-					errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
-					if err != nil {
-						zlog.Error().
-							Err(err).
-							Str("channel_id", h.SoraChannelID).
-							Str("connection_id", h.SoraConnectionID).
-							Send()
-						return err
-					}
-
-					if _, err := c.Response().Write(errMessage); err != nil {
-						zlog.Error().
-							Err(err).
-							Str("channel_id", h.SoraChannelID).
-							Str("connection_id", h.SoraConnectionID).
-							Send()
-						return err
-					}
-					c.Response().Flush()
-
-					// サーバから切断されたが再度の接続が期待できない場合
-					return orgErr
 				}
 
 				// メッセージが空でない場合はクライアントに結果を送信する
