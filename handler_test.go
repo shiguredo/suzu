@@ -33,142 +33,220 @@ func (e *ErrReadCloser) Close() error {
 }
 
 func TestOpusPacketReader(t *testing.T) {
-	c := Config{
-		AudioStreamingHeader: false,
-	}
-
-	t.Run("success", func(t *testing.T) {
-		d := time.Duration(3000) * time.Millisecond
-		r := readDumpFile(t, "testdata/000.jsonl", 0)
-		defer r.Close()
-
-		reader := NewOpusReader(c, d, r)
-
-		for {
-			buf := make([]byte, FrameSize)
-			n, err := reader.Read(buf)
-			if err != nil {
-				assert.ErrorIs(t, err, io.EOF)
-				break
-			}
-			assert.Equal(t, []byte{0, 0, 0}, buf[:n])
+	t.Run("enable silent packet", func(t *testing.T) {
+		c := Config{
+			AudioStreamingHeader: false,
 		}
-	})
 
-	t.Run("silent packet", func(t *testing.T) {
-		d := time.Duration(500) * time.Millisecond
-		r := readDumpFile(t, "testdata/000.jsonl", 3000*time.Millisecond)
-		defer r.Close()
+		t.Run("success", func(t *testing.T) {
+			d := time.Duration(3000) * time.Millisecond
+			r := readDumpFile(t, "testdata/000.jsonl", 0)
+			defer r.Close()
 
-		reader := NewOpusReader(c, d, r)
+			reader := NewOpusReader(c, d, r)
 
-		count := 0
-		for {
-			buf := make([]byte, FrameSize)
-			n, err := reader.Read(buf)
-			if err != nil {
-				assert.ErrorIs(t, err, io.EOF)
-				break
-			}
-
-			if count < 5 {
-				// パケットを受信までは silent packet は 5 回分
-				assert.Equal(t, []byte{252, 255, 254}, buf[:n])
-			} else {
-				// パケットを受信
+			for {
+				buf := make([]byte, FrameSize)
+				n, err := reader.Read(buf)
+				if err != nil {
+					assert.ErrorIs(t, err, io.EOF)
+					break
+				}
 				assert.Equal(t, []byte{0, 0, 0}, buf[:n])
-				break
 			}
+		})
 
-			count += 1
-		}
-		assert.Equal(t, 5, count)
+		t.Run("silent packet", func(t *testing.T) {
+			d := time.Duration(500) * time.Millisecond
+			r := readDumpFile(t, "testdata/000.jsonl", 3000*time.Millisecond)
+			defer r.Close()
+
+			reader := NewOpusReader(c, d, r)
+
+			count := 0
+			for {
+				buf := make([]byte, FrameSize)
+				n, err := reader.Read(buf)
+				if err != nil {
+					assert.ErrorIs(t, err, io.EOF)
+					break
+				}
+
+				if count < 5 {
+					// パケットを受信までは silent packet は 5 回分
+					assert.Equal(t, []byte{252, 255, 254}, buf[:n])
+				} else {
+					// パケットを受信
+					assert.Equal(t, []byte{0, 0, 0}, buf[:n])
+					break
+				}
+
+				count += 1
+			}
+			assert.Equal(t, 5, count)
+		})
+
+		t.Run("read error", func(t *testing.T) {
+			d := time.Duration(3000) * time.Millisecond
+			errPacketRead := errors.New("packet read error")
+
+			r := NewErrReadCloser(errPacketRead)
+
+			reader := NewOpusReader(c, d, &r)
+
+			for {
+				buf := make([]byte, FrameSize)
+				n, err := reader.Read(buf)
+				if err != nil {
+					assert.ErrorIs(t, err, errPacketRead)
+					break
+				}
+				assert.Equal(t, []byte{255, 255, 254}, buf[:n])
+			}
+		})
+
+		t.Run("closed reader", func(t *testing.T) {
+			d := time.Duration(3000) * time.Millisecond
+			r := readDumpFile(t, "testdata/dump.jsonl", 0)
+			r.Close()
+
+			reader := NewOpusReader(c, d, r)
+
+			for {
+				buf := make([]byte, FrameSize)
+				_, err := reader.Read(buf)
+				if err != nil {
+					assert.ErrorIs(t, io.ErrClosedPipe, err)
+					break
+				}
+			}
+		})
+
+		t.Run("close reader", func(t *testing.T) {
+			d := time.Duration(3000) * time.Millisecond
+			r := readDumpFile(t, "testdata/dump.jsonl", 0)
+			go func() {
+				time.Sleep(3000 * time.Millisecond)
+				r.Close()
+			}()
+
+			reader := NewOpusReader(c, d, r)
+
+			for {
+				buf := make([]byte, FrameSize)
+				_, err := reader.Read(buf)
+				if err != nil {
+					assert.ErrorIs(t, io.EOF, err)
+					break
+				}
+			}
+		})
 	})
 
-	t.Run("success without silent packet", func(t *testing.T) {
-		d := time.Duration(100) * time.Millisecond
-		r := readDumpFile(t, "testdata/000.jsonl", 1000*time.Millisecond)
-		defer r.Close()
-
+	t.Run("disable silent packet", func(t *testing.T) {
 		c := Config{
 			AudioStreamingHeader: false,
 			DisableSilentPacket:  true,
 		}
-		reader := NewOpusReader(c, d, r)
 
-		count := 0
-		for {
-			buf := make([]byte, FrameSize)
-			n, err := reader.Read(buf)
-			if err != nil {
-				assert.ErrorIs(t, err, io.EOF)
-				break
+		t.Run("success", func(t *testing.T) {
+			d := time.Duration(3000) * time.Millisecond
+			r := readDumpFile(t, "testdata/000.jsonl", 0)
+			defer r.Close()
+
+			reader := NewOpusReader(c, d, r)
+
+			for {
+				buf := make([]byte, FrameSize)
+				n, err := reader.Read(buf)
+				if err != nil {
+					assert.ErrorIs(t, err, io.EOF)
+					break
+				}
+				assert.Equal(t, []byte{0, 0, 0}, buf[:n])
 			}
-			// silent packet を無効にしているので、silent packet は来ない
-			assert.Equal(t, []byte{0, 0, 0}, buf[:n])
+		})
 
-			count += 1
-		}
-		// testdata/000.jsonl は 9 パケット分
-		assert.Equal(t, 9, count)
-	})
+		t.Run("no silent packet", func(t *testing.T) {
+			d := time.Duration(100) * time.Millisecond
+			r := readDumpFile(t, "testdata/000.jsonl", 1000*time.Millisecond)
+			defer r.Close()
 
-	t.Run("read error", func(t *testing.T) {
-		d := time.Duration(3000) * time.Millisecond
-		errPacketRead := errors.New("packet read error")
+			reader := NewOpusReader(c, d, r)
 
-		r := NewErrReadCloser(errPacketRead)
+			count := 0
+			for {
+				buf := make([]byte, FrameSize)
+				n, err := reader.Read(buf)
+				if err != nil {
+					assert.ErrorIs(t, err, io.EOF)
+					break
+				}
+				// silent packet を無効にしているので、silent packet は来ない
+				assert.Equal(t, []byte{0, 0, 0}, buf[:n])
 
-		reader := NewOpusReader(c, d, &r)
-
-		for {
-			buf := make([]byte, FrameSize)
-			n, err := reader.Read(buf)
-			if err != nil {
-				assert.ErrorIs(t, err, errPacketRead)
-				break
+				count += 1
 			}
-			assert.Equal(t, []byte{255, 255, 254}, buf[:n])
-		}
-	})
+			// testdata/000.jsonl は 9 パケット分
+			assert.Equal(t, 9, count)
+		})
 
-	t.Run("closed reader", func(t *testing.T) {
-		d := time.Duration(3000) * time.Millisecond
-		r := readDumpFile(t, "testdata/dump.jsonl", 0)
-		r.Close()
+		t.Run("read error", func(t *testing.T) {
+			d := time.Duration(3000) * time.Millisecond
+			errPacketRead := errors.New("packet read error")
 
-		reader := NewOpusReader(c, d, r)
+			r := NewErrReadCloser(errPacketRead)
 
-		for {
-			buf := make([]byte, FrameSize)
-			_, err := reader.Read(buf)
-			if err != nil {
-				assert.ErrorIs(t, io.ErrClosedPipe, err)
-				break
+			reader := NewOpusReader(c, d, &r)
+
+			for {
+				buf := make([]byte, FrameSize)
+				n, err := reader.Read(buf)
+				if err != nil {
+					assert.ErrorIs(t, err, errPacketRead)
+					break
+				}
+				assert.Equal(t, []byte{255, 255, 254}, buf[:n])
 			}
-		}
-	})
+		})
 
-	t.Run("close reader", func(t *testing.T) {
-		d := time.Duration(3000) * time.Millisecond
-		r := readDumpFile(t, "testdata/dump.jsonl", 0)
-		go func() {
-			time.Sleep(3000 * time.Millisecond)
+		t.Run("closed reader", func(t *testing.T) {
+			d := time.Duration(3000) * time.Millisecond
+			r := readDumpFile(t, "testdata/dump.jsonl", 0)
 			r.Close()
-		}()
 
-		reader := NewOpusReader(c, d, r)
+			reader := NewOpusReader(c, d, r)
 
-		for {
-			buf := make([]byte, FrameSize)
-			_, err := reader.Read(buf)
-			if err != nil {
-				assert.ErrorIs(t, io.EOF, err)
-				break
+			for {
+				buf := make([]byte, FrameSize)
+				_, err := reader.Read(buf)
+				if err != nil {
+					assert.ErrorIs(t, io.ErrClosedPipe, err)
+					break
+				}
 			}
-		}
-	})
+		})
 
+		t.Run("close reader", func(t *testing.T) {
+			d := time.Duration(3000) * time.Millisecond
+			r := readDumpFile(t, "testdata/dump.jsonl", 0)
+			go func() {
+				time.Sleep(3000 * time.Millisecond)
+				r.Close()
+			}()
+
+			reader := NewOpusReader(c, d, r)
+
+			for {
+				buf := make([]byte, FrameSize)
+				_, err := reader.Read(buf)
+				if err != nil {
+					assert.ErrorIs(t, io.EOF, err)
+					break
+				}
+			}
+		})
+	})
 }
 
 func TestReadPacketWithHeader(t *testing.T) {
