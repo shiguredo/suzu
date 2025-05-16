@@ -38,6 +38,10 @@ func readDumpFile(t *testing.T, filename string, d time.Duration) *io.PipeReader
 		defer f.Close()
 
 		for scanner.Scan() {
+			if d > 0 {
+				time.Sleep(d)
+			}
+
 			b := scanner.Bytes()
 			s := struct {
 				Payload []byte `json:"payload"`
@@ -52,10 +56,6 @@ func readDumpFile(t *testing.T, filename string, d time.Duration) *io.PipeReader
 				//t.Log(err.Error())
 				fmt.Println(err.Error())
 				break
-			}
-
-			if d > 0 {
-				time.Sleep(d)
 			}
 		}
 

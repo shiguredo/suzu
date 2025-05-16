@@ -253,6 +253,12 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 						// 元の err を取得する
 						err := errs[0]
 
+						// disable_silent_packet が true の場合は、suzu でのリトライ対象のエラーとして扱わない
+						if s.config.DisableSilentPacket {
+							// disable_silent_packet が true の場合は type: error のエラーメッセージをクライアントに送信しない
+							return echo.NewHTTPError(http.StatusInternalServerError, err)
+						}
+
 						if s.config.MaxRetry < 1 {
 							// サーバから切断されたが再接続させない設定の場合
 							zlog.Error().
@@ -322,38 +328,38 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							// max_retry を超えた場合は終了
 							return c.NoContent(http.StatusOK)
 						}
-					}
-
-					zlog.Debug().
-						Err(err).
-						Str("channel_id", h.SoraChannelID).
-						Str("connection_id", h.SoraConnectionID).
-						Send()
-
-					orgErr := err
-
-					errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
-					if err != nil {
-						zlog.Error().
+					} else {
+						zlog.Debug().
 							Err(err).
 							Str("channel_id", h.SoraChannelID).
 							Str("connection_id", h.SoraConnectionID).
 							Send()
-						return err
-					}
 
-					if _, err := c.Response().Write(errMessage); err != nil {
-						zlog.Error().
-							Err(err).
-							Str("channel_id", h.SoraChannelID).
-							Str("connection_id", h.SoraConnectionID).
-							Send()
-						return err
-					}
-					c.Response().Flush()
+						orgErr := err
 
-					// サーバから切断されたが再度の接続が期待できない場合
-					return orgErr
+						// サーバから切断されたが再度の接続が期待できないため type: error のエラーメッセージをクライアントに送信する
+						errMessage, err := json.Marshal(NewSuzuErrorResponse(err))
+						if err != nil {
+							zlog.Error().
+								Err(err).
+								Str("channel_id", h.SoraChannelID).
+								Str("connection_id", h.SoraConnectionID).
+								Send()
+							return err
+						}
+
+						if _, err := c.Response().Write(errMessage); err != nil {
+							zlog.Error().
+								Err(err).
+								Str("channel_id", h.SoraChannelID).
+								Str("connection_id", h.SoraConnectionID).
+								Send()
+							return err
+						}
+						c.Response().Flush()
+
+						return orgErr
+					}
 				}
 
 				// メッセージが空でない場合はクライアントに結果を送信する
@@ -594,21 +600,10 @@ func NewOpusReader(c Config, d time.Duration, opusReader io.ReadCloser) io.ReadC
 	r, w := io.Pipe()
 
 	ch := readPacket(opusReader)
-
 	go func() {
-		timer := time.NewTimer(d)
-		defer func() {
-			if !timer.Stop() {
-				<-timer.C
-			}
-		}()
-
-		for {
-			var payload []byte
-			select {
-			case <-timer.C:
-				payload = silentPacket(c.AudioStreamingHeader)
-			case req, ok := <-ch:
+		if c.DisableSilentPacket {
+			for {
+				req, ok := <-ch
 				if !ok {
 					w.Close()
 					return
@@ -618,15 +613,43 @@ func NewOpusReader(c Config, d time.Duration, opusReader io.ReadCloser) io.ReadC
 					return
 				}
 
-				payload = req.Payload
+				if _, err := w.Write(req.Payload); err != nil {
+					w.CloseWithError(err)
+					opusReader.Close()
+				}
 			}
+		} else {
+			timer := time.NewTimer(d)
+			defer func() {
+				if !timer.Stop() {
+					<-timer.C
+				}
+			}()
 
-			if _, err := w.Write(payload); err != nil {
-				w.CloseWithError(err)
-				opusReader.Close()
+			for {
+				var payload []byte
+				select {
+				case <-timer.C:
+					payload = silentPacket(c.AudioStreamingHeader)
+				case req, ok := <-ch:
+					if !ok {
+						w.Close()
+						return
+					}
+					if err := req.Error; err != nil {
+						w.CloseWithError(err)
+						return
+					}
+
+					payload = req.Payload
+				}
+				if _, err := w.Write(payload); err != nil {
+					w.CloseWithError(err)
+					opusReader.Close()
+				}
+
+				timer.Reset(d)
 			}
-
-			timer.Reset(d)
 		}
 	}()
 
