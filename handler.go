@@ -253,12 +253,6 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 						// 元の err を取得する
 						err := errs[0]
 
-						// disable_silent_packet が true の場合は、suzu でのリトライ対象のエラーとして扱わない
-						if s.config.DisableSilentPacket {
-							// disable_silent_packet が true の場合は type: error のエラーメッセージをクライアントに送信しない
-							return echo.NewHTTPError(http.StatusInternalServerError, err)
-						}
-
 						if s.config.MaxRetry < 1 {
 							// サーバから切断されたが再接続させない設定の場合
 							zlog.Error().
