@@ -512,7 +512,7 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 	multiWriter := io.MultiWriter(writers...)
 
 	go func() {
-		o, err := NewWith(multiWriter, sampleRate, channelCount)
+		o, err := NewWithoutHeader(multiWriter, sampleRate, channelCount)
 		if err != nil {
 			oggWriter.CloseWithError(err)
 			return
@@ -542,6 +542,12 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 				opusPacket := codecs.OpusPacket{}
 				_, err := opusPacket.Unmarshal(opus.Payload)
 				if err != nil {
+					oggWriter.CloseWithError(err)
+					return
+				}
+
+				// Ogg ヘッダを書き込む
+				if err := o.WriteHeaders(); err != nil {
 					oggWriter.CloseWithError(err)
 					return
 				}
