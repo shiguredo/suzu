@@ -473,6 +473,13 @@ func TestOggFileWriting(t *testing.T) {
 		opusCh := make(chan opusChannel)
 		defer close(opusCh)
 
+		// 音声データの受信をシミュレート
+		go func() {
+			opusCh <- opusChannel{
+				Payload: []byte{0},
+			}
+		}()
+
 		sampleRate := uint32(48000)
 		channelCount := uint16(1)
 
