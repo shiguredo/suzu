@@ -717,3 +717,19 @@ func opusChannelToIOReadCloser(ctx context.Context, ch chan opusChannel) io.Read
 
 	return r
 }
+
+// receiveFirstAudioData は、音声データを 1 つだけ受信するための関数です
+func receiveFirstAudioData(r io.ReadCloser) ([]byte, error) {
+	for {
+		buf := make([]byte, FrameSize)
+		n, err := r.Read(buf)
+		if err != nil {
+			return nil, err
+		}
+
+		if n > 0 {
+			// データを取得できた場合は終了
+			return buf[:n], nil
+		}
+	}
+}

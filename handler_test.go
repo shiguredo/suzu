@@ -618,3 +618,42 @@ func TestOggFileWriting(t *testing.T) {
 		assert.Nil(t, reader)
 	})
 }
+
+func TestReceiveFirstAudioData(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// testData := []byte(`012`)
+		testData := [][]byte{
+			[]byte(`012`),
+			[]byte(`345`),
+			[]byte(`678`),
+		}
+
+		reader, writer := io.Pipe()
+		defer reader.Close()
+
+		go func() {
+			defer writer.Close()
+			for _, data := range testData {
+				_, err := writer.Write(data)
+				if err != nil {
+					if assert.ErrorIs(t, err, io.EOF) {
+						// EOF の場合は終了
+						return
+					}
+
+					t.Error(t, err)
+					return
+				}
+			}
+		}()
+
+		for _, data := range testData {
+			audioData, err := receiveFirstAudioData(reader)
+			if assert.NoError(t, err) {
+				assert.NotNil(t, audioData)
+				assert.Equal(t, data, audioData)
+			}
+		}
+	})
+
+}
