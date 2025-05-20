@@ -31,6 +31,35 @@ func NewSpeechToText(config Config, languageCode string, sampleRate, channelCoun
 
 func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
 	config := stt.Config
+
+	ch := make(chan []byte, 1)
+	defer close(ch)
+
+	go func() {
+		// 音声データが送られてくるのを待つ
+		for {
+			buf := make([]byte, FrameSize)
+			n, err := r.Read(buf)
+			if err != nil {
+				zlog.Error().Err(err).Msg("Read error")
+				return
+			}
+
+			if n > 0 {
+				ch <- buf[:n]
+				break
+			}
+		}
+	}()
+
+	var payload []byte
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case payload = <-ch:
+		// 音声データを受信したらサーバへの接続処理へ
+	}
+
 	recognitionConfig := NewRecognitionConfig(config, stt.LanguageCode, int32(config.SampleRate), int32(config.ChannelCount))
 	speechpbRecognitionConfig := NewSpeechpbRecognitionConfig(recognitionConfig)
 	streamingRecognitionConfig := NewStreamingRecognitionConfig(speechpbRecognitionConfig, config.GcpSingleUtterance, config.GcpInterimResults)
@@ -62,6 +91,16 @@ func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech
 			Code:    500,
 			Message: err.Error(),
 		}
+	}
+
+	if err := stream.Send(&speechpb.StreamingRecognizeRequest{
+		StreamingRequest: &speechpb.StreamingRecognizeRequest_AudioContent{
+			AudioContent: payload,
+		},
+	}); err != nil {
+		stream.CloseSend()
+
+		return nil, err
 	}
 
 	go func() {
