@@ -103,6 +103,35 @@ func NewAmazonTranscribeClient(config Config) *transcribestreamingservice.Transc
 
 func (at *AmazonTranscribe) Start(ctx context.Context, r io.ReadCloser) (*transcribestreamingservice.StartStreamTranscriptionEventStream, error) {
 	config := at.Config
+
+	ch := make(chan []byte, 1)
+	defer close(ch)
+
+	go func() {
+		// 音声データが送られてくるのを待つ
+		for {
+			buf := make([]byte, FrameSize)
+			n, err := r.Read(buf)
+			if err != nil {
+				zlog.Error().Err(err).Msg("Read error")
+				return
+			}
+
+			if n > 0 {
+				ch <- buf[:n]
+				break
+			}
+		}
+	}()
+
+	var payload []byte
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case payload = <-ch:
+		// 音声データを受信したらサーバへの接続処理へ
+	}
+
 	client := NewAmazonTranscribeClient(config)
 	input := NewStartStreamTranscriptionInput(at)
 
@@ -136,6 +165,18 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.ReadCloser) (*transc
 
 	stream := resp.GetStream()
 
+	// サーバに接続したので、音声データを送信する
+	err = stream.Send(ctx, &transcribestreamingservice.AudioEvent{
+		AudioChunk: payload,
+	})
+	if err != nil {
+		r.Close()
+		stream.Close()
+
+		return nil, err
+	}
+
+	// 音声データを送信する
 	go func() {
 		defer r.Close()
 		defer stream.Close()
