@@ -159,11 +159,17 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 
 			reader, err := serviceHandler.Handle(serviceHandlerCtx, opusCh, h)
 			if err != nil {
+				// EOF の場合は、クライアントとの接続が切れたため終了
+				if errors.Is(err, io.EOF) {
+					return c.NoContent(http.StatusOK)
+				}
+
 				zlog.Error().
 					Err(err).
 					Str("channel_id", h.SoraChannelID).
 					Str("connection_id", h.SoraConnectionID).
 					Send()
+
 				if err, ok := err.(*SuzuError); ok {
 					if err.IsRetry() {
 						if s.config.MaxRetry > serviceHandler.GetRetryCount() {
