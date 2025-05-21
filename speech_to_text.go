@@ -37,6 +37,8 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser) (speechpb.Sp
 		return nil, err
 	}
 
+	zlog.Info().Msg("Starting Speech-to-Text streaming")
+
 	recognitionConfig := NewRecognitionConfig(config, stt.LanguageCode, int32(config.SampleRate), int32(config.ChannelCount))
 	speechpbRecognitionConfig := NewSpeechpbRecognitionConfig(recognitionConfig)
 	streamingRecognitionConfig := NewStreamingRecognitionConfig(speechpbRecognitionConfig, config.GcpSingleUtterance, config.GcpInterimResults)

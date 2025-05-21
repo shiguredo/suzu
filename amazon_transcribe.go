@@ -109,6 +109,8 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.ReadCloser) (*transc
 		return nil, err
 	}
 
+	zlog.Info().Msg("Starting Amazon Transcribe stream")
+
 	client := NewAmazonTranscribeClient(config)
 	input := NewStartStreamTranscriptionInput(at)
 
