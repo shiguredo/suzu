@@ -29,8 +29,16 @@ func NewSpeechToText(config Config, languageCode string, sampleRate, channelCoun
 	}
 }
 
-func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech_StreamingRecognizeClient, error) {
+func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser) (speechpb.Speech_StreamingRecognizeClient, error) {
 	config := stt.Config
+
+	audioData, err := receiveFirstAudioData(r)
+	if err != nil {
+		return nil, err
+	}
+
+	zlog.Info().Msg("Starting Speech-to-Text streaming")
+
 	recognitionConfig := NewRecognitionConfig(config, stt.LanguageCode, int32(config.SampleRate), int32(config.ChannelCount))
 	speechpbRecognitionConfig := NewSpeechpbRecognitionConfig(recognitionConfig)
 	streamingRecognitionConfig := NewStreamingRecognitionConfig(speechpbRecognitionConfig, config.GcpSingleUtterance, config.GcpInterimResults)
@@ -62,6 +70,16 @@ func (stt SpeechToText) Start(ctx context.Context, r io.Reader) (speechpb.Speech
 			Code:    500,
 			Message: err.Error(),
 		}
+	}
+
+	if err := stream.Send(&speechpb.StreamingRecognizeRequest{
+		StreamingRequest: &speechpb.StreamingRecognizeRequest_AudioContent{
+			AudioContent: audioData,
+		},
+	}); err != nil {
+		stream.CloseSend()
+
+		return nil, err
 	}
 
 	go func() {
