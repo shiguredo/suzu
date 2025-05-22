@@ -11,6 +11,10 @@
 
 ## develop
 
+## 2025.4.0
+
+**リリース日: 2025-05-22
+
 - [ADD] silent packet を無効にする `disable_silent_packet` の設定を追加する
   - デフォルトは `false`
   - true にした場合は、クライアントから音声データが送られてこない場合に、suzu から silent packet をサーバに送らない
