@@ -1,5 +1,7 @@
---- oggwriter.go.org	2024-10-24 10:52:25
-+++ oggwriter.go	2024-10-24 10:49:11
+diff --git a/_third_party/pion/oggwriter.go b/_third_party/pion/oggwriter.go
+index 0852e38..edd1c90 100644
+--- a/_third_party/pion/oggwriter.go
++++ b/_third_party/pion/oggwriter.go
 @@ -2,7 +2,7 @@
  // SPDX-License-Identifier: MIT
  
@@ -9,7 +11,7 @@
  
  import (
  	"encoding/binary"
-@@ -12,7 +12,6 @@
+@@ -12,7 +12,6 @@ import (
  
  	"github.com/pion/rtp"
  	"github.com/pion/rtp/codecs"
@@ -17,7 +19,7 @@
  )
  
  const (
-@@ -68,7 +67,7 @@
+@@ -68,7 +67,7 @@ func NewWith(out io.Writer, sampleRate uint32, channelCount uint16) (*OggWriter,
  		stream:        out,
  		sampleRate:    sampleRate,
  		channelCount:  channelCount,
@@ -26,3 +28,35 @@
  		checksumTable: generateChecksumTable(),
  
  		// Timestamp and Granule MUST start from 1
+@@ -83,6 +82,31 @@ func NewWith(out io.Writer, sampleRate uint32, channelCount uint16) (*OggWriter,
+ 	return writer, nil
+ }
+ 
++func NewWithoutHeader(out io.Writer, sampleRate uint32, channelCount uint16) (*OggWriter, error) {
++	if out == nil {
++		return nil, errFileNotOpened
++	}
++
++	writer := &OggWriter{
++		stream:        out,
++		sampleRate:    sampleRate,
++		channelCount:  channelCount,
++		serial:        RandUint32(),
++		checksumTable: generateChecksumTable(),
++
++		// Timestamp and Granule MUST start from 1
++		// Only headers can have 0 values
++		previousTimestamp:       1,
++		previousGranulePosition: 1,
++	}
++
++	return writer, nil
++}
++
++func (i *OggWriter) WriteHeaders() error {
++	return i.writeHeaders()
++}
++
+ /*
+     ref: https://tools.ietf.org/html/rfc7845.html
+     https://git.xiph.org/?p=opus-tools.git;a=blob;f=src/opus_header.c#l219

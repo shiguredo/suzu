@@ -84,7 +84,8 @@ type Config struct {
 	DebugConsoleLog     bool `ini:"debug_console_log"`
 	DebugConsoleLogJSON bool `ini:"debug_console_log_json"`
 
-	TimeToWaitForOpusPacketMs int `ini:"time_to_wait_for_opus_packet_ms"`
+	DisableSilentPacket       bool `ini:"disable_silent_packet"`
+	TimeToWaitForOpusPacketMs int  `ini:"time_to_wait_for_opus_packet_ms"`
 
 	// aws の場合は IsPartial が false, gcp の場合は IsFinal が true の場合にのみ結果を返す指定
 	FinalResultOnly bool `ini:"final_result_only"`

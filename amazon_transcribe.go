@@ -103,6 +103,14 @@ func NewAmazonTranscribeClient(config Config) *transcribestreamingservice.Transc
 
 func (at *AmazonTranscribe) Start(ctx context.Context, r io.ReadCloser) (*transcribestreamingservice.StartStreamTranscriptionEventStream, error) {
 	config := at.Config
+
+	audioData, err := receiveFirstAudioData(r)
+	if err != nil {
+		return nil, err
+	}
+
+	zlog.Info().Msg("Starting Amazon Transcribe stream")
+
 	client := NewAmazonTranscribeClient(config)
 	input := NewStartStreamTranscriptionInput(at)
 
@@ -136,6 +144,18 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.ReadCloser) (*transc
 
 	stream := resp.GetStream()
 
+	// サーバに接続したので、音声データを送信する
+	err = stream.Send(ctx, &transcribestreamingservice.AudioEvent{
+		AudioChunk: audioData,
+	})
+	if err != nil {
+		r.Close()
+		stream.Close()
+
+		return nil, err
+	}
+
+	// 音声データを送信する
 	go func() {
 		defer r.Close()
 		defer stream.Close()
