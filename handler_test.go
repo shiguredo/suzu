@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -490,6 +491,21 @@ func TestOggFileWriting(t *testing.T) {
 		}
 		defer reader.Close()
 
+		// Ogg データは送信しないため、ここでは音声データの受信をシミュレートする
+		go func() {
+			for {
+				buf := make([]byte, 1024)
+				_, err := reader.Read(buf)
+				if err != nil {
+					if errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) {
+						return
+					}
+					t.Error(err)
+					return
+				}
+			}
+		}()
+
 		// ファイルへの書き込み待ち
 		time.Sleep(100 * time.Millisecond)
 
@@ -505,10 +521,23 @@ func TestOggFileWriting(t *testing.T) {
 		}
 		defer f.Close()
 
-		buf := make([]byte, 4)
-		n, err := f.Read(buf)
-		assert.NoError(t, err)
-		assert.Equal(t, []byte(`OggS`), buf[:n])
+		var data []byte
+		for {
+			buf := make([]byte, 1024)
+			n, err := f.Read(buf)
+			if err != nil && err != io.EOF {
+				t.Fatal(err)
+			}
+			if n == 0 {
+				break
+			}
+			data = append(data, buf[:n]...)
+		}
+		// OggS で始まることの確認
+		assert.Equal(t, []byte(`OggS`), data[:4])
+		// OpusHeader, OpusTags が 1 つだけ含まれることの確認
+		assert.Equal(t, 1, strings.Count(string(data), "OpusHead"))
+		assert.Equal(t, 1, strings.Count(string(data), "OpusTags"))
 	})
 
 	t.Run("disable_ogg_file_output", func(t *testing.T) {
