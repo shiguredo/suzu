@@ -529,6 +529,42 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 			o.fd = f
 		}
 
+		// 最初の音声データの受信時に、Ogg ヘッダを書き込み、その後に音声データを書き込む
+		select {
+		case <-ctx.Done():
+			oggWriter.CloseWithError(ctx.Err())
+			return
+		case opus, ok := <-opusCh:
+			if !ok {
+				oggWriter.CloseWithError(io.EOF)
+				return
+			}
+
+			if err := opus.Error; err != nil {
+				oggWriter.CloseWithError(err)
+				return
+			}
+
+			opusPacket := codecs.OpusPacket{}
+			_, err := opusPacket.Unmarshal(opus.Payload)
+			if err != nil {
+				oggWriter.CloseWithError(err)
+				return
+			}
+
+			// Ogg ヘッダを書き込む
+			if err := o.WriteHeaders(); err != nil {
+				oggWriter.CloseWithError(err)
+				return
+			}
+
+			if err := o.Write(&opusPacket); err != nil {
+				oggWriter.CloseWithError(err)
+				return
+			}
+		}
+
+		// 以降は受信した音声データを書き込む
 		for {
 			select {
 			case <-ctx.Done():
@@ -548,12 +584,6 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 				opusPacket := codecs.OpusPacket{}
 				_, err := opusPacket.Unmarshal(opus.Payload)
 				if err != nil {
-					oggWriter.CloseWithError(err)
-					return
-				}
-
-				// Ogg ヘッダを書き込む
-				if err := o.WriteHeaders(); err != nil {
 					oggWriter.CloseWithError(err)
 					return
 				}
