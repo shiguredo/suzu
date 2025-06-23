@@ -529,6 +529,7 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 			o.fd = f
 		}
 
+		// 最初の音声データの受信時に、Ogg ヘッダを書き込み、その後に音声データを書き込む
 		select {
 		case <-ctx.Done():
 			oggWriter.CloseWithError(ctx.Err())
@@ -563,6 +564,7 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 			}
 		}
 
+		// 以降は受信した音声データを書き込む
 		for {
 			select {
 			case <-ctx.Done():
