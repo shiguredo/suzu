@@ -142,6 +142,8 @@ func (at *AmazonTranscribe) Start(ctx context.Context, r io.ReadCloser) (*transc
 		at.SessionID = *resp.SessionId
 	}
 
+	zlog.Info().Str("session_id", at.SessionID).Msg("Started Amazon Transcribe stream")
+
 	stream := resp.GetStream()
 
 	// サーバに接続したので、音声データを送信する
