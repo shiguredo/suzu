@@ -29,7 +29,7 @@ func NewSpeechToText(config Config, languageCode string, sampleRate, channelCoun
 	}
 }
 
-func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser) (speechpb.Speech_StreamingRecognizeClient, error) {
+func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser, header soraHeader) (speechpb.Speech_StreamingRecognizeClient, error) {
 	config := stt.Config
 
 	audioData, err := receiveFirstAudioData(r)
@@ -37,7 +37,10 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser) (speechpb.Sp
 		return nil, err
 	}
 
-	zlog.Info().Msg("Starting Speech-to-Text streaming")
+	zlog.Info().
+		Str("channel_id", header.SoraChannelID).
+		Str("connection_id", header.SoraConnectionID).
+		Msg("Starting Speech-to-Text streaming")
 
 	recognitionConfig := NewRecognitionConfig(config, stt.LanguageCode, int32(config.SampleRate), int32(config.ChannelCount))
 	speechpbRecognitionConfig := NewSpeechpbRecognitionConfig(recognitionConfig)
@@ -61,6 +64,11 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser) (speechpb.Sp
 			Message: err.Error(),
 		}
 	}
+
+	zlog.Info().
+		Str("channel_id", header.SoraChannelID).
+		Str("connection_id", header.SoraConnectionID).
+		Msg("Started Speech-to-Text streaming")
 
 	if err := stream.Send(&speechpb.StreamingRecognizeRequest{
 		StreamingRequest: streamingRecognitionConfig,

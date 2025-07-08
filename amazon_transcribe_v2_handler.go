@@ -127,7 +127,7 @@ func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus
 		return nil, err
 	}
 
-	stream, err := at.Start(ctx, packetReader)
+	stream, err := at.Start(ctx, packetReader, header)
 	if err != nil {
 		return nil, err
 	}
