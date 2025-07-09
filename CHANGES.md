@@ -11,6 +11,10 @@
 
 ## develop
 
+## 2025.5.0
+
+**リリース日: 2025-07-09
+
 - [UPDATE] サービスへの接続処理の前後で、クライアントの接続を識別可能な情報を付加したログを出力する
   - 識別情報として、クライアントから受信した sora-channel-id ヘッダーおよび sora-connection_id ヘッダー、また、AWS から受信した x-amzn-transcribe-session-id ヘッダーを出力
   - @Hexa
