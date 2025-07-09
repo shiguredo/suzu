@@ -108,7 +108,7 @@ func NewAmazonTranscribeClientV2(c Config) (*transcribestreaming.Client, error) 
 	return client, nil
 }
 
-func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser) (*transcribestreaming.StartStreamTranscriptionEventStream, error) {
+func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser, header soraHeader) (*transcribestreaming.StartStreamTranscriptionEventStream, error) {
 	config := at.Config
 
 	audioData, err := receiveFirstAudioData(r)
@@ -116,7 +116,10 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser) (*tran
 		return nil, err
 	}
 
-	zlog.Info().Msg("Starting Amazon Transcribe stream")
+	zlog.Info().
+		Str("channel_id", header.SoraChannelID).
+		Str("connection_id", header.SoraConnectionID).
+		Msg("Starting Amazon Transcribe stream")
 
 	client, err := NewAmazonTranscribeClientV2(config)
 	if err != nil {
@@ -155,6 +158,12 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser) (*tran
 	if resp.SessionId != nil {
 		at.SessionID = *resp.SessionId
 	}
+
+	zlog.Info().
+		Str("channel_id", header.SoraChannelID).
+		Str("connection_id", header.SoraConnectionID).
+		Str("session_id", at.SessionID).
+		Msg("Started Amazon Transcribe stream")
 
 	stream := resp.GetStream()
 

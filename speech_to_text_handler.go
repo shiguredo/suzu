@@ -130,7 +130,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan opusChanne
 		return nil, err
 	}
 
-	stream, err := stt.Start(ctx, packetReader)
+	stream, err := stt.Start(ctx, packetReader, header)
 	if err != nil {
 		return nil, err
 	}
