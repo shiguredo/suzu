@@ -170,7 +170,7 @@ func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus
 								}
 							}
 
-							result := NewAwsResult()
+							result := NewAwsResultV2()
 							if at.Config.AwsResultIsPartial {
 								result.WithIsPartial(res.IsPartial)
 							}
