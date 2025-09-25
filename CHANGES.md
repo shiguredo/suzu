@@ -14,6 +14,11 @@
 - [CHANGE] - AWS SDK for Go v1 がサポート終了したため、このバージョンの SDK を使用していた awsv1 を削除する
   - @Hexa
 
+### misc
+
+- [UPDATE] actions/checkout を v5 に上げる
+  - @miosakuma
+
 ## 2025.5.0
 
 **リリース日: 2025-07-09
