@@ -164,6 +164,11 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					return c.NoContent(http.StatusOK)
 				}
 
+				// StopAudioStreaming API を実行せずに接続が切れた場合など
+				if errors.Is(err, context.Canceled) {
+					return c.NoContent(http.StatusOK)
+				}
+
 				zlog.Error().
 					Err(err).
 					Str("channel_id", h.SoraChannelID).
