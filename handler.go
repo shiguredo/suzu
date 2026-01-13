@@ -474,25 +474,28 @@ func readOpus(ctx context.Context, reader io.Reader) chan opusChannel {
 		for {
 			select {
 			case <-ctx.Done():
-				opusCh <- opusChannel{
-					Error: ctx.Err(),
+				select {
+				case <-ctx.Done():
+				case opusCh <- opusChannel{Error: ctx.Err()}:
 				}
 				return
 			default:
 				buf := make([]byte, FrameSize)
 				n, err := reader.Read(buf)
 				if err != nil {
-					opusCh <- opusChannel{
-						Error: err,
+					select {
+					case <-ctx.Done():
+					case opusCh <- opusChannel{Error: err}:
 					}
 					return
 				}
 
 				if n > 0 {
-					opusCh <- opusChannel{
-						Payload: buf[:n],
+					select {
+					case <-ctx.Done():
+						return
+					case opusCh <- opusChannel{Payload: buf[:n]}:
 					}
-
 				}
 			}
 		}
