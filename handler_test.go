@@ -712,7 +712,7 @@ func TestReadOpus(t *testing.T) {
 			if data.Error != nil {
 				// EOF の場合は正常終了
 				if assert.ErrorIs(t, data.Error, io.EOF) {
-					break
+					return
 				}
 				t.Error(data.Error)
 				return
@@ -764,6 +764,7 @@ func TestReadOpus(t *testing.T) {
 		ch := readOpus(ctx, reader)
 
 		for data := range ch {
+			// read error を受信することを確認
 			assert.ErrorIs(t, data.Error, errRead, "should receive read error")
 		}
 	})
