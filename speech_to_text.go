@@ -14,7 +14,7 @@ import (
 )
 
 type SpeechToText struct {
-	SampleReate  int32
+	SampleRate   int32
 	ChannelCount int32
 	LanguageCode string
 	Config       Config
@@ -23,7 +23,7 @@ type SpeechToText struct {
 func NewSpeechToText(config Config, languageCode string, sampleRate, channelCount int32) SpeechToText {
 	return SpeechToText{
 		LanguageCode: languageCode,
-		SampleReate:  sampleRate,
+		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		Config:       config,
 	}
