@@ -124,7 +124,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		opusReader := NewOpusReader(*s.config, d, c.Request().Body)
 		defer opusReader.Close()
 
-		var r io.Reader
+		var r io.ReadCloser
 		if s.config.AudioStreamingHeader {
 			r = readPacketWithHeader(opusReader)
 		} else {
@@ -384,7 +384,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 	}
 }
 
-func readPacketWithHeader(reader io.Reader) io.Reader {
+func readPacketWithHeader(reader io.Reader) io.ReadCloser {
 	r, w := io.Pipe()
 
 	go func() {
@@ -465,17 +465,19 @@ func readPacketWithHeader(reader io.Reader) io.Reader {
 	return r
 }
 
-func readOpus(ctx context.Context, reader io.Reader) chan opusChannel {
+func readOpus(ctx context.Context, reader io.ReadCloser) chan opusChannel {
 	opusCh := make(chan opusChannel)
 
 	go func() {
 		defer close(opusCh)
+		defer reader.Close()
 
 		for {
 			select {
 			case <-ctx.Done():
 				select {
 				case <-ctx.Done():
+					// context がキャンセルされた場合は終了する
 				case opusCh <- opusChannel{Error: ctx.Err()}:
 				}
 				return
@@ -485,6 +487,7 @@ func readOpus(ctx context.Context, reader io.Reader) chan opusChannel {
 				if err != nil {
 					select {
 					case <-ctx.Done():
+						// context がキャンセルされた場合は終了する
 					case opusCh <- opusChannel{Error: err}:
 					}
 					return
@@ -493,6 +496,7 @@ func readOpus(ctx context.Context, reader io.Reader) chan opusChannel {
 				if n > 0 {
 					select {
 					case <-ctx.Done():
+						// 送信前に context がキャンセルされた場合は終了する
 						return
 					case opusCh <- opusChannel{Payload: buf[:n]}:
 					}
