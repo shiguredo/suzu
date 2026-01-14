@@ -11,7 +11,13 @@
 
 ## develop
 
-- [CHANGE] - AWS SDK for Go v1 がサポート終了したため、このバージョンの SDK を使用していた awsv1 を削除する
+- [CHANGE] AWS SDK for Go v1 がサポート終了したため、このバージョンの SDK を使用していた awsv1 を削除する
+  - @Hexa
+- [CHANGE] 意図的な停止のため、context canceled による停止時は、ログを出さないように変更する
+  - @Hexa
+- [FIX] GOAWAY なしでクライアントとの接続が切断された場合に、goroutine が停止しない場合がある処理を修正する
+  - @Hexa
+- [FIX] gcp 指定時の切断時の client.Close 抜けを修正する
   - @Hexa
 
 ### misc
