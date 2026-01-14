@@ -99,7 +99,6 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser, header soraH
 			n, err := r.Read(buf)
 			if err != nil {
 				if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
-					zlog.Info().Err(err).Send()
 					break
 				}
 				zlog.Error().Err(err).Send()
@@ -113,7 +112,6 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser, header soraH
 					},
 				}); err != nil {
 					if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
-						zlog.Info().Err(err).Send()
 						break
 					}
 					zlog.Error().Err(err).Send()
