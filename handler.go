@@ -475,6 +475,7 @@ func readOpus(ctx context.Context, reader io.ReadCloser) chan opusChannel {
 		for {
 			select {
 			case <-ctx.Done():
+				// 送信前に context がキャンセルされた場合は終了する
 				select {
 				case <-ctx.Done():
 					// context がキャンセルされた場合は終了する
@@ -485,6 +486,7 @@ func readOpus(ctx context.Context, reader io.ReadCloser) chan opusChannel {
 				buf := make([]byte, FrameSize)
 				n, err := reader.Read(buf)
 				if err != nil {
+					// 送信前に context がキャンセルされた場合は終了する
 					select {
 					case <-ctx.Done():
 						// context がキャンセルされた場合は終了する
@@ -494,6 +496,7 @@ func readOpus(ctx context.Context, reader io.ReadCloser) chan opusChannel {
 				}
 
 				if n > 0 {
+					// 送信前に context がキャンセルされた場合は終了する
 					select {
 					case <-ctx.Done():
 						// 送信前に context がキャンセルされた場合は終了する
