@@ -101,10 +101,10 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser, header soraH
 				if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
 					// TODO: エラー処理
 					zlog.Info().Err(err).Send()
-					return
+					break
 				}
 				zlog.Error().Err(err).Send()
-				return
+				break
 			}
 			if n > 0 {
 				audioContent := buf[:n]
@@ -116,10 +116,10 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser, header soraH
 					if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
 						// TODO: エラー処理
 						zlog.Info().Err(err).Send()
-						return
+						break
 					}
 					zlog.Error().Err(err).Send()
-					return
+					break
 				}
 			}
 		}
