@@ -14,7 +14,7 @@ import (
 )
 
 type SpeechToText struct {
-	SampleReate  int32
+	SampleRate   int32
 	ChannelCount int32
 	LanguageCode string
 	Config       Config
@@ -23,7 +23,7 @@ type SpeechToText struct {
 func NewSpeechToText(config Config, languageCode string, sampleRate, channelCount int32) SpeechToText {
 	return SpeechToText{
 		LanguageCode: languageCode,
-		SampleReate:  sampleRate,
+		SampleRate:   sampleRate,
 		ChannelCount: channelCount,
 		Config:       config,
 	}
@@ -91,18 +91,18 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser, header soraH
 	}
 
 	go func() {
+		defer client.Close()
 		defer stream.CloseSend()
+
 		for {
 			buf := make([]byte, FrameSize)
 			n, err := r.Read(buf)
 			if err != nil {
-				if errors.Is(err, io.EOF) {
-					// TODO: エラー処理
-					zlog.Info().Err(err).Send()
-					return
+				if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
+					break
 				}
 				zlog.Error().Err(err).Send()
-				return
+				break
 			}
 			if n > 0 {
 				audioContent := buf[:n]
@@ -111,13 +111,11 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser, header soraH
 						AudioContent: audioContent,
 					},
 				}); err != nil {
-					if errors.Is(err, io.EOF) {
-						// TODO: エラー処理
-						zlog.Info().Err(err).Send()
-						return
+					if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
+						break
 					}
 					zlog.Error().Err(err).Send()
-					return
+					break
 				}
 			}
 		}
