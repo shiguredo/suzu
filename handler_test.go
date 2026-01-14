@@ -752,4 +752,19 @@ func TestReadOpus(t *testing.T) {
 			t.Error("timeout")
 		}
 	})
+
+	t.Run("read error", func(t *testing.T) {
+		errRead := errors.New("read error")
+
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		reader, writer := io.Pipe()
+		writer.CloseWithError(errRead)
+		ch := readOpus(ctx, reader)
+
+		for data := range ch {
+			assert.ErrorIs(t, data.Error, errRead, "should receive read error")
+		}
+	})
 }
