@@ -11,6 +11,10 @@
 
 ## develop
 
+## 2025.1.0
+
+**リリース日: 2026-01-15
+
 - [CHANGE] AWS SDK for Go v1 がサポート終了したため、このバージョンの SDK を使用していた awsv1 を削除する
   - @Hexa
 - [CHANGE] 意図的な停止のため、context canceled による停止時は、ログを出さないように変更する
