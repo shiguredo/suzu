@@ -192,9 +192,11 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser, header
 		for {
 			n, err := r.Read(frame)
 			if err != nil {
-				if err != io.EOF {
-					zlog.Error().Err(err).Str("session_id", at.SessionID).Send()
+				if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
+					break
 				}
+
+				zlog.Error().Err(err).Str("session_id", at.SessionID).Send()
 				break
 			}
 			if n > 0 {

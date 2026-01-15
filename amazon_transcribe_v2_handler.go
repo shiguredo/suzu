@@ -15,6 +15,8 @@ import (
 
 func init() {
 	NewServiceHandlerFuncs.register("aws", NewAmazonTranscribeV2Handler)
+	// aws と awsv2 は同じハンドラを使用する
+	// awsv1 と明示的に区別するために awsv2 を追加したため、awsv1 廃止時に不要になったが、後方互換性のために残す
 	NewServiceHandlerFuncs.register("awsv2", NewAmazonTranscribeV2Handler)
 }
 
@@ -170,7 +172,7 @@ func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus
 								}
 							}
 
-							result := NewAwsResult()
+							result := NewAwsResultV2()
 							if at.Config.AwsResultIsPartial {
 								result.WithIsPartial(res.IsPartial)
 							}

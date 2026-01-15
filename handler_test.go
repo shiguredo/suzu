@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -685,4 +686,86 @@ func TestReceiveFirstAudioData(t *testing.T) {
 		}
 	})
 
+}
+
+func TestReadOpus(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		testData := []byte(`0123456789`)
+
+		ctx := context.Background()
+		reader, writer := io.Pipe()
+		ch := readOpus(ctx, reader)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := writer.Write(testData); err != nil {
+				t.Error(err)
+				return
+			}
+			writer.Close()
+		}()
+
+		wg.Wait()
+		for data := range ch {
+			if data.Error != nil {
+				// EOF の場合は正常終了
+				if assert.ErrorIs(t, data.Error, io.EOF) {
+					return
+				}
+				t.Error(data.Error)
+				return
+			}
+			assert.Equal(t, testData, data.Payload)
+		}
+	})
+
+	t.Run("context canceled", func(t *testing.T) {
+		testData := []byte(`0123456789`)
+
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+		reader, writer := io.Pipe()
+		ch := readOpus(ctx, reader)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// Write の前にキャンセルする
+			cancel()
+			if _, err := writer.Write(testData); err != nil {
+				t.Logf("error on write: %v", err)
+				return
+			}
+			writer.Close()
+		}()
+
+		wg.Wait()
+
+		select {
+		case _, ok := <-ch:
+			// context canceled によりチャネルが閉じられていることを確認
+			assert.False(t, ok, "channel should be closed")
+		case <-time.After(1 * time.Second):
+			t.Error("timeout")
+		}
+	})
+
+	t.Run("read error", func(t *testing.T) {
+		errRead := errors.New("read error")
+
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		reader, writer := io.Pipe()
+		writer.CloseWithError(errRead)
+		ch := readOpus(ctx, reader)
+
+		for data := range ch {
+			// read error を受信することを確認
+			assert.ErrorIs(t, data.Error, errRead, "should receive read error")
+		}
+	})
 }
