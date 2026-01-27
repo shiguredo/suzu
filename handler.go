@@ -129,7 +129,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			middlewareFuncs = append(middlewareFuncs, middlewareReadPacketWithHeader)
 		}
 
-		opusCh := NewOpusChannel(ctx, *s.config, c.Request().Body, middlewareFuncs)
+		opusCh := newOpusChannel(ctx, *s.config, c.Request().Body, middlewareFuncs)
 
 		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode, onResultFunc)
 		if err != nil {
@@ -488,7 +488,7 @@ func opus2ogg(ctx context.Context, opusCh chan any, sampleRate uint32, channelCo
 }
 
 // 受信した Payload を読み込み、ミドルウェアに従った opus データを受け取る channel を返す
-func NewOpusChannel(ctx context.Context, c Config, r io.ReadCloser, fs []middlewareFunc) chan any {
+func newOpusChannel(ctx context.Context, c Config, r io.ReadCloser, fs []middlewareFunc) chan any {
 	// 受信した Payload を読み込み、読み込んだデータを受け取る channel を返す
 	packetCh := readPacket(ctx, r)
 	opusCh := packetCh

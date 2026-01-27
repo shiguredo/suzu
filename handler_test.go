@@ -44,7 +44,7 @@ func TestOpusPacketReader(t *testing.T) {
 			middlewareFuncs := []middlewareFunc{
 				middlewareSilentPacket,
 			}
-			opusCh := NewOpusChannel(ctx, c, r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
 
 			for {
 				select {
@@ -75,7 +75,7 @@ func TestOpusPacketReader(t *testing.T) {
 			middlewareFuncs := []middlewareFunc{
 				middlewareSilentPacket,
 			}
-			opusCh := NewOpusChannel(ctx, c, r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
 
 			count := 0
 		L:
@@ -115,7 +115,7 @@ func TestOpusPacketReader(t *testing.T) {
 			middlewareFuncs := []middlewareFunc{
 				middlewareSilentPacket,
 			}
-			opusCh := NewOpusChannel(ctx, c, &r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, &r, middlewareFuncs)
 
 		L:
 			for {
@@ -146,7 +146,7 @@ func TestOpusPacketReader(t *testing.T) {
 			middlewareFuncs := []middlewareFunc{
 				middlewareSilentPacket,
 			}
-			opusCh := NewOpusChannel(ctx, c, r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
 
 			count := 0
 		L:
@@ -181,7 +181,7 @@ func TestOpusPacketReader(t *testing.T) {
 
 			// silent packet 無効化
 			middlewareFuncs := []middlewareFunc{}
-			opusCh := NewOpusChannel(ctx, c, r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
 
 			for {
 				select {
@@ -209,7 +209,7 @@ func TestOpusPacketReader(t *testing.T) {
 
 			// silent packet 無効化
 			middlewareFuncs := []middlewareFunc{}
-			opusCh := NewOpusChannel(ctx, c, r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
 
 			count := 0
 		L:
@@ -244,7 +244,7 @@ func TestOpusPacketReader(t *testing.T) {
 			defer cancel()
 
 			middlewareFuncs := []middlewareFunc{}
-			opusCh := NewOpusChannel(ctx, c, &r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, &r, middlewareFuncs)
 
 		L:
 			for {
@@ -273,7 +273,7 @@ func TestOpusPacketReader(t *testing.T) {
 			defer cancel()
 
 			middlewareFuncs := []middlewareFunc{}
-			opusCh := NewOpusChannel(ctx, c, r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
 
 		L:
 			for {
