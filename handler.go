@@ -544,11 +544,11 @@ func readPacket(ctx context.Context, opusReader io.Reader) chan any {
 // パケット読み込み時のミドルウェア関数の型定義
 type middlewareFunc func(ctx context.Context, c Config, ch chan any) chan any
 
-func middlewareSilentPacket(ctx context.Context, c Config, ch chan any) chan any {
-	packetCh := make(chan any)
+func middlewareSilentPacket(ctx context.Context, c Config, packetCh chan any) chan any {
+	ch := make(chan any)
 
 	go func() {
-		defer close(packetCh)
+		defer close(ch)
 
 		if c.DisableSilentPacket {
 			select {
@@ -620,7 +620,7 @@ func middlewareSilentPacket(ctx context.Context, c Config, ch chan any) chan any
 		}
 	}()
 
-	return packetCh
+	return ch
 }
 
 // パケット読み込み時のヘッダー処理ミドルウェア関数
