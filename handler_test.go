@@ -3,7 +3,11 @@ package suzu
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -486,4 +490,236 @@ func TestReadPacketWithHeader(t *testing.T) {
 			assert.Equal(t, len(tc.Expect), i)
 		})
 	}
+}
+
+func TestOggFileWriting(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		oggDir, err := os.MkdirTemp("", "ogg-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(oggDir)
+
+		c := Config{
+			EnableOggFileOutput: true,
+			OggDir:              oggDir,
+		}
+
+		header := soraHeader{
+			SoraChannelID:    "ogg-test",
+			SoraSessionID:    "C2TFB1QBDS4WD5SX317SWMJ6FM",
+			SoraConnectionID: "1X0Z8JXZAD5A93X68M2S9NTC4G",
+		}
+
+		opusCh := make(chan any)
+		defer close(opusCh)
+
+		// 音声データの受信をシミュレート
+		go func() {
+			opusCh <- []byte{0}
+		}()
+
+		sampleRate := uint32(48000)
+		channelCount := uint16(1)
+
+		ctx := context.Background()
+		reader, err := opus2ogg(ctx, opusCh, sampleRate, channelCount, c, header)
+		if assert.NoError(t, err) {
+			assert.NotNil(t, reader)
+		}
+		defer reader.Close()
+
+		// Ogg データは送信しないため、ここでは音声データの受信をシミュレートする
+		go func() {
+			for {
+				buf := make([]byte, 1024)
+				_, err := reader.Read(buf)
+				if err != nil {
+					if errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) {
+						return
+					}
+					t.Error(err)
+					return
+				}
+			}
+		}()
+
+		// ファイルへの書き込み待ち
+		time.Sleep(100 * time.Millisecond)
+
+		filename := fmt.Sprintf("%s-%s.ogg", header.SoraSessionID, header.SoraConnectionID)
+		filePath := filepath.Join(oggDir, filename)
+		_, err = os.Stat(filePath)
+		assert.NoError(t, err)
+
+		// Ogg ファイルのヘッダーを確認
+		f, err := os.Open(filePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+
+		var data []byte
+		for {
+			buf := make([]byte, 1024)
+			n, err := f.Read(buf)
+			if err != nil && err != io.EOF {
+				t.Fatal(err)
+			}
+			if n == 0 {
+				break
+			}
+			data = append(data, buf[:n]...)
+		}
+		// OggS で始まることの確認
+		assert.Equal(t, []byte(`OggS`), data[:4])
+		// OpusHeader, OpusTags が 1 つだけ含まれることの確認
+		assert.Equal(t, 1, strings.Count(string(data), "OpusHead"))
+		assert.Equal(t, 1, strings.Count(string(data), "OpusTags"))
+	})
+
+	t.Run("disable_ogg_file_output", func(t *testing.T) {
+		oggDir, err := os.MkdirTemp("", "ogg-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(oggDir)
+
+		c := Config{
+			EnableOggFileOutput: false,
+			OggDir:              oggDir,
+		}
+
+		header := soraHeader{
+			SoraChannelID:    "ogg-test",
+			SoraSessionID:    "C2TFB1QBDS4WD5SX317SWMJ6FM",
+			SoraConnectionID: "1X0Z8JXZAD5A93X68M2S9NTC4G",
+		}
+
+		opusCh := make(chan any)
+		defer close(opusCh)
+
+		sampleRate := uint32(48000)
+		channelCount := uint16(1)
+
+		ctx := context.Background()
+		reader, err := opus2ogg(ctx, opusCh, sampleRate, channelCount, c, header)
+		assert.NoError(t, err)
+		assert.NotNil(t, reader)
+		defer reader.Close()
+
+		filename := fmt.Sprintf("%s-%s.ogg", header.SoraSessionID, header.SoraConnectionID)
+		filePath := filepath.Join(oggDir, filename)
+		_, err = os.Stat(filePath)
+		assert.ErrorIs(t, err, os.ErrNotExist)
+	})
+
+	t.Run("no permission", func(t *testing.T) {
+		oggDir, err := os.MkdirTemp("", "ogg-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(oggDir)
+
+		// 書き込み権限を剥奪
+		if err := os.Chmod(oggDir, 0000); err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if err := os.Chmod(oggDir, 0700); err != nil {
+				t.Fatal(err)
+			}
+		}()
+
+		c := Config{
+			EnableOggFileOutput: true,
+			OggDir:              oggDir,
+		}
+
+		header := soraHeader{
+			SoraChannelID:    "ogg-test",
+			SoraSessionID:    "C2TFB1QBDS4WD5SX317SWMJ6FM",
+			SoraConnectionID: "1X0Z8JXZAD5A93X68M2S9NTC4G",
+		}
+
+		opusCh := make(chan any)
+		defer close(opusCh)
+
+		sampleRate := uint32(48000)
+		channelCount := uint16(1)
+
+		ctx := context.Background()
+		reader, err := opus2ogg(ctx, opusCh, sampleRate, channelCount, c, header)
+		assert.ErrorIs(t, err, os.ErrPermission)
+		assert.Nil(t, reader)
+	})
+
+	t.Run("directory does not exist", func(t *testing.T) {
+		oggDir, err := os.MkdirTemp("", "ogg-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(oggDir)
+
+		c := Config{
+			EnableOggFileOutput: true,
+			// 既存のディレクトリ名に 0 を付与して存在しないディレクトリを指定する
+			OggDir: oggDir + "0",
+		}
+
+		header := soraHeader{
+			SoraChannelID:    "ogg-test",
+			SoraSessionID:    "C2TFB1QBDS4WD5SX317SWMJ6FM",
+			SoraConnectionID: "1X0Z8JXZAD5A93X68M2S9NTC4G",
+		}
+
+		opusCh := make(chan any)
+		defer close(opusCh)
+
+		sampleRate := uint32(48000)
+		channelCount := uint16(1)
+
+		ctx := context.Background()
+		reader, err := opus2ogg(ctx, opusCh, sampleRate, channelCount, c, header)
+		assert.ErrorIs(t, err, os.ErrNotExist)
+		assert.Nil(t, reader)
+	})
+}
+
+func TestReceiveFirstAudioData(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// testData := []byte(`012`)
+		testData := [][]byte{
+			[]byte(`012`),
+			[]byte(`345`),
+			[]byte(`678`),
+		}
+
+		reader, writer := io.Pipe()
+		defer reader.Close()
+
+		go func() {
+			defer writer.Close()
+			for _, data := range testData {
+				_, err := writer.Write(data)
+				if err != nil {
+					if assert.ErrorIs(t, err, io.EOF) {
+						// EOF の場合は終了
+						return
+					}
+
+					t.Error(t, err)
+					return
+				}
+			}
+		}()
+
+		for _, data := range testData {
+			audioData, err := receiveFirstAudioData(reader)
+			if assert.NoError(t, err) {
+				assert.NotNil(t, audioData)
+				assert.Equal(t, data, audioData)
+			}
+		}
+	})
 }
