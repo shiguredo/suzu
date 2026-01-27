@@ -293,3 +293,197 @@ func TestOpusPacketReader(t *testing.T) {
 		})
 	})
 }
+
+func TestReadPacketWithHeader(t *testing.T) {
+	testCaces := []struct {
+		Name   string
+		Data   [][]byte
+		Expect [][]byte
+	}{
+		{
+			Name: "success",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 254,
+				},
+				{
+					0, 5, 236, 96, 167, 215, 194, 193,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 255,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+				{
+					252, 255, 255,
+				},
+			},
+		},
+		{
+			Name: "multiple data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 254,
+					0, 5, 236, 96, 167, 215, 194, 193,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 255,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+				{
+					252, 255, 255,
+				},
+			},
+		},
+		{
+			Name: "split data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+				},
+				{
+					252, 255, 254,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+			},
+		},
+		{
+			Name: "split data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+				},
+				{
+					0, 0, 0, 3,
+					252, 255, 254,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+			},
+		},
+		{
+			Name: "split data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+				},
+				{
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 254,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+			},
+		},
+		{
+			Name: "split data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+				},
+				{
+					0, 0, 0, 3,
+					252, 255, 254,
+					0, 5, 236, 96, 167, 215, 194, 193,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 255,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+				{
+					252, 255, 255,
+				},
+			},
+		},
+		{
+			Name: "split data",
+			Data: [][]byte{
+				{
+					0, 5, 236, 96, 167, 215, 194, 192,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+					252, 255, 254,
+					0, 5, 236, 96, 167, 215, 194, 193,
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 3,
+				},
+				{
+					252, 255, 255,
+				},
+			},
+			Expect: [][]byte{
+				{
+					252, 255, 254,
+				},
+				{
+					252, 255, 255,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCaces {
+		t.Run(tc.Name, func(t *testing.T) {
+			ch := make(chan any)
+
+			go func() {
+				defer close(ch)
+
+				for _, data := range tc.Data {
+					ch <- data
+				}
+			}()
+
+			c := Config{}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			packetCh := middlewareReadPacketWithHeader(ctx, c, ch)
+
+			i := 0
+			for packet := range packetCh {
+				switch p := packet.(type) {
+				case error:
+					assert.Fail(t, "should not receive error: %v", p)
+				case []byte:
+					assert.Equal(t, tc.Expect[i], p)
+					i += 1
+				}
+			}
+
+			assert.Equal(t, len(tc.Expect), i)
+		})
+	}
+}
