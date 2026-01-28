@@ -55,13 +55,11 @@ func TestOpusPacketReader(t *testing.T) {
 				case <-ctx.Done():
 					return
 				case opus := <-opusCh:
-					switch m := opus.(type) {
-					case error:
-						assert.ErrorIs(t, m, io.EOF)
+					if opus.Err != nil {
+						assert.ErrorIs(t, opus.Err, io.EOF)
 						return
-					case []byte:
-						assert.Equal(t, []byte{0, 0, 0}, m)
 					}
+					assert.Equal(t, []byte{0, 0, 0}, opus.Payload)
 				}
 			}
 		})
@@ -88,20 +86,19 @@ func TestOpusPacketReader(t *testing.T) {
 				case <-ctx.Done():
 					break L
 				case opus := <-opusCh:
-					switch m := opus.(type) {
-					case error:
-						assert.ErrorIs(t, m, io.EOF)
+					if opus.Err != nil {
+						assert.ErrorIs(t, opus.Err, io.EOF)
 						break L
-					case []byte:
-						if count%3 == 2 {
-							// 3 回中 1 回は 000.jsonl のパケットを受信する
-							assert.Equal(t, []byte{0, 0, 0}, m)
-						} else {
-							// silent packet
-							assert.Equal(t, []byte{252, 255, 254}, m)
-						}
-						count += 1
 					}
+
+					if count%3 == 2 {
+						// 3 回中 1 回は 000.jsonl のパケットを受信する
+						assert.Equal(t, []byte{0, 0, 0}, opus.Payload)
+					} else {
+						// silent packet
+						assert.Equal(t, []byte{252, 255, 254}, opus.Payload)
+					}
+					count += 1
 				}
 			}
 			// パケット数の確認（受信パケット: 1 + silent packet: 2 * 000.jsonl の行数: 9 = 27）
@@ -127,13 +124,12 @@ func TestOpusPacketReader(t *testing.T) {
 				case <-ctx.Done():
 					break L
 				case opus := <-opusCh:
-					switch m := opus.(type) {
-					case error:
-						assert.ErrorIs(t, m, errPacketRead)
+					if opus.Err != nil {
+						assert.ErrorIs(t, opus.Err, errPacketRead)
 						break L
-					case []byte:
-						assert.Fail(t, "should not receive packet: %v", m)
 					}
+
+					assert.Fail(t, "should not receive packet: %v", opus)
 				}
 			}
 		})
@@ -159,13 +155,12 @@ func TestOpusPacketReader(t *testing.T) {
 				case <-ctx.Done():
 					break L
 				case opus := <-opusCh:
-					switch m := opus.(type) {
-					case error:
-						assert.ErrorIs(t, m, io.ErrClosedPipe)
+					if opus.Err != nil {
+						assert.ErrorIs(t, opus.Err, io.ErrClosedPipe)
 						break L
-					case []byte:
-						count += 1
 					}
+
+					count += 1
 				}
 			}
 			assert.Equal(t, 0, count)
@@ -192,13 +187,12 @@ func TestOpusPacketReader(t *testing.T) {
 				case <-ctx.Done():
 					return
 				case opus := <-opusCh:
-					switch m := opus.(type) {
-					case error:
-						assert.ErrorIs(t, m, io.EOF)
+					if opus.Err != nil {
+						assert.ErrorIs(t, opus.Err, io.EOF)
 						return
-					case []byte:
-						assert.Equal(t, []byte{0, 0, 0}, m)
 					}
+
+					assert.Equal(t, []byte{0, 0, 0}, opus.Payload)
 				}
 			}
 		})
@@ -222,14 +216,13 @@ func TestOpusPacketReader(t *testing.T) {
 				case <-ctx.Done():
 					break L
 				case opus := <-opusCh:
-					switch m := opus.(type) {
-					case error:
-						assert.ErrorIs(t, m, io.EOF)
+					if opus.Err != nil {
+						assert.ErrorIs(t, opus.Err, io.EOF)
 						break L
-					case []byte:
-						// silent packet を無効にしているので、silent packet は来ない
-						assert.Equal(t, []byte{0, 0, 0}, m)
 					}
+
+					// silent packet を無効にしているので、silent packet は来ない
+					assert.Equal(t, []byte{0, 0, 0}, opus.Payload)
 
 					count += 1
 				}
@@ -256,13 +249,11 @@ func TestOpusPacketReader(t *testing.T) {
 				case <-ctx.Done():
 					break L
 				case opus := <-opusCh:
-					switch m := opus.(type) {
-					case error:
-						assert.ErrorIs(t, m, errPacketRead)
+					if opus.Err != nil {
+						assert.ErrorIs(t, opus.Err, errPacketRead)
 						break L
-					case []byte:
-						assert.Fail(t, "should not receive packet: %v", m)
 					}
+					assert.Fail(t, "should not receive packet: %v", opus)
 				}
 			}
 		})
@@ -285,13 +276,12 @@ func TestOpusPacketReader(t *testing.T) {
 				case <-ctx.Done():
 					break L
 				case opus := <-opusCh:
-					switch m := opus.(type) {
-					case error:
-						assert.ErrorIs(t, m, io.ErrClosedPipe)
+					if opus.Err != nil {
+						assert.ErrorIs(t, opus.Err, io.ErrClosedPipe)
 						break L
-					case []byte:
-						assert.Failf(t, "should not receive packet: %v", string(m))
 					}
+
+					assert.Failf(t, "should not receive packet: %v", string(opus.Payload))
 				}
 			}
 		})
@@ -316,13 +306,12 @@ func TestOpusPacketReader(t *testing.T) {
 				case <-ctx.Done():
 					return
 				case opus := <-opusCh:
-					switch m := opus.(type) {
-					case error:
-						assert.ErrorIs(t, m, io.EOF)
+					if opus.Err != nil {
+						assert.ErrorIs(t, opus.Err, io.EOF)
 						return
-					case []byte:
-						assert.Equal(t, []byte{0xfc, 0xff, 0xfe}, m)
 					}
+
+					assert.Equal(t, []byte{0xfc, 0xff, 0xfe}, opus.Payload)
 				}
 			}
 		})
@@ -345,13 +334,12 @@ func TestOpusPacketReader(t *testing.T) {
 				case <-ctx.Done():
 					break L
 				case opus := <-opusCh:
-					switch m := opus.(type) {
-					case error:
-						assert.ErrorIs(t, m, errPacketRead)
+					if opus.Err != nil {
+						assert.ErrorIs(t, opus.Err, errPacketRead)
 						break L
-					case []byte:
-						assert.Fail(t, "should not receive packet: %v", m)
 					}
+
+					assert.Fail(t, "should not receive packet: %v", opus)
 				}
 			}
 		})
@@ -375,13 +363,12 @@ func TestOpusPacketReader(t *testing.T) {
 				case <-ctx.Done():
 					break L
 				case opus := <-opusCh:
-					switch m := opus.(type) {
-					case error:
-						assert.ErrorIs(t, m, io.ErrClosedPipe)
+					if opus.Err != nil {
+						assert.ErrorIs(t, opus.Err, io.ErrClosedPipe)
 						break L
-					case []byte:
-						assert.Failf(t, "should not receive packet: %v", string(m))
 					}
+
+					assert.Failf(t, "should not receive packet: %v", string(opus.Payload))
 				}
 			}
 		})
@@ -550,13 +537,13 @@ func TestReadPacketWithHeader(t *testing.T) {
 
 	for _, tc := range testCaces {
 		t.Run(tc.Name, func(t *testing.T) {
-			ch := make(chan any)
+			ch := make(chan opus)
 
 			go func() {
 				defer close(ch)
 
 				for _, data := range tc.Data {
-					ch <- data
+					ch <- opus{Payload: data}
 				}
 			}()
 
@@ -568,13 +555,13 @@ func TestReadPacketWithHeader(t *testing.T) {
 
 			i := 0
 			for packet := range packetCh {
-				switch p := packet.(type) {
-				case error:
-					assert.Fail(t, "should not receive error: %v", p)
-				case []byte:
-					assert.Equal(t, tc.Expect[i], p)
-					i += 1
+				if packet.Err != nil {
+					assert.Fail(t, "should not receive error: %v", packet.Err)
+					return
 				}
+
+				assert.Equal(t, tc.Expect[i], packet.Payload)
+				i += 1
 			}
 
 			assert.Equal(t, len(tc.Expect), i)
@@ -601,12 +588,12 @@ func TestOggFileWriting(t *testing.T) {
 			SoraConnectionID: "1X0Z8JXZAD5A93X68M2S9NTC4G",
 		}
 
-		opusCh := make(chan any)
+		opusCh := make(chan opus)
 		defer close(opusCh)
 
 		// 音声データの受信をシミュレート
 		go func() {
-			opusCh <- []byte{0}
+			opusCh <- opus{Payload: []byte{0}}
 		}()
 
 		sampleRate := uint32(48000)
@@ -686,7 +673,7 @@ func TestOggFileWriting(t *testing.T) {
 			SoraConnectionID: "1X0Z8JXZAD5A93X68M2S9NTC4G",
 		}
 
-		opusCh := make(chan any)
+		opusCh := make(chan opus)
 		defer close(opusCh)
 
 		sampleRate := uint32(48000)
@@ -732,7 +719,7 @@ func TestOggFileWriting(t *testing.T) {
 			SoraConnectionID: "1X0Z8JXZAD5A93X68M2S9NTC4G",
 		}
 
-		opusCh := make(chan any)
+		opusCh := make(chan opus)
 		defer close(opusCh)
 
 		sampleRate := uint32(48000)
@@ -763,7 +750,7 @@ func TestOggFileWriting(t *testing.T) {
 			SoraConnectionID: "1X0Z8JXZAD5A93X68M2S9NTC4G",
 		}
 
-		opusCh := make(chan any)
+		opusCh := make(chan opus)
 		defer close(opusCh)
 
 		sampleRate := uint32(48000)

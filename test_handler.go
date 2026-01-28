@@ -78,7 +78,7 @@ func (h *TestHandler) IsRetryTarget(any) bool {
 	return false
 }
 
-func (h *TestHandler) Handle(ctx context.Context, opusCh chan any, header soraHeader) (*io.PipeReader, error) {
+func (h *TestHandler) Handle(ctx context.Context, opusCh chan opus, header soraHeader) (*io.PipeReader, error) {
 	r, w := io.Pipe()
 
 	reader := opusChannelToIOReadCloser(ctx, opusCh)

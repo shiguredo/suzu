@@ -72,7 +72,7 @@ func (h *PacketDumpHandler) IsRetryTarget(any) bool {
 	return false
 }
 
-func (h *PacketDumpHandler) Handle(ctx context.Context, opusCh chan any, header soraHeader) (*io.PipeReader, error) {
+func (h *PacketDumpHandler) Handle(ctx context.Context, opusCh chan opus, header soraHeader) (*io.PipeReader, error) {
 	c := h.Config
 	filename := c.DumpFile
 	channelID := h.ChannelID
