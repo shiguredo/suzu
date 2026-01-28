@@ -174,7 +174,7 @@ func TestOpusPacketReader(t *testing.T) {
 
 	t.Run("disable silent packet", func(t *testing.T) {
 		c := Config{}
-		//
+
 		t.Run("success", func(t *testing.T) {
 			c.TimeToWaitForOpusPacketMs = 3000
 			r := readDumpFile(t, "testdata/000.jsonl", 0)
@@ -277,6 +277,96 @@ func TestOpusPacketReader(t *testing.T) {
 			defer cancel()
 
 			packetReaderOptions := []packetReaderOption{}
+			opusCh := newOpusChannel(ctx, c, r, packetReaderOptions)
+
+		L:
+			for {
+				select {
+				case <-ctx.Done():
+					break L
+				case opus := <-opusCh:
+					switch m := opus.(type) {
+					case error:
+						assert.ErrorIs(t, m, io.ErrClosedPipe)
+						break L
+					case []byte:
+						assert.Failf(t, "should not receive packet: %v", string(m))
+					}
+				}
+			}
+		})
+	})
+	t.Run("enable audio streaming header", func(t *testing.T) {
+		c := Config{}
+
+		t.Run("success", func(t *testing.T) {
+			r := readDumpFile(t, "testdata/header.jsonl", 0)
+			defer r.Close()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			packetReaderOptions := []packetReaderOption{
+				optionReadPacketWithHeader,
+			}
+			opusCh := newOpusChannel(ctx, c, r, packetReaderOptions)
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case opus := <-opusCh:
+					switch m := opus.(type) {
+					case error:
+						assert.ErrorIs(t, m, io.EOF)
+						return
+					case []byte:
+						assert.Equal(t, []byte{0xfc, 0xff, 0xfe}, m)
+					}
+				}
+			}
+		})
+
+		t.Run("read error", func(t *testing.T) {
+			errPacketRead := errors.New("packet read error")
+			r := NewErrReadCloser(errPacketRead)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			packetReaderOptions := []packetReaderOption{
+				optionReadPacketWithHeader,
+			}
+			opusCh := newOpusChannel(ctx, c, &r, packetReaderOptions)
+
+		L:
+			for {
+				select {
+				case <-ctx.Done():
+					break L
+				case opus := <-opusCh:
+					switch m := opus.(type) {
+					case error:
+						assert.ErrorIs(t, m, errPacketRead)
+						break L
+					case []byte:
+						assert.Fail(t, "should not receive packet: %v", m)
+					}
+				}
+			}
+		})
+
+		t.Run("closed reader", func(t *testing.T) {
+			r := readDumpFile(t, "testdata/header.jsonl", 0)
+			// すでに閉じている場合の動作を確認する
+			r.Close()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			packetReaderOptions := []packetReaderOption{
+				optionReadPacketWithHeader,
+			}
 			opusCh := newOpusChannel(ctx, c, r, packetReaderOptions)
 
 		L:
