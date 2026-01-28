@@ -120,16 +120,16 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		sampleRate := uint32(s.config.SampleRate)
 		channelCount := uint16(s.config.ChannelCount)
 
-		// 読み込み時の追加処理のミドルウェア指定
-		middlewareFuncs := []middlewareFunc{}
+		// 読み込み時の追加処理のオプション関数指定
+		packetReaderOptions := []packetReaderOption{}
 		if !s.config.DisableSilentPacket {
-			middlewareFuncs = append(middlewareFuncs, middlewareSilentPacket)
+			packetReaderOptions = append(packetReaderOptions, optionSilentPacket)
 		}
 		if s.config.AudioStreamingHeader {
-			middlewareFuncs = append(middlewareFuncs, middlewareReadPacketWithHeader)
+			packetReaderOptions = append(packetReaderOptions, optionReadPacketWithHeader)
 		}
 
-		opusCh := newOpusChannel(ctx, *s.config, c.Request().Body, middlewareFuncs)
+		opusCh := newOpusChannel(ctx, *s.config, c.Request().Body, packetReaderOptions)
 
 		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode, onResultFunc)
 		if err != nil {
@@ -487,13 +487,13 @@ func opus2ogg(ctx context.Context, opusCh chan any, sampleRate uint32, channelCo
 	return oggReader, nil
 }
 
-// 受信した Payload を読み込み、ミドルウェアに従った opus データを受け取る channel を返す
-func newOpusChannel(ctx context.Context, c Config, r io.ReadCloser, fs []middlewareFunc) chan any {
+// 受信した Payload を読み込み、オプション関数に従った opus データを受け取る channel を返す
+func newOpusChannel(ctx context.Context, c Config, r io.ReadCloser, fs []packetReaderOption) chan any {
 	// 受信した Payload を読み込み、読み込んだデータを受け取る channel を返す
 	packetCh := readPacket(ctx, r)
 	opusCh := packetCh
 
-	// 読み込み時の追加処理をミドルウェアとして順番に適用する
+	// 読み込み時の追加処理を順番に適用する
 	for _, f := range fs {
 		opusCh = f(ctx, c, opusCh)
 	}
@@ -541,10 +541,10 @@ func readPacket(ctx context.Context, opusReader io.Reader) chan any {
 	return ch
 }
 
-// パケット読み込み時のミドルウェア関数の型定義
-type middlewareFunc func(ctx context.Context, c Config, ch chan any) chan any
+// パケット読み込み時のオプション関数の型定義
+type packetReaderOption func(ctx context.Context, c Config, ch chan any) chan any
 
-func middlewareSilentPacket(ctx context.Context, c Config, packetCh chan any) chan any {
+func optionSilentPacket(ctx context.Context, c Config, packetCh chan any) chan any {
 	ch := make(chan any)
 
 	go func() {
@@ -623,8 +623,8 @@ func middlewareSilentPacket(ctx context.Context, c Config, packetCh chan any) ch
 	return ch
 }
 
-// パケット読み込み時のヘッダー処理ミドルウェア関数
-func middlewareReadPacketWithHeader(ctx context.Context, c Config, packetCh chan any) chan any {
+// パケット読み込み時のヘッダー処理オプション関数
+func optionReadPacketWithHeader(ctx context.Context, c Config, packetCh chan any) chan any {
 	ch := make(chan any)
 
 	go func() {

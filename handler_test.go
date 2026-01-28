@@ -45,10 +45,10 @@ func TestOpusPacketReader(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			middlewareFuncs := []middlewareFunc{
-				middlewareSilentPacket,
+			packetReaderOptions := []packetReaderOption{
+				optionSilentPacket,
 			}
-			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, r, packetReaderOptions)
 
 			for {
 				select {
@@ -76,10 +76,10 @@ func TestOpusPacketReader(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			middlewareFuncs := []middlewareFunc{
-				middlewareSilentPacket,
+			packetReaderOptions := []packetReaderOption{
+				optionSilentPacket,
 			}
-			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, r, packetReaderOptions)
 
 			count := 0
 		L:
@@ -116,10 +116,10 @@ func TestOpusPacketReader(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			middlewareFuncs := []middlewareFunc{
-				middlewareSilentPacket,
+			packetReaderOptions := []packetReaderOption{
+				optionSilentPacket,
 			}
-			opusCh := newOpusChannel(ctx, c, &r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, &r, packetReaderOptions)
 
 		L:
 			for {
@@ -147,10 +147,10 @@ func TestOpusPacketReader(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			middlewareFuncs := []middlewareFunc{
-				middlewareSilentPacket,
+			packetReaderOptions := []packetReaderOption{
+				optionSilentPacket,
 			}
-			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
+			opusCh := newOpusChannel(ctx, c, r, packetReaderOptions)
 
 			count := 0
 		L:
@@ -184,8 +184,8 @@ func TestOpusPacketReader(t *testing.T) {
 			defer cancel()
 
 			// silent packet 無効化
-			middlewareFuncs := []middlewareFunc{}
-			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
+			packetReaderOptions := []packetReaderOption{}
+			opusCh := newOpusChannel(ctx, c, r, packetReaderOptions)
 
 			for {
 				select {
@@ -212,8 +212,8 @@ func TestOpusPacketReader(t *testing.T) {
 			defer cancel()
 
 			// silent packet 無効化
-			middlewareFuncs := []middlewareFunc{}
-			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
+			packetReaderOptions := []packetReaderOption{}
+			opusCh := newOpusChannel(ctx, c, r, packetReaderOptions)
 
 			count := 0
 		L:
@@ -247,8 +247,8 @@ func TestOpusPacketReader(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			middlewareFuncs := []middlewareFunc{}
-			opusCh := newOpusChannel(ctx, c, &r, middlewareFuncs)
+			packetReaderOptions := []packetReaderOption{}
+			opusCh := newOpusChannel(ctx, c, &r, packetReaderOptions)
 
 		L:
 			for {
@@ -276,8 +276,8 @@ func TestOpusPacketReader(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			middlewareFuncs := []middlewareFunc{}
-			opusCh := newOpusChannel(ctx, c, r, middlewareFuncs)
+			packetReaderOptions := []packetReaderOption{}
+			opusCh := newOpusChannel(ctx, c, r, packetReaderOptions)
 
 		L:
 			for {
@@ -474,7 +474,7 @@ func TestReadPacketWithHeader(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			packetCh := middlewareReadPacketWithHeader(ctx, c, ch)
+			packetCh := optionReadPacketWithHeader(ctx, c, ch)
 
 			i := 0
 			for packet := range packetCh {
