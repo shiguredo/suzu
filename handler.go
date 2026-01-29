@@ -121,13 +121,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		channelCount := uint16(s.config.ChannelCount)
 
 		// 読み込み時の追加処理のオプション関数指定
-		packetReaderOptions := []packetReaderOption{}
-		if !s.config.DisableSilentPacket {
-			packetReaderOptions = append(packetReaderOptions, optionSilentPacket)
-		}
-		if s.config.AudioStreamingHeader {
-			packetReaderOptions = append(packetReaderOptions, optionReadPacketWithHeader)
-		}
+		packetReaderOptions := NewPacketReaderOptions(*s.config)
 
 		opusCh := newOpusChannel(ctx, *s.config, c.Request().Body, packetReaderOptions)
 
