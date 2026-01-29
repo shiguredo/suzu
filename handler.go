@@ -121,7 +121,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		channelCount := uint16(s.config.ChannelCount)
 
 		// 読み込み時の追加処理のオプション関数指定
-		packetReaderOptions := NewPacketReaderOptions(*s.config)
+		packetReaderOptions := newPacketReaderOptions(*s.config)
 
 		opusCh := newOpusChannel(ctx, *s.config, c.Request().Body, packetReaderOptions)
 

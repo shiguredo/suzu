@@ -10,7 +10,7 @@ import (
 type packetReaderOption func(ctx context.Context, c Config, ch chan opus) chan opus
 
 // パケット読み込み時のオプション関数群を生成する
-func NewPacketReaderOptions(c Config) []packetReaderOption {
+func newPacketReaderOptions(c Config) []packetReaderOption {
 	options := []packetReaderOption{}
 
 	if !c.DisableSilentPacket {
