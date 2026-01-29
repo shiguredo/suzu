@@ -547,7 +547,7 @@ func readPacket(ctx context.Context, opusReader io.Reader) chan opus {
 // パケット読み込み時のオプション関数の型定義
 type packetReaderOption func(ctx context.Context, c Config, ch chan opus) chan opus
 
-func optionSilentPacket(ctx context.Context, c Config, packetCh chan opus) chan opus {
+func optionSilentPacket(ctx context.Context, c Config, opusCh chan opus) chan opus {
 	ch := make(chan opus)
 
 	go func() {
@@ -568,7 +568,7 @@ func optionSilentPacket(ctx context.Context, c Config, packetCh chan opus) chan 
 			case <-timer.C:
 				payload := silentPacket(c.AudioStreamingHeader)
 				opusPacket = opus{Payload: payload}
-			case req, ok := <-packetCh:
+			case req, ok := <-opusCh:
 				if !ok {
 					return
 				}
@@ -592,7 +592,7 @@ func optionSilentPacket(ctx context.Context, c Config, packetCh chan opus) chan 
 }
 
 // パケット読み込み時のヘッダー処理オプション関数
-func optionReadPacketWithHeader(ctx context.Context, c Config, packetCh chan opus) chan opus {
+func optionReadPacketWithHeader(ctx context.Context, c Config, opusCh chan opus) chan opus {
 	ch := make(chan opus)
 
 	go func() {
@@ -606,7 +606,7 @@ func optionReadPacketWithHeader(ctx context.Context, c Config, packetCh chan opu
 			select {
 			case <-ctx.Done():
 				return
-			case req, ok := <-packetCh:
+			case req, ok := <-opusCh:
 				if !ok {
 					return
 				}
