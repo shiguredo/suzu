@@ -553,64 +553,38 @@ func optionSilentPacket(ctx context.Context, c Config, packetCh chan opus) chan 
 	go func() {
 		defer close(ch)
 
-		if c.DisableSilentPacket {
+		// 無音パケットを送信する間隔
+		d := time.Duration(c.TimeToWaitForOpusPacketMs) * time.Millisecond
+		timer := time.NewTimer(d)
+		defer func() {
+			if !timer.Stop() {
+				<-timer.C
+			}
+		}()
+
+		for {
+			var opusPacket opus
+			select {
+			case <-timer.C:
+				payload := silentPacket(c.AudioStreamingHeader)
+				opusPacket = opus{Payload: payload}
+			case req, ok := <-packetCh:
+				if !ok {
+					return
+				}
+
+				opusPacket = req
+			}
+
+			// 受信したデータ、または、無音パケットを送信する
 			select {
 			case <-ctx.Done():
 				return
-			default:
+			case ch <- opusPacket:
 			}
 
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case req, ok := <-packetCh:
-					if !ok {
-						return
-					}
-					// 受信したデータをそのまま送信する
-					select {
-					case <-ctx.Done():
-						return
-					case ch <- req:
-					}
-				}
-			}
-		} else {
-			// 無音パケットを送信する間隔
-			d := time.Duration(c.TimeToWaitForOpusPacketMs) * time.Millisecond
-
-			timer := time.NewTimer(d)
-			defer func() {
-				if !timer.Stop() {
-					<-timer.C
-				}
-			}()
-
-			for {
-				var opusPacket opus
-				select {
-				case <-timer.C:
-					payload := silentPacket(c.AudioStreamingHeader)
-					opusPacket = opus{Payload: payload}
-				case req, ok := <-packetCh:
-					if !ok {
-						return
-					}
-
-					opusPacket = req
-				}
-
-				// 受信したデータ、または、無音パケットを送信する
-				select {
-				case <-ctx.Done():
-					return
-				case ch <- opusPacket:
-				}
-
-				// 受信したらタイマーをリセットする
-				timer.Reset(d)
-			}
+			// 受信したらタイマーをリセットする
+			timer.Reset(d)
 		}
 	}()
 
