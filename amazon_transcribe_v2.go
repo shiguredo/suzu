@@ -190,6 +190,12 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser, header
 
 		frame := make([]byte, FrameSize)
 		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			n, err := r.Read(frame)
 			if err != nil {
 				if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
