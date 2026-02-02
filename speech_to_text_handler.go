@@ -143,6 +143,12 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan opus, head
 		encoder := json.NewEncoder(w)
 
 		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			resp, err := stream.Recv()
 			if err != nil {
 				zlog.Error().
