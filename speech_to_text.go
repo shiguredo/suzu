@@ -95,6 +95,12 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser, header soraH
 		defer stream.CloseSend()
 
 		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			buf := make([]byte, FrameSize)
 			n, err := r.Read(buf)
 			if err != nil {
