@@ -91,6 +91,7 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser, header soraH
 	}
 
 	go func() {
+		defer r.Close()
 		defer client.Close()
 		defer stream.CloseSend()
 
