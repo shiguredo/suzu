@@ -292,6 +292,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							serviceHandler.UpdateRetryCount()
 
 							// TODO: 必要な場合は連続のリトライを避けるために少し待つ処理を追加する
+							reader.Close()
 							cancelServiceHandler()
 							break
 						} else {
