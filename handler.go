@@ -182,6 +182,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 									Str("channel_id", h.SoraChannelID).
 									Str("connection_id", h.SoraConnectionID).
 									Msg("retry")
+								reader.Close()
 								cancelServiceHandler()
 								continue
 							case _, ok := <-opusCh:
@@ -379,6 +380,9 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 func opus2ogg(ctx context.Context, opusCh chan opus, sampleRate uint32, channelCount uint16, c Config, header soraHeader) (io.ReadCloser, error) {
 	oggReader, oggWriter := io.Pipe()
 
+	// コンテキストが閉じられたときに oggWriter を閉じる
+	closeOnDone(ctx, oggWriter)
+
 	writers := []io.Writer{}
 
 	var f *os.File
@@ -500,8 +504,11 @@ func newOpusChannel(ctx context.Context, c Config, r io.ReadCloser, fs []packetR
 }
 
 // 受信した Payload を読み込み、読み込んだデータを受け取る channel を返す
-func readPacket(ctx context.Context, opusReader io.Reader) chan opus {
+func readPacket(ctx context.Context, opusReader io.ReadCloser) chan opus {
 	ch := make(chan opus)
+
+	// コンテキストが閉じられたときに opusReader を閉じる
+	closeOnDone(ctx, opusReader)
 
 	go func() {
 		defer close(ch)
@@ -566,6 +573,9 @@ func silentPacket(audioStreamingHeader bool) []byte {
 func opusChannelToIOReadCloser(ctx context.Context, ch <-chan opus) io.ReadCloser {
 	r, w := io.Pipe()
 
+	// コンテキストが閉じられたときに writer を閉じる
+	closeOnDone(ctx, w)
+
 	go func() {
 		defer w.Close()
 
@@ -610,4 +620,14 @@ func receiveFirstAudioData(r io.ReadCloser) ([]byte, error) {
 			return buf[:n], nil
 		}
 	}
+}
+
+// context が閉じられたときに io.Closer を閉じるヘルパー関数です
+func closeOnDone(ctx context.Context, closer io.Closer) {
+	go func() {
+		// context が閉じられるのを待つ
+		<-ctx.Done()
+		// io.Closer を閉じる
+		closer.Close()
+	}()
 }
