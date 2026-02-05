@@ -140,13 +140,17 @@ func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus
 	r, w := io.Pipe()
 
 	go func() {
+		defer stream.Close()
+
 		encoder := json.NewEncoder(w)
 
 	L:
 		for {
 			select {
 			case <-ctx.Done():
-				break L
+				// context がキャンセルされた場合は終了
+				w.Close()
+				return
 			case event := <-stream.Events():
 				switch e := event.(type) {
 				case *types.TranscriptResultStreamMemberTranscriptEvent:
