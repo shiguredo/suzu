@@ -28,6 +28,11 @@ const (
 
 	// リトライ間隔 100ms
 	defaultRetryIntervalMs = 100
+
+	defaultAwsHTTPIdleConnTimeoutSec      = 90
+	defaultAwsHTTPMaxIdleConns            = 100
+	defaultAwsHTTPTLSHandshakeTimeoutMs   = 10000
+	defaultAwsHTTPExpectContinueTimeoutMs = 1000
 )
 
 type Config struct {
@@ -104,6 +109,15 @@ type Config struct {
 	AwsResultChannelID bool `ini:"aws_result_channel_id"`
 	AwsResultIsPartial bool `ini:"aws_result_is_partial"`
 	AwsResultID        bool `ini:"aws_result_id"`
+	// AWS HTTP Transport settings
+	AwsHTTPDisableKeepAlives       bool `ini:"aws_http_disable_keep_alives"`
+	AwsHTTPIdleConnTimeoutSec      int  `ini:"aws_http_idle_conn_timeout_sec"`
+	AwsHTTPMaxIdleConns            int  `ini:"aws_http_max_idle_conns"`
+	AwsHTTPMaxIdleConnsPerHost     int  `ini:"aws_http_max_idle_conns_per_host"`
+	AwsHTTPMaxConnsPerHost         int  `ini:"aws_http_max_conns_per_host"`
+	AwsHTTPResponseHeaderTimeoutMs int  `ini:"aws_http_response_header_timeout_ms"`
+	AwsHTTPExpectContinueTimeoutMs int  `ini:"aws_http_expect_continue_timeout_ms"`
+	AwsHTTPTLSHandshakeTimeoutMs   int  `ini:"aws_http_tls_handshake_timeout_ms"`
 
 	// Google Cloud Platform
 	GcpCredentialFile                      string   `ini:"gcp_credential_file"`
@@ -187,6 +201,19 @@ func setDefaultsConfig(config *Config) {
 
 	if config.OggDir == "" {
 		config.OggDir = "."
+	}
+
+	if config.AwsHTTPIdleConnTimeoutSec == 0 {
+		config.AwsHTTPIdleConnTimeoutSec = defaultAwsHTTPIdleConnTimeoutSec
+	}
+	if config.AwsHTTPMaxIdleConns == 0 {
+		config.AwsHTTPMaxIdleConns = defaultAwsHTTPMaxIdleConns
+	}
+	if config.AwsHTTPTLSHandshakeTimeoutMs == 0 {
+		config.AwsHTTPTLSHandshakeTimeoutMs = defaultAwsHTTPTLSHandshakeTimeoutMs
+	}
+	if config.AwsHTTPExpectContinueTimeoutMs == 0 {
+		config.AwsHTTPExpectContinueTimeoutMs = defaultAwsHTTPExpectContinueTimeoutMs
 	}
 }
 
