@@ -269,4 +269,13 @@ func ShowConfig(config *Config) {
 
 	zlog.Info().Int("max_retry", config.MaxRetry).Msg("CONF")
 	zlog.Info().Int("retry_interval_ms", config.RetryIntervalMs).Msg("CONF")
+
+	zlog.Info().Bool("aws_http_disable_keep_alives", config.AwsHTTPDisableKeepAlives).Msg("CONF")
+	zlog.Info().Int("aws_http_idle_conn_timeout_sec", config.AwsHTTPIdleConnTimeoutSec).Msg("CONF")
+	zlog.Info().Int("aws_http_max_idle_conns", config.AwsHTTPMaxIdleConns).Msg("CONF")
+	zlog.Info().Int("aws_http_max_idle_conns_per_host", config.AwsHTTPMaxIdleConnsPerHost).Msg("CONF")
+	zlog.Info().Int("aws_http_max_conns_per_host", config.AwsHTTPMaxConnsPerHost).Msg("CONF")
+	zlog.Info().Int("aws_http_response_header_timeout_ms", config.AwsHTTPResponseHeaderTimeoutMs).Msg("CONF")
+	zlog.Info().Int("aws_http_expect_continue_timeout_ms", config.AwsHTTPExpectContinueTimeoutMs).Msg("CONF")
+	zlog.Info().Int("aws_http_tls_handshake_timeout_ms", config.AwsHTTPTLSHandshakeTimeoutMs).Msg("CONF")
 }
