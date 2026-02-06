@@ -13,12 +13,12 @@ type packetReaderOption func(ctx context.Context, c Config, ch chan opus) chan o
 func newPacketReaderOptions(c Config) []packetReaderOption {
 	options := []packetReaderOption{}
 
-	if !c.DisableSilentPacket {
-		options = append(options, optionSilentPacket)
-	}
-
 	if c.AudioStreamingHeader {
 		options = append(options, optionReadPacketWithHeader)
+	}
+
+	if !c.DisableSilentPacket {
+		options = append(options, optionSilentPacket)
 	}
 
 	return options
@@ -43,7 +43,8 @@ func optionSilentPacket(ctx context.Context, c Config, opusCh chan opus) chan op
 			var opusPacket opus
 			select {
 			case <-timer.C:
-				payload := silentPacket(c.AudioStreamingHeader)
+				// サイレントパケットはヘッダー無しで送出する
+				payload := silentPacket()
 				opusPacket = opus{Payload: payload}
 			case req, ok := <-opusCh:
 				if !ok {

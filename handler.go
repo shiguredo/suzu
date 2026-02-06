@@ -2,7 +2,6 @@ package suzu
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -546,28 +545,8 @@ func readPacket(ctx context.Context, opusReader io.ReadCloser) chan opus {
 	return ch
 }
 
-func silentPacket(audioStreamingHeader bool) []byte {
-	var packet []byte
-	silentPacket := []byte{252, 255, 254}
-	if audioStreamingHeader {
-		t := time.Now().UTC()
-		unixTime := make([]byte, 8)
-		binary.BigEndian.PutUint64(unixTime, uint64(t.UnixMicro()))
-
-		// 0 で固定
-		seqNum := make([]byte, 8)
-
-		length := make([]byte, 4)
-		binary.BigEndian.PutUint32(length, uint32(len(silentPacket)))
-
-		packet = append(unixTime, seqNum...)
-		packet = append(packet, length...)
-		packet = append(packet, silentPacket...)
-	} else {
-		packet = silentPacket
-	}
-
-	return packet
+func silentPacket() []byte {
+	return []byte{252, 255, 254}
 }
 
 func opusChannelToIOReadCloser(ctx context.Context, ch <-chan opus) io.ReadCloser {
