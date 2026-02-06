@@ -71,28 +71,15 @@ func NewStartStreamTranscriptionInputV2(at *AmazonTranscribeV2) transcribestream
 }
 
 func NewAmazonTranscribeClientV2(c Config) (*transcribestreaming.Client, error) {
-	// TODO: 後で変更する
 	tr := &http.Transport{
-		DisableKeepAlives: c.AwsHTTPDisableKeepAlives,
-		IdleConnTimeout:   time.Duration(c.AwsHTTPIdleConnTimeoutSec) * time.Second,
-	}
-	if c.AwsHTTPMaxIdleConns > 0 {
-		tr.MaxIdleConns = c.AwsHTTPMaxIdleConns
-	}
-	if c.AwsHTTPMaxIdleConnsPerHost > 0 {
-		tr.MaxIdleConnsPerHost = c.AwsHTTPMaxIdleConnsPerHost
-	}
-	if c.AwsHTTPMaxConnsPerHost > 0 {
-		tr.MaxConnsPerHost = c.AwsHTTPMaxConnsPerHost
-	}
-	if c.AwsHTTPResponseHeaderTimeoutMs > 0 {
-		tr.ResponseHeaderTimeout = time.Duration(c.AwsHTTPResponseHeaderTimeoutMs) * time.Millisecond
-	}
-	if c.AwsHTTPExpectContinueTimeoutMs > 0 {
-		tr.ExpectContinueTimeout = time.Duration(c.AwsHTTPExpectContinueTimeoutMs) * time.Millisecond
-	}
-	if c.AwsHTTPTLSHandshakeTimeoutMs > 0 {
-		tr.TLSHandshakeTimeout = time.Duration(c.AwsHTTPTLSHandshakeTimeoutMs) * time.Millisecond
+		DisableKeepAlives:     c.AwsHTTPDisableKeepAlives,
+		IdleConnTimeout:       time.Duration(c.AwsHTTPIdleConnTimeoutSec) * time.Second,
+		MaxIdleConns:          c.AwsHTTPMaxIdleConns,
+		MaxIdleConnsPerHost:   c.AwsHTTPMaxIdleConnsPerHost,
+		MaxConnsPerHost:       c.AwsHTTPMaxConnsPerHost,
+		ResponseHeaderTimeout: time.Duration(c.AwsHTTPResponseHeaderTimeoutMs) * time.Millisecond,
+		ExpectContinueTimeout: time.Duration(c.AwsHTTPExpectContinueTimeoutMs) * time.Millisecond,
+		TLSHandshakeTimeout:   time.Duration(c.AwsHTTPTLSHandshakeTimeoutMs) * time.Millisecond,
 	}
 	httpClient := &http.Client{Transport: tr}
 

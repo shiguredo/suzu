@@ -28,11 +28,6 @@ const (
 
 	// リトライ間隔 100ms
 	defaultRetryIntervalMs = 100
-
-	defaultAwsHTTPIdleConnTimeoutSec      = 90
-	defaultAwsHTTPMaxIdleConns            = 100
-	defaultAwsHTTPTLSHandshakeTimeoutMs   = 10000
-	defaultAwsHTTPExpectContinueTimeoutMs = 1000
 )
 
 type Config struct {
@@ -201,19 +196,6 @@ func setDefaultsConfig(config *Config) {
 
 	if config.OggDir == "" {
 		config.OggDir = "."
-	}
-
-	if config.AwsHTTPIdleConnTimeoutSec == 0 {
-		config.AwsHTTPIdleConnTimeoutSec = defaultAwsHTTPIdleConnTimeoutSec
-	}
-	if config.AwsHTTPMaxIdleConns == 0 {
-		config.AwsHTTPMaxIdleConns = defaultAwsHTTPMaxIdleConns
-	}
-	if config.AwsHTTPTLSHandshakeTimeoutMs == 0 {
-		config.AwsHTTPTLSHandshakeTimeoutMs = defaultAwsHTTPTLSHandshakeTimeoutMs
-	}
-	if config.AwsHTTPExpectContinueTimeoutMs == 0 {
-		config.AwsHTTPExpectContinueTimeoutMs = defaultAwsHTTPExpectContinueTimeoutMs
 	}
 }
 
