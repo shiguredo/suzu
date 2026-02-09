@@ -33,11 +33,6 @@ func optionSilentPacket(ctx context.Context, c Config, opusCh chan opus) chan op
 		// 無音パケットを送信する間隔
 		d := time.Duration(c.TimeToWaitForOpusPacketMs) * time.Millisecond
 		timer := time.NewTimer(d)
-		defer func() {
-			if !timer.Stop() {
-				<-timer.C
-			}
-		}()
 
 		for {
 			var opusPacket opus
