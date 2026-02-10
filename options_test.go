@@ -2,7 +2,7 @@ package suzu
 
 import (
 	"context"
-	"fmt"
+	"encoding/binary"
 	"testing"
 	"time"
 
@@ -65,7 +65,6 @@ func TestPacketReaderOptionsOrder_SilentAfterHeader(t *testing.T) {
 
 	select {
 	case got := <-out:
-		fmt.Printf("got: %+v\n", got)
 		if got.Err != nil {
 			t.Fatalf("unexpected error: %v", got.Err)
 		}
@@ -78,4 +77,29 @@ func TestPacketReaderOptionsOrder_SilentAfterHeader(t *testing.T) {
 	case <-time.After(50 * time.Millisecond):
 		t.Fatalf("expected silent packet before fragments stop")
 	}
+}
+
+func TestOptionReadPacketWithHeader_PayloadTooLarge(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	in := make(chan opus, 1)
+	out := optionReadPacketWithHeader(ctx, Config{}, in)
+
+	// ヘッダ内のペイロード長が最大値を超えているケース
+	payloadLen := MaxPayloadLength + 1
+	header := make([]byte, HeaderLength)
+	binary.BigEndian.PutUint32(header[16:HeaderLength], uint32(payloadLen))
+
+	in <- opus{Payload: header}
+	close(in)
+
+	got, ok := <-out
+	if !ok {
+		t.Fatal("expected error, got closed channel")
+	}
+	if got.Err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	assert.Contains(t, got.Err.Error(), "PAYLOAD-TOO-LARGE")
 }
