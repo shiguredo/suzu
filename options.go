@@ -17,6 +17,7 @@ const (
 )
 
 // パケット読み込み時のオプション関数の型定義
+// opus channel を受け取り、オプション処理を行った後の opus channel を返す
 type packetReaderOption func(ctx context.Context, c Config, ch chan opus) chan opus
 
 // パケット読み込み時のオプション関数群を生成する
