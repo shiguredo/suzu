@@ -13,7 +13,6 @@ const (
 	MaxPayloadLength = 0xffff
 
 	ErrPayloadTooLarge = "PAYLOAD-TOO-LARGE: %d"
-	ErrBufferTooLarge  = "BUFFER-TOO-LARGE: %d"
 )
 
 // パケット読み込み時のオプション関数の型定義
@@ -129,15 +128,6 @@ func optionReadPacketWithHeader(ctx context.Context, c Config, opusCh chan opus)
 
 				// payload が足りないので、次の読み込みへ
 				if length < (HeaderLength + payloadLength) {
-					// パケット全体が大きすぎる場合はエラーを返す
-					if length > HeaderLength+MaxPayloadLength {
-						select {
-						case <-ctx.Done():
-							return
-						case ch <- opus{Err: fmt.Errorf(ErrBufferTooLarge, length)}:
-							return
-						}
-					}
 					continue
 				}
 
@@ -178,15 +168,6 @@ func optionReadPacketWithHeader(ctx context.Context, c Config, opusCh chan opus)
 
 					// payload が足りないので、次の読み込みへ
 					if length < (HeaderLength + payloadLength) {
-						// パケット全体が大きすぎる場合はエラーを返す
-						if length > HeaderLength+MaxPayloadLength {
-							select {
-							case <-ctx.Done():
-								return
-							case ch <- opus{Err: fmt.Errorf(ErrBufferTooLarge, length)}:
-								return
-							}
-						}
 						break
 					}
 
