@@ -3,11 +3,17 @@ package suzu
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"time"
 )
 
 const (
-	HeaderLength = 20 // timestamp(64), sequence number(64), length(32)
+	// timestamp(64), sequence number(64), length(32)
+	HeaderLength     = 20
+	MaxPayloadLength = 0xffff
+
+	ErrPayloadTooLarge = "PAYLOAD-TOO-LARGE: %d"
+	ErrBufferTooLarge  = "BUFFER-TOO-LARGE: %d"
 )
 
 // パケット読み込み時のオプション関数の型定義
@@ -110,9 +116,27 @@ func optionReadPacketWithHeader(ctx context.Context, c Config, opusCh chan opus)
 				p := payload[HeaderLength:]
 
 				payloadLength = int(binary.BigEndian.Uint32(h[16:HeaderLength]))
+				// payloadLength が大きすぎる場合はエラーを返す
+				if payloadLength > MaxPayloadLength {
+					select {
+					case <-ctx.Done():
+						return
+					case ch <- opus{Err: fmt.Errorf(ErrPayloadTooLarge, payloadLength)}:
+						return
+					}
+				}
 
 				// payload が足りないので、次の読み込みへ
 				if length < (HeaderLength + payloadLength) {
+					// パケット全体が大きすぎる場合はエラーを返す
+					if length > HeaderLength+MaxPayloadLength {
+						select {
+						case <-ctx.Done():
+							return
+						case ch <- opus{Err: fmt.Errorf(ErrBufferTooLarge, length)}:
+							return
+						}
+					}
 					continue
 				}
 
@@ -141,9 +165,27 @@ func optionReadPacketWithHeader(ctx context.Context, c Config, opusCh chan opus)
 					p = payload[HeaderLength:]
 
 					payloadLength = int(binary.BigEndian.Uint32(h[16:HeaderLength]))
+					// payloadLength が大きすぎる場合はエラーを返す
+					if payloadLength > MaxPayloadLength {
+						select {
+						case <-ctx.Done():
+							return
+						case ch <- opus{Err: fmt.Errorf(ErrPayloadTooLarge, payloadLength)}:
+							return
+						}
+					}
 
 					// payload が足りないので、次の読み込みへ
 					if length < (HeaderLength + payloadLength) {
+						// パケット全体が大きすぎる場合はエラーを返す
+						if length > HeaderLength+MaxPayloadLength {
+							select {
+							case <-ctx.Done():
+								return
+							case ch <- opus{Err: fmt.Errorf(ErrBufferTooLarge, length)}:
+								return
+							}
+						}
 						break
 					}
 
