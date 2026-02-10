@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+const (
+	HeaderLength = 20 // timestamp(64), sequence number(64), length(32)
+)
+
 // パケット読み込み時のオプション関数の型定義
 type packetReaderOption func(ctx context.Context, c Config, ch chan opus) chan opus
 

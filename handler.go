@@ -18,9 +18,7 @@ import (
 )
 
 const (
-	FrameSize        = 1024 * 10
-	HeaderLength     = 20
-	MaxPayloadLength = 0xffff
+	FrameSize = 1024 * 10
 )
 
 var (
