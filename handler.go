@@ -2,7 +2,6 @@ package suzu
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,9 +18,7 @@ import (
 )
 
 const (
-	FrameSize        = 1024 * 10
-	HeaderLength     = 20
-	MaxPayloadLength = 0xffff
+	FrameSize = 1024 * 10
 )
 
 var (
@@ -120,19 +117,10 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 		sampleRate := uint32(s.config.SampleRate)
 		channelCount := uint16(s.config.ChannelCount)
 
-		d := time.Duration(s.config.TimeToWaitForOpusPacketMs) * time.Millisecond
-		opusReader := NewOpusReader(*s.config, d, c.Request().Body)
-		defer opusReader.Close()
+		// 読み込み時の追加処理のオプション関数指定
+		packetReaderOptions := newPacketReaderOptions(*s.config)
 
-		var r io.ReadCloser
-		if s.config.AudioStreamingHeader {
-			r = readPacketWithHeader(opusReader)
-		} else {
-			// ヘッダー処理なし
-			r = opusReader
-		}
-
-		opusCh := readOpus(ctx, r)
+		opusCh := newOpusChannel(ctx, *s.config, c.Request().Body, packetReaderOptions)
 
 		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode, onResultFunc)
 		if err != nil {
@@ -191,6 +179,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 									Str("channel_id", h.SoraChannelID).
 									Str("connection_id", h.SoraConnectionID).
 									Msg("retry")
+								reader.Close()
 								cancelServiceHandler()
 								continue
 							case _, ok := <-opusCh:
@@ -301,6 +290,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							serviceHandler.UpdateRetryCount()
 
 							// TODO: 必要な場合は連続のリトライを避けるために少し待つ処理を追加する
+							reader.Close()
 							cancelServiceHandler()
 							break
 						} else {
@@ -384,135 +374,11 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 	}
 }
 
-func readPacketWithHeader(reader io.Reader) io.ReadCloser {
-	r, w := io.Pipe()
-
-	go func() {
-		length := 0
-		payloadLength := 0
-		var payload []byte
-
-		for {
-			buf := make([]byte, HeaderLength+MaxPayloadLength)
-			n, err := reader.Read(buf)
-			if err != nil {
-				w.CloseWithError(err)
-				return
-			}
-
-			payload = append(payload, buf[:n]...)
-			length += n
-
-			// ヘッダー分のデータが揃っていないので、次の読み込みへ
-			if length < HeaderLength {
-				continue
-			}
-
-			// timestamp(64), sequence number(64), length(32)
-			h := payload[:HeaderLength]
-			p := payload[HeaderLength:]
-
-			payloadLength = int(binary.BigEndian.Uint32(h[16:HeaderLength]))
-
-			// payload が足りないので、次の読み込みへ
-			if length < (HeaderLength + payloadLength) {
-				continue
-			}
-
-			if _, err := w.Write(p[:payloadLength]); err != nil {
-				w.CloseWithError(err)
-				return
-			}
-
-			payload = p[payloadLength:]
-			length = len(payload)
-
-			// 全てのデータを書き込んだ場合は次の読み込みへ
-			if length == 0 {
-				continue
-			}
-
-			// 次の frame が含まれている場合
-			for {
-				// ヘッダー分のデータが揃っていないので、次の読み込みへ
-				if length < HeaderLength {
-					break
-				}
-
-				h = payload[:HeaderLength]
-				p = payload[HeaderLength:]
-
-				payloadLength = int(binary.BigEndian.Uint32(h[16:HeaderLength]))
-
-				// payload が足りないので、次の読み込みへ
-				if length < (HeaderLength + payloadLength) {
-					break
-				}
-
-				// データが足りているので payloadLength まで書き込む
-				if _, err := w.Write(p[:payloadLength]); err != nil {
-					w.CloseWithError(err)
-					return
-				}
-
-				// 残りの処理へ
-				payload = p[payloadLength:]
-				length = len(payload)
-			}
-		}
-	}()
-
-	return r
-}
-
-func readOpus(ctx context.Context, reader io.ReadCloser) chan opusChannel {
-	opusCh := make(chan opusChannel)
-
-	go func() {
-		defer close(opusCh)
-		defer reader.Close()
-
-		for {
-			select {
-			case <-ctx.Done():
-				// 送信前に context がキャンセルされた場合は終了する
-				select {
-				case <-ctx.Done():
-					// context がキャンセルされた場合は終了する
-				case opusCh <- opusChannel{Error: ctx.Err()}:
-				}
-				return
-			default:
-				buf := make([]byte, FrameSize)
-				n, err := reader.Read(buf)
-				if err != nil {
-					// 送信前に context がキャンセルされた場合は終了する
-					select {
-					case <-ctx.Done():
-						// context がキャンセルされた場合は終了する
-					case opusCh <- opusChannel{Error: err}:
-					}
-					return
-				}
-
-				if n > 0 {
-					// 送信前に context がキャンセルされた場合は終了する
-					select {
-					case <-ctx.Done():
-						// 送信前に context がキャンセルされた場合は終了する
-						return
-					case opusCh <- opusChannel{Payload: buf[:n]}:
-					}
-				}
-			}
-		}
-	}()
-
-	return opusCh
-}
-
-func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, channelCount uint16, c Config, header soraHeader) (io.ReadCloser, error) {
+func opus2ogg(ctx context.Context, opusCh chan opus, sampleRate uint32, channelCount uint16, c Config, header soraHeader) (io.ReadCloser, error) {
 	oggReader, oggWriter := io.Pipe()
+
+	// コンテキストが閉じられたときに oggWriter を閉じる
+	closeOnDone(ctx, oggWriter)
 
 	writers := []io.Writer{}
 
@@ -555,8 +421,8 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 				return
 			}
 
-			if err := opus.Error; err != nil {
-				oggWriter.CloseWithError(err)
+			if opus.Err != nil {
+				oggWriter.CloseWithError(opus.Err)
 				return
 			}
 
@@ -591,8 +457,8 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 					return
 				}
 
-				if err := opus.Error; err != nil {
-					oggWriter.CloseWithError(err)
+				if opus.Err != nil {
+					oggWriter.CloseWithError(opus.Err)
 					return
 				}
 
@@ -614,130 +480,78 @@ func opus2ogg(ctx context.Context, opusCh chan opusChannel, sampleRate uint32, c
 	return oggReader, nil
 }
 
-type opusRequest struct {
+// opus データを格納する構造体
+type opus struct {
 	Payload []byte
-	Error   error
+	Err     error
 }
 
-func readPacket(opusReader io.Reader) chan opusRequest {
-	ch := make(chan opusRequest)
+// 受信した Payload を読み込み、オプション関数に従った opus データを受け取る channel を返す
+func newOpusChannel(ctx context.Context, c Config, r io.ReadCloser, fs []packetReaderOption) chan opus {
+	// 受信した Payload を読み込み、読み込んだデータを受け取る channel を返す
+	packetCh := readPacket(ctx, r)
+	opusCh := packetCh
+
+	// 読み込み時の追加処理を順番に適用する
+	for _, f := range fs {
+		opusCh = f(ctx, c, opusCh)
+	}
+
+	return opusCh
+}
+
+// 受信した Payload を読み込み、読み込んだデータを受け取る channel を返す
+func readPacket(ctx context.Context, opusReader io.ReadCloser) chan opus {
+	ch := make(chan opus)
+
+	// コンテキストが閉じられたときに opusReader を閉じる
+	closeOnDone(ctx, opusReader)
 
 	go func() {
 		defer close(ch)
 
 		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			buf := make([]byte, FrameSize)
 			n, err := opusReader.Read(buf)
 			if err != nil {
-				ch <- opusRequest{
-					Error: err,
+				select {
+				case <-ctx.Done():
+					return
+				case ch <- opus{Err: err}:
+					return
 				}
-				return
 			}
 
 			if n > 0 {
-				ch <- opusRequest{
-					Payload: buf[:n],
+				payload := make([]byte, n)
+				copy(payload, buf[:n])
+				select {
+				case <-ctx.Done():
+					return
+				case ch <- opus{Payload: payload}:
 				}
 			}
-
 		}
 	}()
 
 	return ch
 }
 
-func NewOpusReader(c Config, d time.Duration, opusReader io.ReadCloser) io.ReadCloser {
+func silentPacket() []byte {
+	return []byte{252, 255, 254}
+}
+
+func opusChannelToIOReadCloser(ctx context.Context, ch <-chan opus) io.ReadCloser {
 	r, w := io.Pipe()
 
-	ch := readPacket(opusReader)
-	go func() {
-		if c.DisableSilentPacket {
-			for {
-				req, ok := <-ch
-				if !ok {
-					w.Close()
-					return
-				}
-				if err := req.Error; err != nil {
-					w.CloseWithError(err)
-					return
-				}
-
-				if _, err := w.Write(req.Payload); err != nil {
-					w.CloseWithError(err)
-					opusReader.Close()
-				}
-			}
-		} else {
-			timer := time.NewTimer(d)
-			defer func() {
-				if !timer.Stop() {
-					<-timer.C
-				}
-			}()
-
-			for {
-				var payload []byte
-				select {
-				case <-timer.C:
-					payload = silentPacket(c.AudioStreamingHeader)
-				case req, ok := <-ch:
-					if !ok {
-						w.Close()
-						return
-					}
-					if err := req.Error; err != nil {
-						w.CloseWithError(err)
-						return
-					}
-
-					payload = req.Payload
-				}
-				if _, err := w.Write(payload); err != nil {
-					w.CloseWithError(err)
-					opusReader.Close()
-				}
-
-				timer.Reset(d)
-			}
-		}
-	}()
-
-	return r
-}
-
-func silentPacket(audioStreamingHeader bool) []byte {
-	var packet []byte
-	silentPacket := []byte{252, 255, 254}
-	if audioStreamingHeader {
-		t := time.Now().UTC()
-		unixTime := make([]byte, 8)
-		binary.BigEndian.PutUint64(unixTime, uint64(t.UnixMicro()))
-
-		// 0 で固定
-		seqNum := make([]byte, 8)
-
-		length := make([]byte, 4)
-		binary.BigEndian.PutUint32(length, uint32(len(silentPacket)))
-
-		packet = append(unixTime, seqNum...)
-		packet = append(packet, length...)
-		packet = append(packet, silentPacket...)
-	} else {
-		packet = silentPacket
-	}
-
-	return packet
-}
-
-type opusChannel struct {
-	Payload []byte
-	Error   error
-}
-
-func opusChannelToIOReadCloser(ctx context.Context, ch chan opusChannel) io.ReadCloser {
-	r, w := io.Pipe()
+	// コンテキストが閉じられたときに writer を閉じる
+	closeOnDone(ctx, w)
 
 	go func() {
 		defer w.Close()
@@ -752,13 +566,13 @@ func opusChannelToIOReadCloser(ctx context.Context, ch chan opusChannel) io.Read
 					w.CloseWithError(io.EOF)
 					return
 				}
-
-				if err := opus.Error; err != nil {
-					w.CloseWithError(err)
+				if opus.Err != nil {
+					w.CloseWithError(opus.Err)
 					return
 				}
 
-				if _, err := w.Write(opus.Payload); err != nil {
+				_, err := w.Write(opus.Payload)
+				if err != nil {
 					w.CloseWithError(err)
 					return
 				}
@@ -783,4 +597,14 @@ func receiveFirstAudioData(r io.ReadCloser) ([]byte, error) {
 			return buf[:n], nil
 		}
 	}
+}
+
+// context が閉じられたときに io.Closer を閉じるヘルパー関数です
+func closeOnDone(ctx context.Context, closer io.Closer) {
+	go func() {
+		// context が閉じられるのを待つ
+		<-ctx.Done()
+		// io.Closer を閉じる
+		closer.Close()
+	}()
 }

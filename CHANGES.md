@@ -11,6 +11,46 @@
 
 ## develop
 
+- [UPDATE] AWS SDK の HTTP クライアントの http.Transport を config.ini で設定可能にする
+  - 設定項目は次の通り
+    - keep-alive 無効化の有無
+      - aws_http_disable_keep_alives
+    - idle 接続のタイムアウト（秒）
+      - aws_http_idle_conn_timeout_sec
+    - 最大 idle 接続数
+      - aws_http_max_idle_conns
+    - ホストごとの最大 idle 接続数
+      - aws_http_max_idle_conns_per_host
+    - ホストごとの最大接続数
+      - aws_http_max_conns_per_host
+    - 応答ヘッダ待ちタイムアウト（ミリ秒）
+      - aws_http_response_header_timeout_ms
+    - 100-continue の待ちタイムアウト（ミリ秒）
+      - aws_http_expect_continue_timeout_ms
+    - TLS ハンドシェイクのタイムアウト（ミリ秒）
+      - aws_http_tls_handshake_timeout_ms
+  - @Hexa
+- [CHANGE] クライアントから取得した音声データの想定サイズが、最大サイズを超えていた場合にエラーにする
+  - 最大サイズは 16777215 バイト
+  - @Hexa
+
+### misc
+
+- [CHANGE] 音声データ読み込み時の処理を、処理の入出力の channel での共通化して、それによる拡張性を向上させる
+  - 対象の処理は下記の 2 点
+    - 受信パケットのヘッダー処理
+    - silent packet 作成処理
+  - @Hexa
+- [CHANGE] 音声データ読み込み時の処理をオプション化して、他の処理が必要になった場合に対応しやすくする
+  - オプション化した処理は下記の 2 点
+    - 受信パケットのヘッダー処理
+    - silent packet 作成処理
+  - @Hexa
+- [UPDATE] context 終了時に goroutine 内のブロッキング I/O をより確実に閉じるための closeOnDone 関数を追加する
+  - @Hexa
+- [UPDATE] opus 関連の struct を一つにまとめる
+  - @Hexa
+
 ## 2026.1.0
 
 **リリース日: 2026-01-15

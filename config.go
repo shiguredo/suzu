@@ -104,6 +104,15 @@ type Config struct {
 	AwsResultChannelID bool `ini:"aws_result_channel_id"`
 	AwsResultIsPartial bool `ini:"aws_result_is_partial"`
 	AwsResultID        bool `ini:"aws_result_id"`
+	// AWS HTTP Transport 設定
+	AwsHTTPDisableKeepAlives       bool `ini:"aws_http_disable_keep_alives"`
+	AwsHTTPIdleConnTimeoutSec      int  `ini:"aws_http_idle_conn_timeout_sec"`
+	AwsHTTPMaxIdleConns            int  `ini:"aws_http_max_idle_conns"`
+	AwsHTTPMaxIdleConnsPerHost     int  `ini:"aws_http_max_idle_conns_per_host"`
+	AwsHTTPMaxConnsPerHost         int  `ini:"aws_http_max_conns_per_host"`
+	AwsHTTPResponseHeaderTimeoutMs int  `ini:"aws_http_response_header_timeout_ms"`
+	AwsHTTPExpectContinueTimeoutMs int  `ini:"aws_http_expect_continue_timeout_ms"`
+	AwsHTTPTLSHandshakeTimeoutMs   int  `ini:"aws_http_tls_handshake_timeout_ms"`
 
 	// Google Cloud Platform
 	GcpCredentialFile                      string   `ini:"gcp_credential_file"`
@@ -242,4 +251,13 @@ func ShowConfig(config *Config) {
 
 	zlog.Info().Int("max_retry", config.MaxRetry).Msg("CONF")
 	zlog.Info().Int("retry_interval_ms", config.RetryIntervalMs).Msg("CONF")
+
+	zlog.Info().Bool("aws_http_disable_keep_alives", config.AwsHTTPDisableKeepAlives).Msg("CONF")
+	zlog.Info().Int("aws_http_idle_conn_timeout_sec", config.AwsHTTPIdleConnTimeoutSec).Msg("CONF")
+	zlog.Info().Int("aws_http_max_idle_conns", config.AwsHTTPMaxIdleConns).Msg("CONF")
+	zlog.Info().Int("aws_http_max_idle_conns_per_host", config.AwsHTTPMaxIdleConnsPerHost).Msg("CONF")
+	zlog.Info().Int("aws_http_max_conns_per_host", config.AwsHTTPMaxConnsPerHost).Msg("CONF")
+	zlog.Info().Int("aws_http_response_header_timeout_ms", config.AwsHTTPResponseHeaderTimeoutMs).Msg("CONF")
+	zlog.Info().Int("aws_http_expect_continue_timeout_ms", config.AwsHTTPExpectContinueTimeoutMs).Msg("CONF")
+	zlog.Info().Int("aws_http_tls_handshake_timeout_ms", config.AwsHTTPTLSHandshakeTimeoutMs).Msg("CONF")
 }

@@ -121,7 +121,7 @@ func (h *AmazonTranscribeV2Handler) IsRetryTarget(args any) bool {
 	return false
 }
 
-func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
+func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus, header soraHeader) (*io.PipeReader, error) {
 	at := NewAmazonTranscribeV2(h.Config, h.LanguageCode, int64(h.SampleRate), int64(h.ChannelCount))
 
 	packetReader, err := opus2ogg(ctx, opusCh, h.SampleRate, h.ChannelCount, h.Config, header)
@@ -140,13 +140,17 @@ func (h *AmazonTranscribeV2Handler) Handle(ctx context.Context, opusCh chan opus
 	r, w := io.Pipe()
 
 	go func() {
+		defer stream.Close()
+
 		encoder := json.NewEncoder(w)
 
 	L:
 		for {
 			select {
 			case <-ctx.Done():
-				break L
+				// context がキャンセルされた場合は終了
+				w.Close()
+				return
 			case event := <-stream.Events():
 				switch e := event.(type) {
 				case *types.TranscriptResultStreamMemberTranscriptEvent:

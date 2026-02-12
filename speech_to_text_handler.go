@@ -122,7 +122,7 @@ func (h *SpeechToTextHandler) IsRetryTarget(args any) bool {
 	return false
 }
 
-func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan opusChannel, header soraHeader) (*io.PipeReader, error) {
+func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan opus, header soraHeader) (*io.PipeReader, error) {
 	stt := NewSpeechToText(h.Config, h.LanguageCode, int32(h.SampleRate), int32(h.ChannelCount))
 
 	packetReader, err := opus2ogg(ctx, opusCh, h.SampleRate, h.ChannelCount, h.Config, header)
@@ -143,6 +143,13 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan opusChanne
 		encoder := json.NewEncoder(w)
 
 		for {
+			select {
+			case <-ctx.Done():
+				w.Close()
+				return
+			default:
+			}
+
 			resp, err := stream.Recv()
 			if err != nil {
 				zlog.Error().

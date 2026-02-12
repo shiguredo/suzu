@@ -16,7 +16,7 @@ var (
 )
 
 type serviceHandlerInterface interface {
-	Handle(context.Context, chan opusChannel, soraHeader) (*io.PipeReader, error)
+	Handle(context.Context, chan opus, soraHeader) (*io.PipeReader, error)
 	UpdateRetryCount() int
 	GetRetryCount() int
 	ResetRetryCount() int

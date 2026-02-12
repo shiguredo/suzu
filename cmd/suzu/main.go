@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	// /bin/kohaku -V
+	// /bin/suzu -V
 	showVersion := flag.Bool("V", false, "バージョン")
 
 	// bin/suzu -C config.ini

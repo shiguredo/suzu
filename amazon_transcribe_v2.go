@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -70,8 +71,16 @@ func NewStartStreamTranscriptionInputV2(at *AmazonTranscribeV2) transcribestream
 }
 
 func NewAmazonTranscribeClientV2(c Config) (*transcribestreaming.Client, error) {
-	// TODO: 後で変更する
-	tr := &http.Transport{}
+	tr := &http.Transport{
+		DisableKeepAlives:     c.AwsHTTPDisableKeepAlives,
+		IdleConnTimeout:       time.Duration(c.AwsHTTPIdleConnTimeoutSec) * time.Second,
+		MaxIdleConns:          c.AwsHTTPMaxIdleConns,
+		MaxIdleConnsPerHost:   c.AwsHTTPMaxIdleConnsPerHost,
+		MaxConnsPerHost:       c.AwsHTTPMaxConnsPerHost,
+		ResponseHeaderTimeout: time.Duration(c.AwsHTTPResponseHeaderTimeoutMs) * time.Millisecond,
+		ExpectContinueTimeout: time.Duration(c.AwsHTTPExpectContinueTimeoutMs) * time.Millisecond,
+		TLSHandshakeTimeout:   time.Duration(c.AwsHTTPTLSHandshakeTimeoutMs) * time.Millisecond,
+	}
 	httpClient := &http.Client{Transport: tr}
 
 	ctx := context.TODO()
@@ -190,6 +199,12 @@ func (at *AmazonTranscribeV2) Start(ctx context.Context, r io.ReadCloser, header
 
 		frame := make([]byte, FrameSize)
 		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			n, err := r.Read(frame)
 			if err != nil {
 				if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
