@@ -10,7 +10,7 @@ import (
 const (
 	// timestamp(64), sequence number(64), length(32)
 	HeaderLength     = 20
-	MaxPayloadLength = 0xffff
+	MaxPayloadLength = 0xffffff
 
 	ErrPayloadTooLarge = "PAYLOAD-TOO-LARGE: %d"
 )
