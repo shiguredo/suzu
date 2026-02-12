@@ -104,7 +104,7 @@ type Config struct {
 	AwsResultChannelID bool `ini:"aws_result_channel_id"`
 	AwsResultIsPartial bool `ini:"aws_result_is_partial"`
 	AwsResultID        bool `ini:"aws_result_id"`
-	// AWS HTTP Transport settings
+	// AWS HTTP Transport 設定
 	AwsHTTPDisableKeepAlives       bool `ini:"aws_http_disable_keep_alives"`
 	AwsHTTPIdleConnTimeoutSec      int  `ini:"aws_http_idle_conn_timeout_sec"`
 	AwsHTTPMaxIdleConns            int  `ini:"aws_http_max_idle_conns"`
