@@ -145,6 +145,7 @@ func (h *SpeechToTextHandler) Handle(ctx context.Context, opusCh chan opus, head
 		for {
 			select {
 			case <-ctx.Done():
+				w.Close()
 				return
 			default:
 			}
