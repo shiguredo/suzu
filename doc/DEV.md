@@ -2,7 +2,7 @@
 
 ## セットアップ
 
-初回だけ make init と設定を cp する必要があります。
+初回だけ設定ファイルを cp する必要があります。
 
 ```console
 $ cp config_example.ini config.ini
