@@ -11,6 +11,21 @@
 
 ## develop
 
+## 2026.1.1
+
+**リリース日: 2026-02-17
+
+### misc
+
+- [UPDATE] go.mod の Go のバージョンを 1.26.0 にあげる
+  - @Hexa
+- [UPDATE] GitHub Actions の actions/checkout のバージョンを v6 に上げる
+  - @Hexa
+- [UPDATE] GitHub Actions の actions/setup-go のバージョンを v6 に上げる
+  - @Hexa
+- [UPDATE] GitHub Actions の staticcheck のバージョンを 2026.1 に上げる
+  - @Hexa
+
 ## 2026.1.0
 
 **リリース日: 2026-01-15
