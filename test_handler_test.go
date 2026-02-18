@@ -398,7 +398,7 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("connect error returns suzu error status code", func(t *testing.T) {
-		NewServiceHandlerFuncs.register("test", NewConnectErrorTestHandler)
+		NewServiceHandlerFuncs.register("test", NewConnectErrorTestHandlerFactory(http.StatusInternalServerError, "CONNECT-ERROR"))
 		defer NewServiceHandlerFuncs.register("test", NewTestHandler)
 
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
@@ -422,7 +422,7 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("connect error with invalid suzu error status code returns 500", func(t *testing.T) {
-		NewServiceHandlerFuncs.register("test", NewConnectErrorInvalidStatusTestHandler)
+		NewServiceHandlerFuncs.register("test", NewConnectErrorTestHandlerFactory(0, "CONNECT-ERROR-WITH-INVALID-STATUS"))
 		defer NewServiceHandlerFuncs.register("test", NewTestHandler)
 
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
@@ -495,16 +495,24 @@ func TestSpeechHandler(t *testing.T) {
 	})
 }
 
-type ConnectErrorTestHandler struct{}
+type ConnectErrorTestHandler struct {
+	code    int
+	message string
+}
 
-func NewConnectErrorTestHandler(Config, string, string, uint32, uint16, string, any) serviceHandlerInterface {
-	return &ConnectErrorTestHandler{}
+func NewConnectErrorTestHandlerFactory(code int, message string) newServiceHandlerFunc {
+	return func(Config, string, string, uint32, uint16, string, any) serviceHandlerInterface {
+		return &ConnectErrorTestHandler{
+			code:    code,
+			message: message,
+		}
+	}
 }
 
 func (h *ConnectErrorTestHandler) Handle(context.Context, chan opus, soraHeader) (*io.PipeReader, error) {
 	return nil, &SuzuError{
-		Code:    http.StatusInternalServerError,
-		Message: "CONNECT-ERROR",
+		Code:    h.code,
+		Message: h.message,
 	}
 }
 
@@ -515,24 +523,3 @@ func (h *ConnectErrorTestHandler) GetRetryCount() int { return 0 }
 func (h *ConnectErrorTestHandler) ResetRetryCount() int { return 0 }
 
 func (h *ConnectErrorTestHandler) IsRetryTarget(any) bool { return false }
-
-type ConnectErrorInvalidStatusTestHandler struct{}
-
-func NewConnectErrorInvalidStatusTestHandler(Config, string, string, uint32, uint16, string, any) serviceHandlerInterface {
-	return &ConnectErrorInvalidStatusTestHandler{}
-}
-
-func (h *ConnectErrorInvalidStatusTestHandler) Handle(context.Context, chan opus, soraHeader) (*io.PipeReader, error) {
-	return nil, &SuzuError{
-		Code:    0,
-		Message: "CONNECT-ERROR-WITH-INVALID-STATUS",
-	}
-}
-
-func (h *ConnectErrorInvalidStatusTestHandler) UpdateRetryCount() int { return 0 }
-
-func (h *ConnectErrorInvalidStatusTestHandler) GetRetryCount() int { return 0 }
-
-func (h *ConnectErrorInvalidStatusTestHandler) ResetRetryCount() int { return 0 }
-
-func (h *ConnectErrorInvalidStatusTestHandler) IsRetryTarget(any) bool { return false }
