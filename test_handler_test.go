@@ -397,6 +397,30 @@ func TestSpeechHandler(t *testing.T) {
 
 	})
 
+	t.Run("connect error returns suzu error status code", func(t *testing.T) {
+		NewServiceHandlerFuncs.register("test", NewConnectErrorTestHandler)
+		defer NewServiceHandlerFuncs.register("test", NewTestHandler)
+
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
+		defer r.Close()
+
+		e := echo.New()
+		req := httptest.NewRequest("POST", path, r)
+		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
+		req.Proto = "HTTP/2.0"
+		req.ProtoMajor = 2
+		req.ProtoMinor = 0
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		h := s.createSpeechHandler(serviceType, nil)
+		err := h(c)
+		if assert.NoError(t, err) {
+			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+			assert.Empty(t, rec.Body.String())
+		}
+	})
+
 	t.Run("IsRetryTarget", func(t *testing.T) {
 		channelID := "test-channel-id"
 		connectionID := "test-connection-id"
@@ -446,3 +470,24 @@ func TestSpeechHandler(t *testing.T) {
 		}
 	})
 }
+
+type ConnectErrorTestHandler struct{}
+
+func NewConnectErrorTestHandler(Config, string, string, uint32, uint16, string, any) serviceHandlerInterface {
+	return &ConnectErrorTestHandler{}
+}
+
+func (h *ConnectErrorTestHandler) Handle(context.Context, chan opus, soraHeader) (*io.PipeReader, error) {
+	return nil, &SuzuError{
+		Code:    http.StatusInternalServerError,
+		Message: "CONNECT-ERROR",
+	}
+}
+
+func (h *ConnectErrorTestHandler) UpdateRetryCount() int { return 0 }
+
+func (h *ConnectErrorTestHandler) GetRetryCount() int { return 0 }
+
+func (h *ConnectErrorTestHandler) ResetRetryCount() int { return 0 }
+
+func (h *ConnectErrorTestHandler) IsRetryTarget(any) bool { return false }

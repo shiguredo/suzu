@@ -105,8 +105,6 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			Msg("CONNECTED")
 
 		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		// すぐにヘッダを送信したいので c.Response().Flush() を実行する
-		c.Response().Flush()
 
 		ctx := c.Request().Context()
 		// TODO: context.WithCancelCause(ctx) に変更する
@@ -232,6 +230,8 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 				return echo.NewHTTPError(http.StatusInternalServerError, err)
 			}
 			defer reader.Close()
+			// 外部サービスへの接続成功後にヘッダを送信する
+			c.Response().Flush()
 
 			for {
 				buf := make([]byte, FrameSize)
