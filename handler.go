@@ -197,7 +197,18 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 						}
 					}
 					// SuzuError の場合はその Status Code を返す
-					return c.NoContent(err.Code)
+					statusCode := err.Code
+					// Status Code として不正な値が設定されている場合は 500 にする
+					// 許容する範囲は 3 桁の整数とする
+					if statusCode < 100 || statusCode > 999 {
+						zlog.Error().
+							Int("status_code", statusCode).
+							Str("channel_id", h.SoraChannelID).
+							Str("connection_id", h.SoraConnectionID).
+							Msg("INVALID-STATUS-CODE")
+						statusCode = http.StatusInternalServerError
+					}
+					return c.NoContent(statusCode)
 				}
 
 				// SuzuConfError の場合は、設定不備等で復帰が困難な場合を想定しているため、
