@@ -199,7 +199,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					// SuzuError の場合はその Status Code を返す
 					statusCode := err.Code
 					// Status Code として不正な値が設定されている場合は 500 にする
-					// 許容する範囲は 3 桁の整数とする
+					// 許容する範囲は 3 桁の整数とする（net/http の許容範囲）
 					if statusCode < 100 || statusCode > 999 {
 						zlog.Error().
 							Int("status_code", statusCode).
