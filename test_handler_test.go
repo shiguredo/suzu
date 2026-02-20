@@ -398,7 +398,9 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("connect error returns suzu error status code", func(t *testing.T) {
-		NewServiceHandlerFuncs.register("test", NewConnectErrorTestHandlerFactory(http.StatusInternalServerError, "CONNECT-ERROR"))
+		// テストのみで使用するステータスコード
+		expectedCode := 499
+		NewServiceHandlerFuncs.register("test", NewConnectErrorTestHandlerFactory(expectedCode, "CONNECT-ERROR"))
 		defer NewServiceHandlerFuncs.register("test", NewTestHandler)
 
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
@@ -416,7 +418,7 @@ func TestSpeechHandler(t *testing.T) {
 		h := s.createSpeechHandler(serviceType, nil)
 		err := h(c)
 		if assert.NoError(t, err) {
-			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+			assert.Equal(t, expectedCode, rec.Code)
 			assert.Empty(t, rec.Body.String())
 		}
 	})
