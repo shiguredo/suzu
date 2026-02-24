@@ -54,6 +54,25 @@
   - @Hexa
 - [UPDATE] opus 関連の struct を一つにまとめる
   - @Hexa
+- [UPDATE] パッケージを更新する
+  - cloud.google.com/go/speech を v1.29.0 に上げる
+  - github.com/aws/aws-sdk-go-v2 を v1.41.2 に上げる
+  - github.com/aws/aws-sdk-go-v2/config を v1.32.10 に上げる
+  - github.com/aws/aws-sdk-go-v2/service/transcribestreaming を v1.33.7 に上げる
+  - github.com/aws/smithy-go を v1.24.1 に上げる
+  - github.com/labstack/echo-contrib を v0.50.1 に上げる
+  - github.com/labstack/echo/v4 を v4.15.1 に上げる
+  - github.com/pion/rtp を v1.10.1 に上げる
+  - github.com/stretchr/testify を v1.11.1 に上げる
+  - golang.org/x/exp を v0.0.0-20260218203240-3dfff04db8fa に上げる
+  - golang.org/x/net を v0.50.0 に上げる
+  - golang.org/x/sync を v0.19.0 に上げる
+  - google.golang.org/api を v0.268.0 に上げる
+  - google.golang.org/grpc を v1.79.1 に上げる
+  - google.golang.org/protobuf を v1.36.11 に上げる
+  - gopkg.in/ini.v1 を v1.67.1 に上げる
+  - @Hexa
+
 
 ## 2026.1.2
 
