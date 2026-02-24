@@ -49,7 +49,7 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser, header soraH
 	var opts []option.ClientOption
 	credentialFile := config.GcpCredentialFile
 	if credentialFile != "" {
-		opts = append(opts, option.WithCredentialsFile(credentialFile))
+		opts = append(opts, option.WithAuthCredentialsFile(option.ServiceAccount, credentialFile))
 	}
 
 	client, err := speech.NewClient(ctx, opts...)
