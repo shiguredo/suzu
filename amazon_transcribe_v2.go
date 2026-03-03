@@ -96,11 +96,10 @@ func NewAmazonTranscribeClientV2(c Config) (*transcribestreaming.Client, error) 
 		config.WithClientLogMode(clientLogMode),
 	}
 
-	if c.AwsCredentialFile != "" {
-		loadOptions = append(loadOptions, config.WithSharedCredentialsFiles([]string{c.AwsCredentialFile}))
-	}
-
 	if c.AwsProfile != "" {
+		if c.AwsCredentialFile != "" {
+			loadOptions = append(loadOptions, config.WithSharedCredentialsFiles([]string{c.AwsCredentialFile}))
+		}
 		loadOptions = append(loadOptions, config.WithSharedConfigProfile(c.AwsProfile))
 	}
 
