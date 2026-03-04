@@ -2,6 +2,7 @@ package suzu
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +14,56 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+
+type oggPageForTest struct {
+	GranulePosition uint64
+	Payload         []byte
+}
+
+func parseOggPagesForTest(data []byte) ([]oggPageForTest, error) {
+	pages := []oggPageForTest{}
+
+	offset := 0
+	for offset < len(data) {
+		if len(data[offset:]) < 27 {
+			return nil, fmt.Errorf("invalid ogg page header length: %d", len(data[offset:]))
+		}
+
+		header := data[offset:]
+		if string(header[:4]) != "OggS" {
+			return nil, fmt.Errorf("invalid ogg page signature at offset: %d", offset)
+		}
+
+		segmentCount := int(header[26])
+		pageHeaderLength := 27 + segmentCount
+		if len(header) < pageHeaderLength {
+			return nil, fmt.Errorf("invalid ogg segment table length: %d", len(header))
+		}
+
+		payloadLength := 0
+		for i := 0; i < segmentCount; i++ {
+			payloadLength += int(header[27+i])
+		}
+
+		pageLength := pageHeaderLength + payloadLength
+		if len(header) < pageLength {
+			return nil, fmt.Errorf("invalid ogg payload length: %d", len(header))
+		}
+
+		payload := make([]byte, payloadLength)
+		copy(payload, header[pageHeaderLength:pageLength])
+
+		granulePosition := binary.LittleEndian.Uint64(header[6:14])
+		pages = append(pages, oggPageForTest{
+			GranulePosition: granulePosition,
+			Payload:         payload,
+		})
+
+		offset += pageLength
+	}
+
+	return pages, nil
+}
 
 // Read 時にエラーを返す ReadCloser
 type ErrReadCloser struct {
@@ -570,6 +621,59 @@ func TestReadPacketWithHeader(t *testing.T) {
 }
 
 func TestOggFileWriting(t *testing.T) {
+	t.Run("audio_streaming_header disabled converts received payload to ogg opus", func(t *testing.T) {
+		c := Config{
+			AudioStreamingHeader: false,
+			DisableSilentPacket:  true,
+		}
+
+		// testdata/000_long.jsonl のペイロード
+		expectedPayload := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+
+		r := readDumpFile(t, "testdata/000_long.jsonl", 0)
+		defer r.Close()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		opusCh := newOpusChannel(ctx, c, r, newPacketReaderOptions(c))
+
+		header := soraHeader{
+			SoraChannelID:    "ogg-test",
+			SoraSessionID:    "C2TFB1QBDS4WD5SX317SWMJ6FM",
+			SoraConnectionID: "1X0Z8JXZAD5A93X68M2S9NTC4G",
+		}
+
+		reader, err := opus2ogg(ctx, opusCh, 48000, 1, c, header)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer reader.Close()
+
+		data, err := io.ReadAll(reader)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		pages, err := parseOggPagesForTest(data)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		if !assert.GreaterOrEqual(t, len(pages), 3) {
+			return
+		}
+
+		assert.Equal(t, []byte("OpusHead"), pages[0].Payload[:8])
+		assert.Equal(t, []byte("OpusTags"), pages[1].Payload[:8])
+
+		audioPages := pages[2:]
+		assert.Equal(t, 9, len(audioPages))
+		for _, page := range audioPages {
+			assert.Equal(t, expectedPayload, page.Payload)
+		}
+	})
+
 	t.Run("success", func(t *testing.T) {
 		oggDir, err := os.MkdirTemp("", "ogg-")
 		if err != nil {
