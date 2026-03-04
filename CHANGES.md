@@ -37,6 +37,10 @@
   - @Hexa
 - [CHANGE] 外部サービス接続処理時のエラーなどにより HTTP ステータスコードが 3 桁以外の場合は、クライアントに InternalServerError を返す
   - @Hexa
+- [FIX] config.ini で aws_profile が設定されていない場合でも、config.ini に設定した HTTPClient 関連の設定を反映する
+  - @Hexa
+- [FIX] aws_profile が設定されていない場合でも debug 設定が反映されるように変更する
+  - @Hexa
 
 ### misc
 

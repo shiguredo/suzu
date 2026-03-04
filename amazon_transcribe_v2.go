@@ -90,27 +90,22 @@ func NewAmazonTranscribeClientV2(c Config) (*transcribestreaming.Client, error) 
 		clientLogMode = aws.LogSigning | aws.LogRetries | aws.LogRequest | aws.LogRequestWithBody | aws.LogResponse | aws.LogResponseWithBody | aws.LogDeprecatedUsage | aws.LogRequestEventMessage | aws.LogResponseEventMessage
 	}
 
-	var cfg aws.Config
+	loadOptions := []func(*config.LoadOptions) error{
+		config.WithRegion(c.AwsRegion),
+		config.WithHTTPClient(httpClient),
+		config.WithClientLogMode(clientLogMode),
+	}
+
 	if c.AwsProfile != "" {
-		var err error
-		cfg, err = config.LoadDefaultConfig(ctx,
-			config.WithRegion(c.AwsRegion),
-			config.WithSharedConfigProfile(c.AwsProfile),
-			config.WithSharedCredentialsFiles([]string{c.AwsCredentialFile}),
-			config.WithHTTPClient(httpClient),
-			config.WithClientLogMode(clientLogMode),
-		)
-		if err != nil {
-			return nil, err
+		if c.AwsCredentialFile != "" {
+			loadOptions = append(loadOptions, config.WithSharedCredentialsFiles([]string{c.AwsCredentialFile}))
 		}
-	} else {
-		var err error
-		cfg, err = config.LoadDefaultConfig(ctx,
-			config.WithRegion(c.AwsRegion),
-		)
-		if err != nil {
-			return nil, err
-		}
+		loadOptions = append(loadOptions, config.WithSharedConfigProfile(c.AwsProfile))
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctx, loadOptions...)
+	if err != nil {
+		return nil, err
 	}
 
 	client := transcribestreaming.NewFromConfig(cfg)
