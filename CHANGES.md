@@ -39,6 +39,8 @@
   - @Hexa
 - [FIX] config.ini で aws_profile が設定されていない場合でも、config.ini に設定した HTTPClient 関連の設定を反映する
   - @Hexa
+- [CHANGE] aws_profile が設定されていない場合でも debug 設定が反映されるように変更する
+  - @Hexa
 
 ### misc
 
