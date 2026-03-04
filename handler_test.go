@@ -674,6 +674,58 @@ func TestOggFileWriting(t *testing.T) {
 		}
 	})
 
+	t.Run("audio_streaming_header enabled converts received payload to ogg opus", func(t *testing.T) {
+		c := Config{
+			AudioStreamingHeader: true,
+			DisableSilentPacket:  true,
+		}
+
+		expectedPayload := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+
+		r := readDumpFile(t, "testdata/header_long.jsonl", 0)
+		defer r.Close()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		opusCh := newOpusChannel(ctx, c, r, newPacketReaderOptions(c))
+
+		header := soraHeader{
+			SoraChannelID:    "ogg-test",
+			SoraSessionID:    "C2TFB1QBDS4WD5SX317SWMJ6FM",
+			SoraConnectionID: "1X0Z8JXZAD5A93X68M2S9NTC4G",
+		}
+
+		reader, err := opus2ogg(ctx, opusCh, 48000, 1, c, header)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer reader.Close()
+
+		data, err := io.ReadAll(reader)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		pages, err := parseOggPagesForTest(data)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		if !assert.GreaterOrEqual(t, len(pages), 3) {
+			return
+		}
+
+		assert.Equal(t, []byte("OpusHead"), pages[0].Payload[:8])
+		assert.Equal(t, []byte("OpusTags"), pages[1].Payload[:8])
+
+		audioPages := pages[2:]
+		assert.Equal(t, 9, len(audioPages))
+		for _, page := range audioPages {
+			assert.Equal(t, expectedPayload, page.Payload)
+		}
+	})
+
 	t.Run("success", func(t *testing.T) {
 		oggDir, err := os.MkdirTemp("", "ogg-")
 		if err != nil {
