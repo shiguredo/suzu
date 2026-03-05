@@ -43,7 +43,7 @@ func NewLogger(config *Config, logFilename string, logDomain string) (*zerolog.L
 
 		writer := zerolog.ConsoleWriter{
 			Out: os.Stdout,
-			FormatTimestamp: func(i interface{}) string {
+			FormatTimestamp: func(i any) string {
 				darkGray := "\x1b[90m"
 				reset := "\x1b[0m"
 				return strings.Join([]string{darkGray, i.(string), reset}, "")
@@ -83,7 +83,7 @@ func NewLogger(config *Config, logFilename string, logDomain string) (*zerolog.L
 func prettyFormat(w *zerolog.ConsoleWriter) {
 	const Reset = "\x1b[0m"
 
-	w.FormatLevel = func(i interface{}) string {
+	w.FormatLevel = func(i any) string {
 		var color, level string
 		// TODO: 各色を定数に置き換える
 		// TODO: 他の logLevel が必要な場合は追加する
@@ -103,26 +103,26 @@ func prettyFormat(w *zerolog.ConsoleWriter) {
 		level = strings.ToUpper(i.(string))
 		return fmt.Sprintf("%s[%s]%s", color, level, Reset)
 	}
-	w.FormatCaller = func(i interface{}) string {
+	w.FormatCaller = func(i any) string {
 		return fmt.Sprintf("[%s]", filepath.Base(i.(string)))
 	}
 	// TODO: Caller をファイル名と行番号だけの表示で出力する
 	//       以下のようなフォーマットにしたい
 	//       2023-04-17 12:50:09.334758Z [INFO] [config.go:102] CONF | debug=true
 	// TODO: name=value が無い場合に | を消す方法がわからなかった
-	w.FormatMessage = func(i interface{}) string {
+	w.FormatMessage = func(i any) string {
 		if i == nil {
 			return ""
 		} else {
 			return fmt.Sprintf("%s |", i)
 		}
 	}
-	w.FormatFieldName = func(i interface{}) string {
+	w.FormatFieldName = func(i any) string {
 		const Cyan = "\x1b[36m"
 		return fmt.Sprintf("%s%s=%s", Cyan, i, Reset)
 	}
 	// TODO: カンマ区切りを同実現するかわからなかった
-	w.FormatFieldValue = func(i interface{}) string {
+	w.FormatFieldValue = func(i any) string {
 		return fmt.Sprintf("%s", i)
 	}
 }

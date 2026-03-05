@@ -2,6 +2,7 @@ package suzu
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/service/transcribestreaming/types"
 )
@@ -24,10 +25,8 @@ func GetLanguageCode(serviceType, lang string, f func(string) (string, error)) (
 	switch serviceType {
 	case "aws", "awsv2":
 		lc := new(types.LanguageCode)
-		for _, languageCode := range lc.Values() {
-			if languageCode == types.LanguageCode(lang) {
-				return lang, nil
-			}
+		if slices.Contains(lc.Values(), types.LanguageCode(lang)) {
+			return lang, nil
 		}
 		return "", fmt.Errorf("%w: %s", ErrUnsupportedLanguageCode, lang)
 	case "gcp", "test", "dump":

@@ -41,7 +41,7 @@ func parseOggPagesForTest(data []byte) ([]oggPageForTest, error) {
 		}
 
 		payloadLength := 0
-		for i := 0; i < segmentCount; i++ {
+		for i := range segmentCount {
 			payloadLength += int(header[27+i])
 		}
 
@@ -93,8 +93,7 @@ func TestOpusPacketReader(t *testing.T) {
 			r := readDumpFile(t, "testdata/000.jsonl", 0)
 			defer r.Close()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			packetReaderOptions := []packetReaderOption{
 				optionSilentPacket,
@@ -122,8 +121,7 @@ func TestOpusPacketReader(t *testing.T) {
 			r := readDumpFile(t, "testdata/000.jsonl", 1100*time.Millisecond)
 			defer r.Close()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			packetReaderOptions := []packetReaderOption{
 				optionSilentPacket,
@@ -161,8 +159,7 @@ func TestOpusPacketReader(t *testing.T) {
 			errPacketRead := errors.New("packet read error")
 			r := NewErrReadCloser(errPacketRead)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			packetReaderOptions := []packetReaderOption{
 				optionSilentPacket,
@@ -191,8 +188,7 @@ func TestOpusPacketReader(t *testing.T) {
 			// すでに閉じている場合の動作を確認する
 			r.Close()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			packetReaderOptions := []packetReaderOption{
 				optionSilentPacket,
@@ -226,8 +222,7 @@ func TestOpusPacketReader(t *testing.T) {
 			r := readDumpFile(t, "testdata/000.jsonl", 0)
 			defer r.Close()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			// silent packet 無効化
 			packetReaderOptions := []packetReaderOption{}
@@ -253,8 +248,7 @@ func TestOpusPacketReader(t *testing.T) {
 			r := readDumpFile(t, "testdata/000.jsonl", 1000*time.Millisecond)
 			defer r.Close()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			// silent packet 無効化
 			packetReaderOptions := []packetReaderOption{}
@@ -288,8 +282,7 @@ func TestOpusPacketReader(t *testing.T) {
 			errPacketRead := errors.New("packet read error")
 			r := NewErrReadCloser(errPacketRead)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			packetReaderOptions := []packetReaderOption{}
 			opusCh := newOpusChannel(ctx, c, &r, packetReaderOptions)
@@ -315,8 +308,7 @@ func TestOpusPacketReader(t *testing.T) {
 			// すでに閉じている場合の動作を確認する
 			r.Close()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			packetReaderOptions := []packetReaderOption{}
 			opusCh := newOpusChannel(ctx, c, r, packetReaderOptions)
@@ -344,8 +336,7 @@ func TestOpusPacketReader(t *testing.T) {
 			r := readDumpFile(t, "testdata/header.jsonl", 0)
 			defer r.Close()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			packetReaderOptions := []packetReaderOption{
 				optionReadPacketWithHeader,
@@ -371,8 +362,7 @@ func TestOpusPacketReader(t *testing.T) {
 			errPacketRead := errors.New("packet read error")
 			r := NewErrReadCloser(errPacketRead)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			packetReaderOptions := []packetReaderOption{
 				optionReadPacketWithHeader,
@@ -400,8 +390,7 @@ func TestOpusPacketReader(t *testing.T) {
 			// すでに閉じている場合の動作を確認する
 			r.Close()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			packetReaderOptions := []packetReaderOption{
 				optionReadPacketWithHeader,
@@ -599,8 +588,7 @@ func TestReadPacketWithHeader(t *testing.T) {
 			}()
 
 			c := Config{}
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			packetCh := optionReadPacketWithHeader(ctx, c, ch)
 
@@ -633,8 +621,7 @@ func TestOggFileWriting(t *testing.T) {
 		r := readDumpFile(t, "testdata/000_long.jsonl", 0)
 		defer r.Close()
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		opusCh := newOpusChannel(ctx, c, r, newPacketReaderOptions(c))
 
@@ -685,8 +672,7 @@ func TestOggFileWriting(t *testing.T) {
 		r := readDumpFile(t, "testdata/header_long.jsonl", 0)
 		defer r.Close()
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		opusCh := newOpusChannel(ctx, c, r, newPacketReaderOptions(c))
 

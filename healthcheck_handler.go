@@ -7,7 +7,7 @@ import (
 )
 
 func (s *Server) healthcheckHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"version": s.config.Version,
 	})
 }

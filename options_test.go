@@ -1,7 +1,6 @@
 package suzu
 
 import (
-	"context"
 	"encoding/binary"
 	"testing"
 	"time"
@@ -33,8 +32,7 @@ func TestPacketReaderOptions(t *testing.T) {
 }
 
 func TestPacketReaderOptionsOrder_SilentAfterHeader(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	c := Config{
 		AudioStreamingHeader:      true,
@@ -80,8 +78,7 @@ func TestPacketReaderOptionsOrder_SilentAfterHeader(t *testing.T) {
 }
 
 func TestOptionReadPacketWithHeader_PayloadTooLarge(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	in := make(chan opus, 1)
 	out := optionReadPacketWithHeader(ctx, Config{}, in)
