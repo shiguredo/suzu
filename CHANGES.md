@@ -11,6 +11,8 @@
 
 ## develop
 
+- [UPDATE] go.mod の Go のバージョンを 1.26.1 にあげる
+  - @voluntas
 - [UPDATE] AWS SDK の HTTP クライアントの http.Transport を config.ini で設定可能にする
   - 設定項目は次の通り
     - keep-alive 無効化の有無

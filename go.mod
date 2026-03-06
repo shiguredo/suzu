@@ -1,6 +1,6 @@
 module github.com/shiguredo/suzu
 
-go 1.26.0
+go 1.26.1
 
 require (
 	cloud.google.com/go/speech v1.27.1
