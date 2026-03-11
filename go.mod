@@ -1,6 +1,6 @@
 module github.com/shiguredo/suzu
 
-go 1.26.0
+go 1.26.1
 
 require (
 	cloud.google.com/go/speech v1.27.1
@@ -20,7 +20,6 @@ require (
 	google.golang.org/api v0.229.0
 	google.golang.org/grpc v1.71.1
 	google.golang.org/protobuf v1.36.6
-	gopkg.in/hraban/opus.v2 v2.0.0-20230925203106-0188a62cb302
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
