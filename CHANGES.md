@@ -60,6 +60,17 @@
   - @Hexa
 - [UPDATE] opus 関連の struct を一つにまとめる
   - @Hexa
+- [UPDATE] go.mod の Go のバージョンを 1.26.2 にあげる
+  - @Hexa
+
+## 2026.1.4
+
+**リリース日: 2026-04-09
+
+### misc
+
+- [UPDATE] go.mod の Go のバージョンを 1.26.2 にあげる
+  - @Hexa
 
 ## 2026.1.3
 
