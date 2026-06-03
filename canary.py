@@ -48,7 +48,7 @@ def git_operations(new_version: str, dry_run: bool) -> None:
         print(f"Dry-run: Would run 'git commit -m [canary] バージョンを {new_version} にあげる'")
         print(f"Dry-run: Would run 'git tag {new_version}'")
         print("Dry-run: Would run 'git push'")
-        print("Dry-run: Would run 'git push --tags'")
+        print(f"Dry-run: Would run 'git push origin {new_version}'")
     else:
         subprocess.run(["git", "add", "VERSION"], check=True)
         subprocess.run(
@@ -56,7 +56,7 @@ def git_operations(new_version: str, dry_run: bool) -> None:
         )
         subprocess.run(["git", "tag", new_version], check=True)
         subprocess.run(["git", "push"], check=True)
-        subprocess.run(["git", "push", "--tags"], check=True)
+        subprocess.run(["git", "push", "origin", new_version], check=True)
 
 
 # メイン処理
