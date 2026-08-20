@@ -55,6 +55,10 @@
   - @Hexa
 - [UPDATE] WithCredentialsFile は deprecated のため WithAuthCredentialsFile に変更する
   - @Hexa
+- [UPDATE] deprecated な golang.org/x/net/http2/h2c をやめ、http.Server.Protocols で HTTP/2 over TCP を有効にする
+  - @Hexa
+- [UPDATE] GitHub Actions の staticcheck のバージョンを 2026.1 から 2026.2rc1 に上げる
+  - @Hexa
 
 ## 2026.1.7
 

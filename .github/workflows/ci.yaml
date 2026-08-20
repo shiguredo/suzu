@@ -27,7 +27,7 @@ jobs:
 
       - uses: dominikh/staticcheck-action@v1
         with:
-          version: "2026.1"
+          version: "2026.2rc1"
           install-go: false
 
       - name: Test
