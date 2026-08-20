@@ -15,6 +15,11 @@
 
 **リリース日: 2026-08-20
 
+- [UPDATE] WithCredentialsFile は deprecated のため、credentials JSON の type を読み取り WithAuthCredentialsJSON で認証するよう変更する
+  - @Hexa
+- [UPDATE] deprecated な golang.org/x/net/http2/h2c をやめ、http.Server.Protocols で HTTP/2 over TCP を有効にする
+  - @Hexa
+
 ### misc
 
 - [UPDATE] go.mod の Go のバージョンを 1.27.0 に上げる
@@ -52,10 +57,6 @@
 - [UPDATE] google.golang.org/protobuf を v1.36.6 から v1.36.12 に上げる
   - @Hexa
 - [UPDATE] gopkg.in/ini.v1 を v1.67.0 から v1.67.3 に上げる
-  - @Hexa
-- [UPDATE] WithCredentialsFile は deprecated のため、credentials JSON の type を読み取り WithAuthCredentialsJSON で認証するよう変更する
-  - @Hexa
-- [UPDATE] deprecated な golang.org/x/net/http2/h2c をやめ、http.Server.Protocols で HTTP/2 over TCP を有効にする
   - @Hexa
 - [UPDATE] GitHub Actions の staticcheck のバージョンを 2026.1 から 2026.2rc1 に上げる
   - @Hexa
