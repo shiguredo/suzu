@@ -11,6 +11,51 @@
 
 ## develop
 
+## 2026.2.0
+
+**リリース日: 2026-08-20
+
+### misc
+
+- [UPDATE] go.mod の Go のバージョンを 1.27.0 に上げる
+  - @Hexa
+- [UPDATE] cloud.google.com/go/speech を v1.27.1 から v1.36.0 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/aws-sdk-go-v2 を v1.36.3 から v1.43.6 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/aws-sdk-go-v2/config を v1.29.14 から v1.32.37 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/aws-sdk-go-v2/service/transcribestreaming を v1.25.3 から v1.38.3 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/smithy-go を v1.22.3 から v1.27.8 に上げる
+  - @Hexa
+- [UPDATE] github.com/labstack/echo-contrib を v0.17.3 から v0.50.1 に上げる
+  - @Hexa
+- [UPDATE] github.com/labstack/echo/v4 を v4.13.3 から v4.15.4 に上げる
+  - @Hexa
+- [UPDATE] github.com/pion/rtp を v1.8.13 から v1.10.5 に上げる
+  - @Hexa
+- [UPDATE] github.com/rs/zerolog を v1.34.0 から v1.35.1 に上げる
+  - @Hexa
+- [UPDATE] github.com/stretchr/testify を v1.10.0 から v1.12.1 に上げる
+  - @Hexa
+- [UPDATE] golang.org/x/exp を v0.0.0-20250408133849-7e4ce0ab07d0 から v0.0.0-20260813180055-c1d0aacb2297 に上げる
+  - @Hexa
+- [UPDATE] golang.org/x/net を v0.39.0 から v0.58.0 に上げる
+  - @Hexa
+- [UPDATE] golang.org/x/sync を v0.13.0 から v0.22.0 に上げる
+  - @Hexa
+- [UPDATE] google.golang.org/api を v0.229.0 から v0.293.0 に上げる
+  - @Hexa
+- [UPDATE] google.golang.org/grpc を v1.71.1 から v1.83.1 に上げる
+  - @Hexa
+- [UPDATE] google.golang.org/protobuf を v1.36.6 から v1.36.12 に上げる
+  - @Hexa
+- [UPDATE] gopkg.in/ini.v1 を v1.67.0 から v1.67.3 に上げる
+  - @Hexa
+- [UPDATE] WithCredentialsFile は deprecated のため WithAuthCredentialsFile に変更する
+  - @Hexa
+
 ## 2026.1.7
 
 **リリース日: 2026-07-10
