@@ -2,8 +2,11 @@ package suzu
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 
 	speech "cloud.google.com/go/speech/apiv1"
 	zlog "github.com/rs/zerolog/log"
@@ -49,7 +52,11 @@ func (stt SpeechToText) Start(ctx context.Context, r io.ReadCloser, header soraH
 	var opts []option.ClientOption
 	credentialFile := config.GcpCredentialFile
 	if credentialFile != "" {
-		opts = append(opts, option.WithCredentialsFile(credentialFile))
+		opt, err := gcpAuthCredentialsOption(credentialFile)
+		if err != nil {
+			return nil, NewSuzuConfError(err)
+		}
+		opts = append(opts, opt)
 	}
 
 	client, err := speech.NewClient(ctx, opts...)
@@ -197,4 +204,25 @@ func NewStreamingRecognitionConfig(recognitionConfig *speechpb.RecognitionConfig
 			InterimResults:  interimResults,
 		},
 	}
+}
+
+// gcpAuthCredentialsOption は credentials JSON の type を読み、
+// その種類に対応する WithAuthCredentialsJSON を返す。
+func gcpAuthCredentialsOption(credentialFile string) (option.ClientOption, error) {
+	data, err := os.ReadFile(credentialFile)
+	if err != nil {
+		return nil, err
+	}
+
+	var f struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(data, &f); err != nil {
+		return nil, fmt.Errorf("failed to parse credential file %s: %w", credentialFile, err)
+	}
+	if f.Type == "" {
+		return nil, fmt.Errorf("missing `type` field in credential file: %s", credentialFile)
+	}
+
+	return option.WithAuthCredentialsJSON(option.CredentialsType(f.Type), data), nil
 }
