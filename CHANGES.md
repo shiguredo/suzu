@@ -13,7 +13,7 @@
 
 ## 2026.2.0
 
-**リリース日: 2026-08-20
+**リリース日: 2026-08-21
 
 - [UPDATE] WithCredentialsFile は deprecated のため、credentials JSON の type を読み取り WithAuthCredentialsJSON で認証するよう変更する
   - @Hexa
