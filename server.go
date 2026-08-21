@@ -18,8 +18,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	zlog "github.com/rs/zerolog/log"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 type Server struct {
@@ -29,12 +27,6 @@ type Server struct {
 }
 
 func NewServer(c *Config, service string) (*Server, error) {
-	h2s := &http2.Server{
-		MaxConcurrentStreams: c.HTTP2MaxConcurrentStreams,
-		MaxReadFrameSize:     c.HTTP2MaxReadFrameSize,
-		IdleTimeout:          time.Duration(c.HTTP2IdleTimeout) * time.Second,
-	}
-
 	_, err := netip.ParseAddr(c.ListenAddr)
 	if err != nil {
 		return nil, err
@@ -46,9 +38,20 @@ func NewServer(c *Config, service string) (*Server, error) {
 		config: c,
 	}
 
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetHTTP2(true)
+	protocols.SetUnencryptedHTTP2(true)
+
 	e.Server = &http.Server{
-		Addr:    net.JoinHostPort(c.ListenAddr, strconv.Itoa(c.ListenPort)),
-		Handler: h2c.NewHandler(e, h2s),
+		Addr:      net.JoinHostPort(c.ListenAddr, strconv.Itoa(c.ListenPort)),
+		Handler:   e,
+		Protocols: protocols,
+		HTTP2: &http.HTTP2Config{
+			MaxConcurrentStreams: int(c.HTTP2MaxConcurrentStreams),
+			MaxReadFrameSize:     int(c.HTTP2MaxReadFrameSize),
+		},
+		IdleTimeout: time.Duration(c.HTTP2IdleTimeout) * time.Second,
 	}
 
 	// クライアント認証をするかどうかのチェック
@@ -65,10 +68,6 @@ func NewServer(c *Config, service string) (*Server, error) {
 			ClientCAs:  certPool,
 		}
 		e.Server.TLSConfig = tlsConfig
-	}
-
-	if err := http2.ConfigureServer(e.Server, h2s); err != nil {
-		return nil, err
 	}
 
 	e.Pre(middleware.RemoveTrailingSlash())
