@@ -59,6 +59,31 @@
 - [UPDATE] opus 関連の struct を一つにまとめる
   - @Hexa
 
+## 2026.2.1
+
+**リリース日: 2026-09-02
+
+### misc
+
+- [UPDATE] go.mod の Go のバージョンを 1.27.1 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/aws-sdk-go-v2 を v1.43.6 から v1.45.1 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/aws-sdk-go-v2/config を v1.32.37 から v1.33.2 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/aws-sdk-go-v2/service/transcribestreaming を v1.38.3 から v1.42.0 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/smithy-go を v1.27.8 から v1.28.1 に上げる
+  - @Hexa
+- [UPDATE] golang.org/x/exp を v0.0.0-20260813180055-c1d0aacb2297 から v0.0.0-20260824195058-e88cd73687aa に上げる
+  - @Hexa
+- [UPDATE] google.golang.org/api を v0.293.0 から v0.297.0 に上げる
+  - @Hexa
+- [UPDATE] google.golang.org/grpc を v1.83.1 から v1.83.2 に上げる
+  - @Hexa
+- [UPDATE] GitHub Actions の staticcheck のバージョンを 2026.2rc1 から 2026.2.1 に上げる
+  - @Hexa
+
 ## 2026.2.0
 
 **リリース日: 2026-08-21
