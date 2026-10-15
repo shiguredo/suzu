@@ -59,6 +59,17 @@
 - [UPDATE] opus 関連の struct を一つにまとめる
   - @Hexa
 
+## 2026.2.2
+
+**リリース日: 2026-10-15
+
+### misc
+
+- [UPDATE] go.mod の Go のバージョンを 1.27.2 に上げる
+  - @Hexa
+- [UPDATE] GitHub Actions の staticcheck のバージョンを 2026.2.1 から 2026.2.2 に上げる
+  - @Hexa
+
 ## 2026.2.1
 
 **リリース日: 2026-09-02
