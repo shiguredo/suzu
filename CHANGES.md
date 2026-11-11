@@ -11,6 +11,37 @@
 
 ## develop
 
+## 2026.2.4
+
+**リリース日**: 2026-11-11
+
+### misc
+
+- [UPDATE] go.mod の Go のバージョンを 1.27.3 から 1.27.4 に上げる
+  - @Hexa
+- [UPDATE] cloud.google.com/go/speech を v1.36.0 から v1.38.1 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/aws-sdk-go-v2 を v1.45.1 から v1.48.0 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/aws-sdk-go-v2/config を v1.33.2 から v1.33.18 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/aws-sdk-go-v2/service/transcribestreaming を v1.42.0 から v1.44.14 に上げる
+  - @Hexa
+- [UPDATE] github.com/aws/smithy-go を v1.28.1 から v1.28.9 に上げる
+  - @Hexa
+- [UPDATE] github.com/labstack/echo/v4 を v4.15.4 から v4.16.3 に上げる
+  - @Hexa
+- [UPDATE] github.com/pion/rtp を v1.10.5 から v1.10.6 に上げる
+  - @Hexa
+- [UPDATE] golang.org/x/exp を v0.0.0-20260824195058-e88cd73687aa から v0.0.0-20261109185158-a52e3aef5920 に上げる
+  - @Hexa
+- [UPDATE] golang.org/x/sync を v0.22.0 から v0.25.0 に上げる
+  - @Hexa
+- [UPDATE] google.golang.org/api を v0.297.0 から v0.312.0 に上げる
+  - @Hexa
+- [UPDATE] google.golang.org/grpc を v1.83.2 から v1.85.0 に上げる
+  - @Hexa
+
 ## 2026.2.3
 
 **リリース日: 2026-10-20
