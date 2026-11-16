@@ -1,7 +1,7 @@
 # echo をやめて net/http に切り替える
 
 - Created: 2026-11-16
-- Completed: {YYYY-MM-DD}
+- Completed: 2026-11-17
 - Branch: feature/change-replace-echo-with-net-http
 - Polished: 2026-11-16
 
@@ -196,3 +196,36 @@ HTTP サーバーの実装を `github.com/labstack/echo/v4` と `github.com/labs
 ## 関連 issue
 
 - `0001-doc-prometheus-exporter.md` と `0002-add-prometheus-metrics.md` は、現状の記述が `echo-contrib/prometheus` と `echo_*` を前提にしている。本 issue の完了後に同期が必要になる。
+
+## 解決方法
+
+- HTTP サーバーを `net/http` に切り替え、`github.com/labstack/echo/v4` と `github.com/labstack/echo-contrib` を依存から外した。`github.com/prometheus/client_golang` は直接依存にした。
+- `middleware.go` を追加した。
+  - `responseWriter`: 送信したステータスコード、書き込んだバイト数、ヘッダーを送信済みかどうか、エラーを記録するラッパー。`WriteHeader` は委譲した後に記録し、`Write` と `FlushError` は委譲の結果にかかわらず送信済みにする。`FlushError` と `Unwrap` を実装した。
+  - `newMainHandler`: ラッパーを 1 回だけ生成し、recover 付きで `http.ServeMux` を呼んだ後に、メトリクスとアクセスログを記録する。
+  - `serveWithRecover`: panic を `PANIC-RECOVERED` としてスタックトレース付きで zerolog に出力し、ヘッダー未送信なら 500 を返す。`http.ErrAbortHandler` は再度 panic させる。
+  - `writeAccessLog`: 現行と同じキー、メッセージ、`/.ok` の除外で出力する。`remote_ip` は `RemoteAddr` のホスト部とする。
+  - `errorHandlerFunc` (アダプター) と `httpError`: ヘッダー未送信の場合に限り、`http.StatusText` の文言でエラー応答を書く。
+- `metrics.go` を追加した。`suzu_http_*` の 4 種を `promauto` でパッケージの初期化時に登録する。`url` ラベルは `r.Pattern` からメソッドを除いたもの (空なら `unknown`)、`method` ラベルは `net/http` の定数以外を `unknown` にする。リクエストサイズは、`ContentLength` が大きい場合にあふれないよう float64 で足す。
+- `server.go`: `Server` が `mainServer` と `exporterServer` の 2 つの `*http.Server` を持つようにした。Exporter は専用の `http.ServeMux` に `GET /metrics` を登録した。`Start` / `StartExporter` の待ち受けのチャネルにバッファを持たせ、`StartExporter` が停止時に送信で止まらないようにした。
+- `handler.go`: `createSpeechHandler` を `errorHandlerFunc` に書き換え、`echo.Context` の呼び出しを置き換えた。
+  - `soraHeader` の `header` タグと `INVALID-HEADER` の分岐を削除し、`newSoraHeader` で `r.Header.Get` から取り出す。
+  - `SuzuError` 以外のエラーは、原因をアクセスログの error に残すためにそのまま返す。
+  - Flush の失敗は `FLUSH-FAILED` として debug レベルで出力する。
+  - echo の cookbook への参照に加え、解消済みの `TODO(v)` と参考リンク、コメントアウトしていたヘッダーのフィールドも削除した。サンプルレートの TODO は取得元のヘッダーを書いた。
+- `healthcheck_handler.go`: `encoding/json` で書き出す。ステータスコード、Content-Type、ボディは変えていない。
+- テスト
+  - `healthcheck_handler_test.go` と `test_handler_test.go` を、`httptest.NewRequest` と `httptest.NewRecorder` をハンドラーに直接渡す形にした。`*echo.HTTPError` の検証は `httpError` で行う。
+  - `test_handler_test.go` のログの取得を、`os.Pipe` と `log.Logger` の再代入から `captureLog` に変えた。SuzuConfError の経路のテストを追加した。
+  - `main_test.go`: `TestMain` で `log.Logger` を 1 回だけ設定し、`captureLog` は出力先だけを差し替える。テストの途中で `log.Logger` に代入すると、ハンドラーの終了後も動く goroutine とデータ競合するため。
+  - `middleware_test.go`: ラッパー (Flush や Write の後の `WriteHeader`、委譲先の panic)、アダプター、recover、アクセスログ、panic 時のメトリクスを確認する。
+  - `metrics_test.go`: `approximateRequestSize` を確認する。
+  - `server_test.go`: `NewServer` が組み立てた `http.Server` を HTTP/2 over TCP で待ち受け、次を確認する。
+    - `POST /test` の結果の逐次受信
+    - `POST /dump` での Sora のヘッダーの取り出しとダンプファイルへの書き込み
+    - HTTP/1.1 での `POST /speech` の 400
+    - Exporter の `/metrics` の `suzu_http_*` の 4 種、ラベルの値の制限、404 / 405、バケット、処理時間
+    - Ogg ファイルの出力を有効にした `sora-session-id` の取り出しと、`/speech` へのサービスの割り当て
+- `CHANGES.md` の `## develop` に、後方互換のない変更を `[CHANGE]` として運用者向けに記載した。
+- `0001-doc-prometheus-exporter.md` は未完了で、`doc/USE.md` に `echo_*` の記載がないため、ドキュメントは変更していない。
+- 新旧の実装に同じリクエストを送り、`/speech` / `/test` / `/dump` の全終了経路で、クライアントが受け取るステータスコードが切り替え前と同じであることを確認した。
