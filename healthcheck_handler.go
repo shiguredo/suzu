@@ -1,13 +1,15 @@
 package suzu
 
 import (
+	"encoding/json"
 	"net/http"
-
-	"github.com/labstack/echo/v4"
 )
 
-func (s *Server) healthcheckHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]any{
+// healthcheckHandler は LB からのヘルスチェックにバージョンを JSON で返す
+// ステータスコードは最初の書き込みで 200 に確定する
+func (s *Server) healthcheckHandler(w http.ResponseWriter, r *http.Request) error {
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(map[string]any{
 		"version": s.config.Version,
 	})
 }

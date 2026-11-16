@@ -2,7 +2,6 @@ package suzu
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,13 +10,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"testing/iotest"
 	"time"
 
-	"github.com/labstack/echo/v4"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -91,17 +88,15 @@ func TestSpeechHandler(t *testing.T) {
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
-		e := echo.New()
 		req := httptest.NewRequest("POST", path, r)
 		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
 		req.Proto = "HTTP/2.0"
 		req.ProtoMajor = 2
 		req.ProtoMinor = 0
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
 		h := s.createSpeechHandler(serviceType, nil)
-		err := h(c)
+		err := h(rec, req)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -131,131 +126,80 @@ func TestSpeechHandler(t *testing.T) {
 	})
 
 	t.Run("unexpected http proto version", func(t *testing.T) {
-		logger := log.Logger
-		defer func() {
-			log.Logger = logger
-		}()
-
-		pr, pw, err := os.Pipe()
-		if err != nil {
-			t.Fatal(err)
-		}
-		log.Logger = zerolog.New(pw).With().Caller().Timestamp().Logger()
+		logs := captureLog(t)
 
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
-		e := echo.New()
 		req := httptest.NewRequest("POST", path, r)
 		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
 		req.Proto = "HTTP/1.1"
 		req.ProtoMajor = 1
 		req.ProtoMinor = 1
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
 		h := s.createSpeechHandler(serviceType, nil)
-		err = h(c)
-		if assert.Error(t, err) {
-			assert.Equal(t, http.StatusBadRequest, err.(*echo.HTTPError).Code)
+		err := h(rec, req)
+		var httpErr *httpError
+		if assert.ErrorAs(t, err, &httpErr) {
+			assert.Equal(t, http.StatusBadRequest, httpErr.code)
 		}
 
-		pw.Close()
-
-		var buf bytes.Buffer
-		n, err := buf.ReadFrom(pr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		assert.Contains(t, buf.String()[:n], "INVALID-HTTP-PROTOCOL")
+		assert.Contains(t, logs.String(), "INVALID-HTTP-PROTOCOL")
 	})
 
 	t.Run("missing sora-audio-streaming-language-code header", func(t *testing.T) {
-		logger := log.Logger
-		defer func() {
-			log.Logger = logger
-		}()
-
-		pr, pw, err := os.Pipe()
-		if err != nil {
-			t.Fatal(err)
-		}
-		log.Logger = zerolog.New(pw).With().Caller().Timestamp().Logger()
+		logs := captureLog(t)
 
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
-		e := echo.New()
 		req := httptest.NewRequest("POST", path, r)
 		req.Proto = "HTTP/2.0"
 		req.ProtoMajor = 2
 		req.ProtoMinor = 0
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
 		h := s.createSpeechHandler(serviceType, nil)
-		err = h(c)
-		if assert.Error(t, err) {
-			assert.Equal(t, http.StatusInternalServerError, err.(*echo.HTTPError).Code)
+		err := h(rec, req)
+		var httpErr *httpError
+		if assert.ErrorAs(t, err, &httpErr) {
+			assert.Equal(t, http.StatusInternalServerError, httpErr.code)
 		}
 
-		pw.Close()
-
-		var buf bytes.Buffer
-		n, err := buf.ReadFrom(pr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		assert.Contains(t, buf.String()[:n], "MISSING-SORA-AUDIO-STREAMING-LANGUAGE-CODE")
+		assert.Contains(t, logs.String(), "MISSING-SORA-AUDIO-STREAMING-LANGUAGE-CODE")
 	})
 
 	t.Run("unsupported language code", func(t *testing.T) {
-		logger := log.Logger
-		defer func() {
-			log.Logger = logger
-		}()
-
-		_, pw, err := os.Pipe()
-		if err != nil {
-			t.Fatal(err)
-		}
-		log.Logger = zerolog.New(pw).With().Caller().Timestamp().Logger()
-
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
-		e := echo.New()
 		req := httptest.NewRequest("POST", path, r)
 		req.Header.Set("sora-audio-streaming-language-code", "en-JP")
 		req.Proto = "HTTP/2.0"
 		req.ProtoMajor = 2
 		req.ProtoMinor = 0
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
 		h := s.createSpeechHandler(serviceType, nil)
-		err = h(c)
+		err := h(rec, req)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 		}
-
-		pw.Close()
 	})
 
 	t.Run("packet read error", func(t *testing.T) {
 		r := iotest.ErrReader(errors.New("packet read error"))
 
-		e := echo.New()
 		req := httptest.NewRequest("POST", path, r)
 		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
 		req.Proto = "HTTP/2.0"
 		req.ProtoMajor = 2
 		req.ProtoMinor = 0
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
 		h := s.createSpeechHandler(serviceType, nil)
-		err = h(c)
+		err = h(rec, req)
 		if assert.Error(t, err) {
 			assert.Equal(t, "packet read error", err.Error())
 		}
@@ -283,7 +227,6 @@ func TestSpeechHandler(t *testing.T) {
 		r := readDumpFile(t, "testdata/dump.jsonl", 150*time.Millisecond)
 		defer r.Close()
 
-		e := echo.New()
 		req := httptest.NewRequest("POST", path, r)
 		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
 		req.Proto = "HTTP/2.0"
@@ -294,10 +237,9 @@ func TestSpeechHandler(t *testing.T) {
 		defer cancel()
 		req2 := req.WithContext(ctx)
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req2, rec)
 
 		h := s.createSpeechHandler(serviceType, nil)
-		err = h(c)
+		err = h(rec, req2)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -326,19 +268,17 @@ func TestSpeechHandler(t *testing.T) {
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
-		e := echo.New()
 		req := httptest.NewRequest("POST", path, r)
 		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
 		req.Proto = "HTTP/2.0"
 		req.ProtoMajor = 2
 		req.ProtoMinor = 0
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
 		h := s.createSpeechHandler(serviceType, func(ctx context.Context, w io.WriteCloser, chnanelID, connectionID, languageCode string, results any) error {
 			return fmt.Errorf("ON-RESULT-ERROR")
 		})
-		err := h(c)
+		err := h(rec, req)
 		if assert.Error(t, err) {
 			assert.Equal(t, "ON-RESULT-ERROR", err.Error())
 		}
@@ -349,14 +289,12 @@ func TestSpeechHandler(t *testing.T) {
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
-		e := echo.New()
 		req := httptest.NewRequest("POST", path, r)
 		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
 		req.Proto = "HTTP/2.0"
 		req.ProtoMajor = 2
 		req.ProtoMinor = 0
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
 		h := s.createSpeechHandler(serviceType, func(ctx context.Context, w io.WriteCloser, chnanelID, connectionID, languageCode string, results any) error {
 			go func() {
@@ -370,7 +308,7 @@ func TestSpeechHandler(t *testing.T) {
 
 			return nil
 		})
-		err := h(c)
+		err := h(rec, req)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -406,17 +344,15 @@ func TestSpeechHandler(t *testing.T) {
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
-		e := echo.New()
 		req := httptest.NewRequest("POST", path, r)
 		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
 		req.Proto = "HTTP/2.0"
 		req.ProtoMajor = 2
 		req.ProtoMinor = 0
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
 		h := s.createSpeechHandler(serviceType, nil)
-		err := h(c)
+		err := h(rec, req)
 		if assert.NoError(t, err) {
 			assert.Equal(t, expectedCode, rec.Code)
 			assert.Empty(t, rec.Body.String())
@@ -430,20 +366,59 @@ func TestSpeechHandler(t *testing.T) {
 		r := readDumpFile(t, "testdata/dump.jsonl", 0)
 		defer r.Close()
 
-		e := echo.New()
 		req := httptest.NewRequest("POST", path, r)
 		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
 		req.Proto = "HTTP/2.0"
 		req.ProtoMajor = 2
 		req.ProtoMinor = 0
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
 		h := s.createSpeechHandler(serviceType, nil)
-		err := h(c)
+		err := h(rec, req)
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 			assert.Empty(t, rec.Body.String())
+		}
+	})
+
+	// SuzuConfError は設定の不備などで復帰が難しいエラーで、type: error の結果をクライアントに送信してから終了する
+	// 原因をアクセスログの error に残すため、ハンドラーは SuzuConfError をそのまま返す
+	t.Run("SuzuConfError は type: error の結果を送信してからそのまま返す", func(t *testing.T) {
+		gcpConfig := Config{
+			ListenAddr: "127.0.0.1",
+			// 存在しない認証ファイルを指定して、外部サービスに接続する前に SuzuConfError にする
+			GcpCredentialFile: filepath.Join(t.TempDir(), "not-found.json"),
+		}
+		s, err := NewServer(&gcpConfig, "gcp")
+		if err != nil {
+			t.Fatalf("サーバーの生成に失敗した: %v", err)
+		}
+
+		r := readDumpFile(t, "testdata/dump.jsonl", 0)
+		defer r.Close()
+
+		req := httptest.NewRequest("POST", "/speech", r)
+		req.Header.Set("sora-audio-streaming-language-code", "ja-JP")
+		req.Proto = "HTTP/2.0"
+		req.ProtoMajor = 2
+		req.ProtoMinor = 0
+		rec := httptest.NewRecorder()
+
+		h := s.createSpeechHandler("gcp", nil)
+		err = h(rec, req)
+
+		// type: error の結果を書き込んで送信済みのため、ステータスコードは 200 のまま
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var result TranscriptionResult
+		if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+			t.Fatalf("結果を JSON として解釈できなかった: %v", err)
+		}
+		assert.Equal(t, "error", result.Type)
+
+		// 送信した結果と同じ SuzuConfError が返る
+		var confErr *SuzuConfError
+		if assert.ErrorAs(t, err, &confErr) {
+			assert.Equal(t, confErr.Error(), result.Reason)
 		}
 	})
 

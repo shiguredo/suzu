@@ -11,6 +11,58 @@
 
 ## develop
 
+- [CHANGE] HTTP サーバーを echo から標準ライブラリの net/http に切り替える
+  - 末尾スラッシュ付きのパス (/speech/ や /.ok/ など) を 404 にする
+    - Sora の audio_streaming_url や LB のヘルスチェックのパスを末尾スラッシュ付きで設定している場合は、末尾のスラッシュを外す必要がある
+  - Prometheus の HTTP メトリクスの名前を変更する
+    - echo_requests_total を suzu_http_requests_total に変更する
+    - echo_request_duration_seconds を suzu_http_request_duration_seconds に変更する
+    - echo_request_size_bytes を suzu_http_request_size_bytes に変更する
+    - echo_response_size_bytes を suzu_http_response_size_bytes に変更する
+    - echo_* を参照しているダッシュボードやアラートは、suzu_http_* に変更する必要がある
+  - Prometheus の HTTP メトリクスのラベルを変更する
+    - host ラベルを削除する
+      - インスタンスを識別する場合は、Prometheus が付ける instance ラベルを使う
+    - url ラベルを、登録していないパスで 404 になった場合と、メソッドが合わずに 405 になった場合に unknown にする
+      - 以前は、404 ではリクエストパス、405 ではルートのパス (/speech など) が入っていた
+      - 以前は、パスが不正な UTF-8 の場合にメトリクスの記録で panic して 500 を返していたが、404 (正規化されていないパスでは 307 リダイレクト) を返すようになる
+    - method ラベルを、GET / HEAD / POST / PUT / PATCH / DELETE / CONNECT / OPTIONS / TRACE 以外で unknown にする
+  - メトリクスの code ラベルとアクセスログの status を、クライアントに実際に送信したステータスコードにする
+    - 以前の code ラベルは、外部サービスへの接続に成功した後や、type: error の結果を送信した後にエラーで終了した場合に、ほとんどの場合で送信済みの 200 ではなく 500 などのエラーのステータスコードを記録していた
+    - 以前のアクセスログの status は、このうち設定の不備などで type: error の結果を送信した場合と、外部サービスから切断されて再接続に失敗した場合に、500 などのエラーのステータスコードを記録することがあった
+    - code ラベルやアクセスログの status の 4xx / 5xx でエラーを監視している場合、これらのエラーはエラーとして数えられなくなる
+      - 多くはアクセスログの error で確認できる
+      - 外部サービスから切断されて再接続に失敗した場合は、原因 (外部サービスがエラーのステータスコードを返した場合や、外部サービスに到達できなかった場合など) によってはアクセスログの error も出力されないため、channel_id と connection_id を含む error レベルのログで確認する
+    - 以前のアクセスログの status は、外部サービスへの接続のリトライを待つ間にクライアントからの音声の受信が終了して 500 を返した場合 (error は retry interrupted) に、200 を記録していた
+  - メトリクスの suzu_http_response_size_bytes とアクセスログの bytes_out に、エラー応答のボディのサイズを含める
+  - panic したリクエストも HTTP メトリクスに記録する
+  - アクセスログの error を変更する
+    - code=400, message=Bad Request 形式を、400 Bad Request 形式にする
+    - code=500, message= に原因のエラーが続く形式を、原因のエラーの文言だけにする
+    - 登録していないパスの 404、メソッドが合わない 405、正規化されていないパスの 307 リダイレクトでは、error を出力しない
+    - panic した場合に、panic: に続けて panic の内容を出力する
+      - 以前は、panic した場合に error を出力していなかった
+  - panic 時のログを、log_dir などのログの設定に従って PANIC-RECOVERED として error レベルで出力する
+    - 以前は、echo のロガーが [PANIC RECOVER] で始まるメッセージを標準出力に出力しており、ログの設定に従わなかった
+    - スタックトレースは stack に、すべての goroutine の分ではなく panic した goroutine の分だけを、4 KB で切り詰めずに出力する
+  - Exporter の内部エラー (TLS ハンドシェイクの失敗など) のログを、標準出力ではなく標準エラー出力に出力する
+  - エラー応答を変更する
+    - 対象は、/speech などがエラーになった場合と panic した場合、メインサーバーと Exporter で 404 / 405 になった場合
+    - ボディを {"message":"..."} 形式の JSON から text/plain に変更する
+      - 400 / 500 のボディは Bad Request / Internal Server Error になり、原因のエラーの文言を含めない
+      - 404 / 405 のボディは 404 page not found / Method Not Allowed になる
+    - X-Content-Type-Options: nosniff ヘッダーを付ける
+    - 外部サービスへの接続に成功した後、結果を 1 つも送信しないままエラーで終了した場合に、送信済みの 200 のレスポンスのボディに {"message":"..."} 形式の JSON を追記しない
+      - 以前は、外部サービスから切断されて再接続に失敗した場合などに追記することがあり、原因のエラーの文言を含むこともあった
+  - メインサーバーと Exporter のルーティングの細部を変更する
+    - GET を受け付けるパス (/.ok と Exporter の /metrics) で、HEAD にも応答する
+    - 登録したパスへの OPTIONS に、204 ではなく 405 を返す
+    - 405 の Allow ヘッダーに OPTIONS を含めず、GET を受け付けるパスでは HEAD を含める
+    - //speech のような正規化されていないパスに、404 ではなく正規化したパスへの 307 リダイレクトを返す
+      - このときの url ラベルは、正規化したパスとメソッドに一致するルートがあればそのルートのパス、なければ unknown になる
+    - パーセントエンコードされたパス (/%73peech など) を、デコードしたパスとしてルートと照合する
+  - GET /.ok の pretty クエリによる JSON の整形をやめる
+  - @voluntas
 - [UPDATE] AWS SDK の HTTP クライアントの http.Transport を config.ini で設定可能にする
   - 設定項目は次の通り
     - keep-alive 無効化の有無

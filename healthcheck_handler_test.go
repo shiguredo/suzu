@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,17 +48,17 @@ func TestHealthcheckHandler(t *testing.T) {
 
 	for _, tc := range testCaces {
 		t.Run(tc.Name, func(t *testing.T) {
-			e := echo.New()
 			req := httptest.NewRequest("GET", "/.ok", nil)
 			req.Proto = tc.Request.Proto
 			req.ProtoMajor = tc.Request.ProtoMajor
 			req.ProtoMinor = tc.Request.ProtoMinor
 			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
 
-			err := s.healthcheckHandler(c)
+			err := s.healthcheckHandler(rec, req)
 			if assert.NoError(t, err) {
 				assert.Equal(t, tc.Expect.StatusCode, rec.Code)
+				// ヘルスチェックの応答は JSON のため、Content-Type は application/json になる
+				assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 				resp := rec.Result()
 				body, _ := io.ReadAll(resp.Body)
 				assert.JSONEq(t, tc.Expect.Body, string(body))

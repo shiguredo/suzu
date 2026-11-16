@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/labstack/echo/v4"
 	"github.com/pion/rtp/codecs"
 	zlog "github.com/rs/zerolog/log"
 )
@@ -40,14 +39,22 @@ func NewSuzuErrorResponse(err error) TranscriptionResult {
 	}
 }
 
+// soraHeader は Sora が付与するリクエストヘッダーの値
 type soraHeader struct {
-	SoraChannelID string `header:"sora-channel-id"`
-	SoraSessionID string `header:"sora-session-id"`
-	// SoraClientID        string `header:"sora-client-id"`
-	SoraConnectionID string `header:"sora-connection-id"`
-	// SoraAudioCodecType  string `header:"sora-audio-codec-type"`
-	// SoraAudioSampleRate int64  `header:"sora-audio-sample-rate"`
-	SoraAudioStreamingLanguageCode string `header:"sora-audio-streaming-language-code"`
+	SoraChannelID                  string
+	SoraSessionID                  string
+	SoraConnectionID               string
+	SoraAudioStreamingLanguageCode string
+}
+
+// newSoraHeader は Sora が付与するリクエストヘッダーを取り出す
+func newSoraHeader(h http.Header) soraHeader {
+	return soraHeader{
+		SoraChannelID:                  h.Get("sora-channel-id"),
+		SoraSessionID:                  h.Get("sora-session-id"),
+		SoraConnectionID:               h.Get("sora-connection-id"),
+		SoraAudioStreamingLanguageCode: h.Get("sora-audio-streaming-language-code"),
+	}
 }
 
 func getServiceHandler(serviceType string, config Config, channelID, connectionID string, sampleRate uint32, channelCount uint16, languageCode string, onResultFunc any) (serviceHandlerInterface, error) {
@@ -59,28 +66,22 @@ func getServiceHandler(serviceType string, config Config, channelID, connectionI
 	return (*newHandlerFunc)(config, channelID, connectionID, sampleRate, channelCount, languageCode, onResultFunc), nil
 }
 
-// https://echo.labstack.com/cookbook/streaming-response/
-// TODO(v): http/2 の streaming を使ってレスポンスを戻す方法を調べる
-
-// https://github.com/herrberk/go-http2-streaming/blob/master/http2/server.go
-// 受信時はくるくるループを回す
-func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error) echo.HandlerFunc {
-	return func(c echo.Context) error {
+// createSpeechHandler は Sora から HTTP/2 で音声ストリーミングを受け付けるハンドラーを返す
+// 受信した音声を serviceType に応じたサービスのハンドラーに渡し、結果を受信するたびにクライアントへ逐次送信する
+// リトライしない、またはリトライの上限に達した SuzuError のステータスコードはここで WriteHeader で書き込み、
+// それ以外のエラーは原則として返してアダプターに任せる
+// ただし外部サービスのエラーを type: error の結果として送信した後は、エラーを返さずに終了する経路もある
+func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(context.Context, io.WriteCloser, string, string, string, any) error) errorHandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
 		zlog.Debug().Msg("CONNECTING")
 		// http/2 じゃなかったらエラー
-		if c.Request().ProtoMajor != 2 {
+		if r.ProtoMajor != 2 {
 			zlog.Error().
 				Msg("INVALID-HTTP-PROTOCOL")
-			return echo.NewHTTPError(http.StatusBadRequest)
+			return newHTTPError(http.StatusBadRequest)
 		}
 
-		h := soraHeader{}
-		if err := (&echo.DefaultBinder{}).BindHeaders(c, &h); err != nil {
-			zlog.Error().
-				Err(err).
-				Msg("INVALID-HEADER")
-			return echo.NewHTTPError(http.StatusBadRequest)
-		}
+		h := newSoraHeader(r.Header)
 		defer func() {
 			zlog.Debug().
 				Str("channel_id", h.SoraChannelID).
@@ -95,7 +96,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 				Str("channel_id", h.SoraChannelID).
 				Str("connection_id", h.SoraConnectionID).
 				Send()
-			return echo.NewHTTPError(http.StatusInternalServerError)
+			return newHTTPError(http.StatusInternalServerError)
 		}
 
 		zlog.Debug().
@@ -104,21 +105,21 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			Str("language_code", h.SoraAudioStreamingLanguageCode).
 			Msg("CONNECTED")
 
-		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		w.Header().Set("Content-Type", "application/json")
 
-		ctx := c.Request().Context()
+		ctx := r.Context()
 		// TODO: context.WithCancelCause(ctx) に変更する
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		// TODO: ヘッダから取得する
+		// TODO: sora-audio-sample-rate などのヘッダーから取得する
 		sampleRate := uint32(s.config.SampleRate)
 		channelCount := uint16(s.config.ChannelCount)
 
 		// 読み込み時の追加処理のオプション関数指定
 		packetReaderOptions := newPacketReaderOptions(*s.config)
 
-		opusCh := newOpusChannel(ctx, *s.config, c.Request().Body, packetReaderOptions)
+		opusCh := newOpusChannel(ctx, *s.config, r.Body, packetReaderOptions)
 
 		serviceHandler, err := getServiceHandler(serviceType, *s.config, h.SoraChannelID, h.SoraConnectionID, sampleRate, channelCount, languageCode, onResultFunc)
 		if err != nil {
@@ -127,7 +128,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 				Str("channel_id", h.SoraChannelID).
 				Str("connection_id", h.SoraConnectionID).
 				Send()
-			return echo.NewHTTPError(http.StatusInternalServerError)
+			return newHTTPError(http.StatusInternalServerError)
 		}
 
 		// サーバへの接続・結果の送信処理
@@ -147,12 +148,14 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 			if err != nil {
 				// EOF の場合は、クライアントとの接続が切れたため終了
 				if errors.Is(err, io.EOF) {
-					return c.NoContent(http.StatusOK)
+					w.WriteHeader(http.StatusOK)
+					return nil
 				}
 
 				// StopAudioStreaming API を実行せずに接続が切れた場合など
 				if errors.Is(err, context.Canceled) {
-					return c.NoContent(http.StatusOK)
+					w.WriteHeader(http.StatusOK)
+					return nil
 				}
 
 				zlog.Error().
@@ -208,7 +211,11 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							Msg("INVALID-STATUS-CODE")
 						statusCode = http.StatusInternalServerError
 					}
-					return c.NoContent(statusCode)
+					// 外部サービスとの接続成功後に切断されて再接続した場合はヘッダーを送信済みのため、
+					// この WriteHeader は無視されて 200 のまま終了する
+					// エラーを返さないため、この場合の原因はアクセスログの error には出力されず、上の error レベルのログでだけ確認できる
+					w.WriteHeader(statusCode)
+					return nil
 				}
 
 				// SuzuConfError の場合は、設定不備等で復帰が困難な場合を想定しているため、
@@ -226,7 +233,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 					}
 
 					// 切断前にクライアントに type: error のエラーメッセージを返す
-					if _, err := c.Response().Write(errMessage); err != nil {
+					if _, err := w.Write(errMessage); err != nil {
 						zlog.Error().
 							Err(err).
 							Str("channel_id", h.SoraChannelID).
@@ -234,22 +241,25 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							Send()
 						return err
 					}
-					c.Response().Flush()
+					flushResponse(w, h)
 				}
 
-				// SuzuError 以外の場合は 500 を返す
-				return echo.NewHTTPError(http.StatusInternalServerError, err)
+				// SuzuError 以外の場合は、原因をアクセスログの error に残すためにエラーをそのまま返す
+				// ヘッダー未送信ならアダプターが 500 に変換する
+				// SuzuConfError の場合と、外部サービスとの接続成功後に切断されて再接続した場合はヘッダーを送信済みのため、200 のまま終了する
+				return err
 			}
 			defer reader.Close()
 			// 外部サービスへの接続成功後にヘッダを送信する
-			c.Response().Flush()
+			flushResponse(w, h)
 
 			for {
 				buf := make([]byte, FrameSize)
 				n, err := reader.Read(buf)
 				if err != nil {
 					if errors.Is(err, io.EOF) {
-						return c.NoContent(http.StatusOK)
+						w.WriteHeader(http.StatusOK)
+						return nil
 					} else if strings.Contains(err.Error(), "client disconnected") {
 						// http.http2errClientDisconnected を使用したエラーの場合は、クライアントから切断されたため終了
 						// TODO: エラーレベルを見直す
@@ -283,7 +293,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 								return err
 							}
 
-							if _, err := c.Response().Write(errMessage); err != nil {
+							if _, err := w.Write(errMessage); err != nil {
 								zlog.Error().
 									Err(err).
 									Str("channel_id", h.SoraChannelID).
@@ -291,7 +301,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 									Send()
 								return err
 							}
-							c.Response().Flush()
+							flushResponse(w, h)
 							return ErrServerDisconnected
 						}
 
@@ -321,7 +331,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 								return err
 							}
 
-							if _, err := c.Response().Write(errMessage); err != nil {
+							if _, err := w.Write(errMessage); err != nil {
 								zlog.Error().
 									Err(err).
 									Str("channel_id", h.SoraChannelID).
@@ -329,10 +339,11 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 									Send()
 								return err
 							}
-							c.Response().Flush()
+							flushResponse(w, h)
 
 							// max_retry を超えた場合は終了
-							return c.NoContent(http.StatusOK)
+							w.WriteHeader(http.StatusOK)
+							return nil
 						}
 					} else {
 						zlog.Debug().
@@ -354,7 +365,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							return err
 						}
 
-						if _, err := c.Response().Write(errMessage); err != nil {
+						if _, err := w.Write(errMessage); err != nil {
 							zlog.Error().
 								Err(err).
 								Str("channel_id", h.SoraChannelID).
@@ -362,7 +373,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 								Send()
 							return err
 						}
-						c.Response().Flush()
+						flushResponse(w, h)
 
 						return orgErr
 					}
@@ -370,7 +381,7 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 
 				// メッセージが空でない場合はクライアントに結果を送信する
 				if n > 0 {
-					if _, err := c.Response().Write(buf[:n]); err != nil {
+					if _, err := w.Write(buf[:n]); err != nil {
 						zlog.Error().
 							Err(err).
 							Str("channel_id", h.SoraChannelID).
@@ -378,10 +389,23 @@ func (s *Server) createSpeechHandler(serviceType string, onResultFunc func(conte
 							Send()
 						return err
 					}
-					c.Response().Flush()
+					flushResponse(w, h)
 				}
 			}
 		}
+	}
+}
+
+// flushResponse はバッファしているレスポンスをクライアントに送信する
+// 送信に失敗しても処理は変えない
+// クライアントとの切断は、その後の書き込みや外部サービスからの読み込みで検出する
+func flushResponse(w http.ResponseWriter, h soraHeader) {
+	if err := http.NewResponseController(w).Flush(); err != nil {
+		zlog.Debug().
+			Err(err).
+			Str("channel_id", h.SoraChannelID).
+			Str("connection_id", h.SoraConnectionID).
+			Msg("FLUSH-FAILED")
 	}
 }
 
