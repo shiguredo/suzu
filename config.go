@@ -16,7 +16,7 @@ import (
 //go:embed VERSION
 var versionFile string
 
-// Suzu のバージョン
+// Version は Suzu のバージョン
 // VERSION ファイルの末尾の改行がヘルスチェックのレスポンスや -V の出力に混ざらないよう、
 // 前後の空白を取り除いている
 var Version = strings.TrimSpace(versionFile)
