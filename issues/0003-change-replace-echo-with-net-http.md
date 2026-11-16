@@ -3,7 +3,7 @@
 - Created: 2026-11-16
 - Completed: {YYYY-MM-DD}
 - Branch: feature/change-replace-echo-with-net-http
-- Polished: {YYYY-MM-DD}
+- Polished: 2026-11-16
 
 ## 目的
 
