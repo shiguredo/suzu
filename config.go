@@ -4,13 +4,22 @@ import (
 	_ "embed"
 	"fmt"
 	"net/netip"
+	"strings"
 
 	zlog "github.com/rs/zerolog/log"
 	"gopkg.in/ini.v1"
 )
 
+// VERSION ファイルの内容をそのまま埋め込んだもの
+// ファイルの末尾には改行が含まれるため、直接は使わず Version を使うこと
+//
 //go:embed VERSION
-var Version string
+var versionFile string
+
+// Version は Suzu のバージョン
+// VERSION ファイルの末尾の改行がヘルスチェックのレスポンスや -V の出力に混ざらないよう、
+// 前後の空白を取り除いている
+var Version = strings.TrimSpace(versionFile)
 
 const (
 	defaultLogDir  = "."
