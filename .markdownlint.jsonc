@@ -1,0 +1,15 @@
+{
+  "MD004": {
+    "style": "dash",
+  },
+  "MD013": {
+    "line_length": 300,
+    "code_blocks": false,
+  },
+  "MD024": {
+    "siblings_only": true,
+  },
+  // GitHub の alert は種類ごとに blockquote を分け、その間に空行を置く必要があるため無効化する
+  "MD028": false,
+  "MD036": false,
+}
