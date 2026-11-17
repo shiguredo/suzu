@@ -12,8 +12,6 @@
 ## develop
 
 - [CHANGE] HTTP サーバーを echo から標準ライブラリの net/http に切り替える
-  - 末尾スラッシュ付きのパス (/speech/ や /.ok/ など) を 404 にする
-    - Sora の audio_streaming_url や LB のヘルスチェックのパスを末尾スラッシュ付きで設定している場合は、末尾のスラッシュを外す必要がある
   - Prometheus の HTTP メトリクスの名前を変更する
     - echo_requests_total を suzu_http_requests_total に変更する
     - echo_request_duration_seconds を suzu_http_request_duration_seconds に変更する
@@ -56,12 +54,19 @@
       - 以前は、外部サービスから切断されて再接続に失敗した場合などに追記することがあり、原因のエラーの文言を含むこともあった
   - メインサーバーと Exporter のルーティングの細部を変更する
     - GET を受け付けるパス (/.ok と Exporter の /metrics) で、HEAD にも応答する
-    - 登録したパスへの OPTIONS に、204 ではなく 405 を返す
-    - 405 の Allow ヘッダーに OPTIONS を含めず、GET を受け付けるパスでは HEAD を含める
+    - GET を受け付けるパスの OPTIONS と 405 の Allow ヘッダーを、OPTIONS, GET から GET, HEAD, OPTIONS にする
     - //speech のような正規化されていないパスに、404 ではなく正規化したパスへの 307 リダイレクトを返す
       - このときの url ラベルは、正規化したパスとメソッドに一致するルートがあればそのルートのパス、なければ unknown になる
     - パーセントエンコードされたパス (/%73peech など) を、デコードしたパスとしてルートと照合する
   - GET /.ok の pretty クエリによる JSON の整形をやめる
+  - @voluntas
+- [ADD] パスの末尾のスラッシュの除去と、登録したパスへの OPTIONS への応答を、config.ini で無効にできるようにする
+  - 既定ではどちらも有効で、以前と同じく末尾スラッシュ付きのパス (/speech/ など) を末尾スラッシュなしのルートとして受け付け、登録したパスへの OPTIONS に 204 と Allow ヘッダーを返す
+  - 設定項目は次の通り
+    - 末尾スラッシュ付きのパスを末尾スラッシュなしのルートとして受け付けないようにする (末尾スラッシュ付きのパスは 404 になる)
+      - disable_trailing_slash_removal
+    - 登録したパスへの OPTIONS に応答しないようにする (OPTIONS は 405 になり、405 の Allow ヘッダーに OPTIONS を含めない。Exporter にも適用する)
+      - disable_options_response
   - @voluntas
 - [UPDATE] AWS SDK の HTTP クライアントの http.Transport を config.ini で設定可能にする
   - 設定項目は次の通り

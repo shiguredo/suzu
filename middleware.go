@@ -92,9 +92,15 @@ func (w *responseWriter) statusCode() int {
 }
 
 // newMainHandler はメインサーバーのハンドラーを組み立てる
+// trailingSlashRemoval が true の場合は、パスの末尾のスラッシュを取り除いてからルーティングする
 // recover の後でメトリクスとアクセスログを記録するため、panic で 500 を返した場合も両方に反映される
-func newMainHandler(mux *http.ServeMux) http.Handler {
+func newMainHandler(mux *http.ServeMux, trailingSlashRemoval bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// ルーティング、メトリクス、アクセスログより前に末尾のスラッシュを取り除き、以降は取り除いた後のリクエストを使う
+		if trailingSlashRemoval {
+			r = removeTrailingSlash(r)
+		}
+
 		rw := newResponseWriter(w)
 		start := time.Now()
 
@@ -105,6 +111,28 @@ func newMainHandler(mux *http.ServeMux) http.Handler {
 		observeHTTPMetrics(rw, r, latency)
 		writeAccessLog(rw, r, latency)
 	})
+}
+
+// removeTrailingSlash は、パスの末尾のスラッシュを 1 つ取り除いたリクエストを返す
+// Sora の audio_streaming_url や LB のヘルスチェックのパスを末尾スラッシュ付きで設定していても、
+// 末尾スラッシュなしのルートとして受け付けるため
+// パスが "/" の場合と、末尾がスラッシュでない場合は r をそのまま返す
+func removeTrailingSlash(r *http.Request) *http.Request {
+	path := r.URL.Path
+	if len(path) <= 1 || !strings.HasSuffix(path, "/") {
+		return r
+	}
+
+	// ハンドラーは受け取ったリクエストを書き換えてはいけないため、浅いコピーの URL と RequestURI を書き換える
+	r2 := r.WithContext(r.Context())
+	u := *r.URL
+	u.Path = strings.TrimSuffix(path, "/")
+	// RawPath が Path のエンコードとして正しくなくなった場合、URL.EscapedPath は RawPath を使わずに Path から組み立てる
+	u.RawPath = strings.TrimSuffix(u.RawPath, "/")
+	r2.URL = &u
+	// アクセスログの uri は取り除いた後のパスにする
+	r2.RequestURI = u.RequestURI()
+	return r2
 }
 
 // serveWithRecover は next で発生した panic を捕まえ、スタックトレース付きで zerolog に出力する

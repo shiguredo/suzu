@@ -261,6 +261,67 @@ func TestServer(t *testing.T) {
 		assert.Equal(t, "Bad Request\n", string(body))
 	})
 
+	// Sora の audio_streaming_url や LB のヘルスチェックのパスを末尾スラッシュ付きで設定していても受け付ける
+	t.Run("末尾スラッシュ付きのパスを末尾スラッシュなしのルートとして受け付ける", func(t *testing.T) {
+		// /speech/ は /speech のハンドラーに届き、HTTP/1.1 のため 400 になる
+		resp, err := http1Client.Post(mainURL+"/speech/", "application/octet-stream", nil)
+		if err != nil {
+			t.Fatalf("リクエストに失敗した: %v", err)
+		}
+		resp.Body.Close()
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+		// /.ok/ は /.ok のハンドラーに届く
+		resp, err = http1Client.Get(mainURL + "/.ok/")
+		if err != nil {
+			t.Fatalf("リクエストに失敗した: %v", err)
+		}
+		resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	})
+
+	// 登録したパスへの OPTIONS には、受け付けるメソッドを Allow ヘッダーに入れて 204 を返す
+	// メソッドが合わない 405 の Allow ヘッダーにも OPTIONS が入る
+	t.Run("OPTIONS に 204 と Allow ヘッダーを返し、405 の Allow ヘッダーにも OPTIONS を含める", func(t *testing.T) {
+		testCases := []struct {
+			baseURL    string
+			method     string
+			path       string
+			statusCode int
+			allow      string
+		}{
+			{mainURL, http.MethodOptions, "/speech", http.StatusNoContent, "OPTIONS, POST"},
+			// ServeMux は GET のルートを HEAD にも一致させるため、HEAD も含める
+			{mainURL, http.MethodOptions, "/.ok", http.StatusNoContent, "GET, HEAD, OPTIONS"},
+			{mainURL, http.MethodGet, "/speech", http.StatusMethodNotAllowed, "OPTIONS, POST"},
+			// 登録していないパスは 404 のまま
+			{mainURL, http.MethodOptions, "/not-found", http.StatusNotFound, ""},
+			{exporterURL, http.MethodOptions, "/metrics", http.StatusNoContent, "GET, HEAD, OPTIONS"},
+		}
+		for _, tc := range testCases {
+			req, err := http.NewRequestWithContext(t.Context(), tc.method, tc.baseURL+tc.path, nil)
+			if err != nil {
+				t.Fatalf("リクエストの生成に失敗した: %v", err)
+			}
+			resp, err := http1Client.Do(req)
+			if err != nil {
+				t.Fatalf("リクエストに失敗した: %v", err)
+			}
+			body, err := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil {
+				t.Fatalf("レスポンスボディの読み込みに失敗した: %v", err)
+			}
+
+			assert.Equal(t, tc.statusCode, resp.StatusCode, "%s %s のステータスコード", tc.method, tc.path)
+			assert.Equal(t, tc.allow, resp.Header.Get("Allow"), "%s %s の Allow ヘッダー", tc.method, tc.path)
+			if tc.statusCode == http.StatusNoContent {
+				assert.Empty(t, body, "%s %s のボディ", tc.method, tc.path)
+			}
+		}
+	})
+
 	// メトリクスはパッケージで共有するコレクターに記録され、他のテストのリクエストも含まれる
 	// そのため、このサブテストのリクエストの前後で値を取得し、差分で確認する
 	t.Run("Exporter の /metrics から suzu_http_* を取得でき、ラベルの値が制限されている", func(t *testing.T) {
@@ -436,4 +497,58 @@ func TestServerOggFileOutput(t *testing.T) {
 		names = append(names, entry.Name())
 	}
 	assert.Equal(t, []string{"test-session-id-test-connection-id.ogg"}, names)
+}
+
+// disable_trailing_slash_removal と disable_options_response を有効にした場合は、末尾のスラッシュを取り除かず、OPTIONS にも応答しない
+// 既定 (どちらも無効) の挙動は TestServer で確認する
+func TestServerWithTrailingSlashRemovalAndOptionsResponseDisabled(t *testing.T) {
+	config := Config{
+		ListenAddr:                  "127.0.0.1",
+		DisableTrailingSlashRemoval: true,
+		DisableOptionsResponse:      true,
+	}
+
+	s, err := NewServer(&config, "test")
+	if err != nil {
+		t.Fatalf("サーバーの生成に失敗した: %v", err)
+	}
+
+	mainURL := serveForTest(t, s.mainServer)
+	exporterURL := serveForTest(t, s.exporterServer)
+
+	http1Protocols := new(http.Protocols)
+	http1Protocols.SetHTTP1(true)
+	http1Transport := &http.Transport{Protocols: http1Protocols}
+	t.Cleanup(http1Transport.CloseIdleConnections)
+	http1Client := &http.Client{Transport: http1Transport}
+
+	testCases := []struct {
+		baseURL    string
+		method     string
+		path       string
+		statusCode int
+		allow      string
+	}{
+		// 末尾スラッシュ付きのパスはどのルートにも一致しない
+		{mainURL, http.MethodPost, "/speech/", http.StatusNotFound, ""},
+		{mainURL, http.MethodGet, "/.ok/", http.StatusNotFound, ""},
+		// OPTIONS のルートがないため、メソッドが合わない 405 になり、Allow ヘッダーに OPTIONS を含めない
+		{mainURL, http.MethodOptions, "/speech", http.StatusMethodNotAllowed, "POST"},
+		{mainURL, http.MethodGet, "/speech", http.StatusMethodNotAllowed, "POST"},
+		{exporterURL, http.MethodOptions, "/metrics", http.StatusMethodNotAllowed, "GET, HEAD"},
+	}
+	for _, tc := range testCases {
+		req, err := http.NewRequestWithContext(t.Context(), tc.method, tc.baseURL+tc.path, nil)
+		if err != nil {
+			t.Fatalf("リクエストの生成に失敗した: %v", err)
+		}
+		resp, err := http1Client.Do(req)
+		if err != nil {
+			t.Fatalf("リクエストに失敗した: %v", err)
+		}
+		resp.Body.Close()
+
+		assert.Equal(t, tc.statusCode, resp.StatusCode, "%s %s のステータスコード", tc.method, tc.path)
+		assert.Equal(t, tc.allow, resp.Header.Get("Allow"), "%s %s の Allow ヘッダー", tc.method, tc.path)
+	}
 }
