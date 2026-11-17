@@ -11,7 +11,9 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -42,12 +44,15 @@ func NewServer(c *Config, service string) (*Server, error) {
 
 	mux := http.NewServeMux()
 
-	// LB からのヘルスチェック専用 API
-	mux.Handle("GET /.ok", errorHandlerFunc(s.healthcheckHandler))
+	// disable_options_response が有効でなければ、登録したパスへの OPTIONS にも応答する
+	respondToOptions := !c.DisableOptionsResponse
 
-	mux.Handle("POST /speech", s.createSpeechHandler(service, nil))
-	mux.Handle("POST /test", s.createSpeechHandler("test", nil))
-	mux.Handle("POST /dump", s.createSpeechHandler("dump", nil))
+	// LB からのヘルスチェック専用 API
+	handleRoute(mux, http.MethodGet, "/.ok", errorHandlerFunc(s.healthcheckHandler), respondToOptions)
+
+	handleRoute(mux, http.MethodPost, "/speech", s.createSpeechHandler(service, nil), respondToOptions)
+	handleRoute(mux, http.MethodPost, "/test", s.createSpeechHandler("test", nil), respondToOptions)
+	handleRoute(mux, http.MethodPost, "/dump", s.createSpeechHandler("dump", nil), respondToOptions)
 
 	// HTTP/1.1、TLS 上の HTTP/2、HTTP/2 over TCP (h2c) を受け付ける
 	// /.ok は HTTP/1.1 のヘルスチェックにも応答するため、HTTP/1.1 も受け付ける
@@ -60,7 +65,7 @@ func NewServer(c *Config, service string) (*Server, error) {
 
 	s.mainServer = &http.Server{
 		Addr:      net.JoinHostPort(c.ListenAddr, strconv.Itoa(c.ListenPort)),
-		Handler:   newMainHandler(mux),
+		Handler:   newMainHandler(mux, !c.DisableTrailingSlashRemoval),
 		Protocols: protocols,
 		HTTP2: &http.HTTP2Config{
 			MaxConcurrentStreams: int(c.HTTP2MaxConcurrentStreams),
@@ -89,7 +94,7 @@ func NewServer(c *Config, service string) (*Server, error) {
 	exporterMux := http.NewServeMux()
 	// promhttp.Handler は既定のレジストリを公開するため、パッケージの初期化時に登録した HTTP メトリクスと、
 	// go_* / process_* / promhttp_metric_handler_* が出力される
-	exporterMux.Handle("GET /metrics", promhttp.Handler())
+	handleRoute(exporterMux, http.MethodGet, "/metrics", promhttp.Handler(), respondToOptions)
 
 	s.exporterServer = &http.Server{
 		Addr:    net.JoinHostPort(c.ExporterListenAddr, strconv.Itoa(c.ExporterListenPort)),
@@ -164,6 +169,32 @@ func (s *Server) StartExporter(ctx context.Context) error {
 	case err := <-ch:
 		return err
 	}
+}
+
+// handleRoute は method と path のルートに h を登録する
+// respondToOptions が true の場合は、同じ path への OPTIONS に応答するルートも登録する
+// OPTIONS には、受け付けるメソッドを Allow ヘッダーに入れて 204 を返す
+// OPTIONS のルートがあると、メソッドが合わない 405 の Allow ヘッダーにも ServeMux が OPTIONS を含める
+// OPTIONS のルートを path ごとに 1 つ登録するため、同じ path に 2 つ目のメソッドを登録すると ServeMux が重複として panic する
+func handleRoute(mux *http.ServeMux, method, path string, h http.Handler, respondToOptions bool) {
+	mux.Handle(method+" "+path, h)
+	if !respondToOptions {
+		return
+	}
+
+	// ServeMux の 405 の Allow ヘッダーと同じく、メソッドを名前の順に並べる
+	// ServeMux は GET のルートを HEAD にも一致させるため、GET の場合は HEAD も含める
+	allow := []string{method, http.MethodOptions}
+	if method == http.MethodGet {
+		allow = append(allow, http.MethodHead)
+	}
+	slices.Sort(allow)
+	allowHeader := strings.Join(allow, ", ")
+
+	mux.Handle(http.MethodOptions+" "+path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Allow", allowHeader)
+		w.WriteHeader(http.StatusNoContent)
+	}))
 }
 
 func appendCerts(clientCAPath string) (*x509.CertPool, error) {

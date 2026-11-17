@@ -58,6 +58,11 @@ type Config struct {
 	HTTP2MaxReadFrameSize     uint32 `ini:"http2_max_read_frame_size"`
 	HTTP2IdleTimeout          uint32 `ini:"http2_idle_timeout"`
 
+	// 末尾スラッシュ付きのパスを、末尾スラッシュなしのルートとして受け付けないようにするかどうか
+	DisableTrailingSlashRemoval bool `ini:"disable_trailing_slash_removal"`
+	// 登録したパスへの OPTIONS に、204 と Allow ヘッダーを返さないようにするかどうか
+	DisableOptionsResponse bool `ini:"disable_options_response"`
+
 	MaxRetry        int      `ini:"max_retry"`
 	RetryIntervalMs int      `ini:"retry_interval_ms"`
 	RetryTargets    []string `ini:"retry_targets"`
@@ -253,6 +258,8 @@ func ShowConfig(config *Config) {
 	zlog.Info().Bool("https", config.HTTPS).Msg("CONF")
 	zlog.Info().Str("listen_addr", config.ListenAddr).Msg("CONF")
 	zlog.Info().Int("listen_port", config.ListenPort).Msg("CONF")
+	zlog.Info().Bool("disable_trailing_slash_removal", config.DisableTrailingSlashRemoval).Msg("CONF")
+	zlog.Info().Bool("disable_options_response", config.DisableOptionsResponse).Msg("CONF")
 
 	zlog.Info().Bool("exporter_https", config.ExporterHTTPS).Msg("CONF")
 	zlog.Info().Str("exporter_listen_addr", config.ExporterListenAddr).Msg("CONF")

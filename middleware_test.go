@@ -88,6 +88,37 @@ func TestResponseWriter(t *testing.T) {
 	})
 }
 
+// Sora の audio_streaming_url や LB のヘルスチェックのパスに付いた末尾のスラッシュを取り除くことを確認する
+func TestRemoveTrailingSlash(t *testing.T) {
+	testCases := []struct {
+		name       string
+		target     string
+		path       string
+		requestURI string
+	}{
+		{"ルートのパスはそのまま", "/", "/", "/"},
+		{"末尾がスラッシュでないパスはそのまま", "/speech?q=1", "/speech", "/speech?q=1"},
+		{"末尾のスラッシュを取り除き、クエリは残す", "/speech/?q=1", "/speech", "/speech?q=1"},
+		// 取り除くのは 1 つだけ
+		{"末尾のスラッシュが 2 つある場合は 1 つだけ取り除く", "/speech//", "/speech/", "/speech/"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, tc.target, nil)
+			originalPath := req.URL.Path
+			originalRequestURI := req.RequestURI
+
+			got := removeTrailingSlash(req)
+
+			assert.Equal(t, tc.path, got.URL.Path)
+			assert.Equal(t, tc.requestURI, got.RequestURI)
+			// 受け取ったリクエストは書き換えない
+			assert.Equal(t, originalPath, req.URL.Path)
+			assert.Equal(t, originalRequestURI, req.RequestURI)
+		})
+	}
+}
+
 // アダプター (errorHandlerFunc) がハンドラーの返したエラーをヘッダーの送信状況に応じて扱うことを確認する
 func TestErrorHandlerFunc(t *testing.T) {
 	// ヘッダーが未送信の場合、アダプターは httpError 以外のエラーを 500 に変換する
@@ -153,7 +184,7 @@ func TestMainHandler(t *testing.T) {
 	mux.Handle("GET /.ok", errorHandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}))
-	h := newMainHandler(mux)
+	h := newMainHandler(mux, true)
 
 	t.Run("ヘッダー未送信で panic すると 500 を返し、PANIC-RECOVERED とアクセスログの error とメトリクスに記録する", func(t *testing.T) {
 		logs := captureLog(t)
@@ -277,6 +308,21 @@ func TestMainHandler(t *testing.T) {
 			assert.Equal(t, "400 Bad Request", accessLog["error"])
 			// bytes_out は書き込んだエラー応答のボディ ("Bad Request\n") のバイト数
 			assert.Equal(t, float64(len("Bad Request\n")), accessLog["bytes_out"])
+		}
+	})
+
+	// 末尾のスラッシュはルーティングとアクセスログより前に取り除く
+	t.Run("末尾スラッシュ付きのパスは取り除いた後のパスでルーティングし、アクセスログの uri にも反映する", func(t *testing.T) {
+		logs := captureLog(t)
+
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/bad-request/?q=1", nil))
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+		accessLogs := findLogs(logEntries(t, logs), http.MethodPost)
+		if assert.Len(t, accessLogs, 1) {
+			assert.Equal(t, "/bad-request?q=1", accessLogs[0]["uri"])
 		}
 	})
 
