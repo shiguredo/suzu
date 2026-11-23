@@ -3,7 +3,7 @@
 - Created: 2026-11-17
 - Completed: {YYYY-MM-DD}
 - Branch: feature/fix-retry-nil-reader-panic
-- Polished: {YYYY-MM-DD}
+- Polished: 2026-11-23
 
 ## 目的
 
@@ -16,7 +16,7 @@
   - たとえば `AmazonTranscribeV2Handler.Handle` は、`at.Start` が失敗すると `return nil, err` を返す。
 - `(*io.PipeReader).Close` は内部で `r.pipe` を参照するため、nil に対して呼ぶと nil ポインタ参照で panic する。
 - リトライ対象の `SuzuError` (`Retry: true`) を返すのは、`AmazonTranscribeV2.Start` が `StartStreamTranscription` で HTTP ステータスコード 429 を受け取った場合だけ。
-- そのため `max_retry` を 1 以上に設定して Amazon Transcribe が 429 を返すと、リトライは行われず、panic を recover したミドルウェアが 500 を返す (レスポンスヘッダーを送信済みなら 200 のまま終了する)。
+- そのため、`max_retry` が `GetRetryCount()` より大きいときに Amazon Transcribe が 429 を返すと、リトライは行われず panic する。レスポンスヘッダーをまだ送っていなければ、panic を recover した処理が 500 を返す。前の試行でレスポンスヘッダーを送った後であれば、ステータスコードは 200 のまま終了する。
   - アクセスログの error と `PANIC-RECOVERED` のログに `runtime error: invalid memory address or nil pointer dereference` が出る。
 - `max_retry` の既定値は 0 のため、既定の設定では発生しない。
 - echo を使っていた頃から同じコードで、HTTP サーバーの実装とは関係なく発生する。
@@ -25,17 +25,18 @@
 ### 再現手順
 
 1. `max_retry = 1` を設定し、`-service aws` で起動する。
-2. Amazon Transcribe が `StartStreamTranscription` に 429 を返す状況で、音声ストリーミングを開始する。テストでは、`Handle` が `nil` と `&SuzuError{Code: 429, Retry: true}` を返すサービスハンドラーを登録すると再現できる。
+2. Amazon Transcribe が `StartStreamTranscription` に 429 を返す状況で、音声ストリーミングを開始する。
 3. `retry_interval_ms` の経過後に panic する。
 
 ## 設計方針
 
 - リトライのタイマーが発火した分岐の `reader.Close()` を削除する。`Handle` がエラーを返した時点で `reader` は使われておらず、閉じる必要がない。
 - 外部サービスとの接続に成功した後に切断されて再接続する分岐 (`ErrServerDisconnected` の分岐) の `reader.Close()` は、接続に成功した `reader` を閉じているため変えない。
-- リトライ対象のエラーを 1 回返した後に接続に成功するサービスハンドラーを使い、リトライが実行されて結果を受信できることを確認するテストを追加する。
+- この修正の確認に、決めたエラーを返すテスト専用のサービスハンドラーは追加しない。`Handle` が固定の `SuzuError` を返すだけの実装はスタブであり、`AGENTS.md` の「モックやスタブは絶対に利用しないこと」に反する。既存の `ConnectErrorTestHandler` の `Retry` を立てて、この経路のテストに流用もしない。
+- リトライ後に `Handle` が成功したときの結果の送信は、接続成功後の既存の経路であり、この修正では変えない。429 を返すテスト用のサーバーも、この issue では追加しない。
 
 ## 完了条件
 
-- `max_retry` が 1 以上で、`Handle` がリトライ対象の `SuzuError` を返した場合に panic せず、`retry_interval_ms` の経過後に `Handle` が再度呼ばれる。
-- リトライ後に接続に成功した場合、結果をクライアントに送信できる。
-- 上記を確認するテストがある。
+- `max_retry` が `GetRetryCount()` より大きい状態で、`Handle` がリトライ対象の `*SuzuError` を返したとき、panic せず、`retry_interval_ms` の経過後に `Handle` が再度呼ばれる。
+- 再度呼ばれた `Handle` が成功した場合、既存の経路で結果をクライアントに送信できる。
+- 決めたエラーを返すテスト専用のサービスハンドラーと、429 を返すテスト用のサーバーを追加していない。
