@@ -4,6 +4,7 @@
 - Completed: {YYYY-MM-DD}
 - Branch: feature/add-prometheus-metrics
 - Polished: {YYYY-MM-DD}
+- Refreshed: 2026-11-20
 
 ## 目的
 
@@ -11,12 +12,12 @@ Suzu の Prometheus Exporter は HTTP レベルのメトリクスしか公開し
 
 ## 現状
 
-- `server.go` の `NewServer` で `echo-contrib/prometheus` の `NewPrometheus("echo", nil)` を利用している。公開されるのは以下だけ。
-  - `echo_requests_total` / `echo_request_duration_seconds` / `echo_request_size_bytes` / `echo_response_size_bytes`
-  - client_golang のデフォルト Registry による `go_*` / `process_*`
-- `echo-contrib/prometheus` パッケージは Deprecated で、後継は `echo-contrib/echoprometheus`。
-- `/speech` はセッションの間レスポンスを返し続けるストリーミングのため、`echo_request_duration_seconds` のデフォルトバケット (最大 10 秒) ではセッションの継続時間を把握できない。
-- セッションの開始と終了、リトライ (`handler.go` の `createSpeechHandler`)、受信した音声データ (`handler.go` の `readPacket`)、外部サービスからの切断 (`ErrServerDisconnected`) はログにしか出ておらず、メトリクスとして集計されていない。
+- Exporter は `server.go` の `NewServer` で、専用の `http.ServeMux` に `promhttp.Handler()` を `GET /metrics` として登録している。公開されるのは以下だけ。
+  - `metrics.go` の `suzu_http_requests_total` / `suzu_http_request_duration_seconds` / `suzu_http_request_size_bytes` / `suzu_http_response_size_bytes` (ラベルは `code` / `method` / `url`)。メインサーバーのリクエストの終了時に、`middleware.go` の `newMainHandler` が記録する。
+  - client_golang の既定のレジストリと `promhttp.Handler()` による `go_*` / `process_*` / `promhttp_metric_handler_*`
+- `/speech` はセッションの間レスポンスを返し続けるストリーミングのため、`suzu_http_request_duration_seconds` のバケット (`prometheus.DefBuckets`、最大 10 秒) ではセッションの継続時間を把握できない。
+- セッションの開始と終了、リトライ (`handler.go` の `createSpeechHandler`)、外部サービスからの切断 (`ErrServerDisconnected`) はログにしか出ておらず、メトリクスとして集計されていない。
+- 受信した音声データ (`handler.go` の `readPacket`) の量は、ログにもメトリクスにも出ていない。
 
 ## 設計方針
 
@@ -30,7 +31,6 @@ Suzu の Prometheus Exporter は HTTP レベルのメトリクスしか公開し
   - `suzu_upstream_disconnects_total{service}`: 外部サービスから切断された回数
   - `suzu_session_duration_seconds{service}`: セッションの継続時間 (バケットは 10 秒から 1 時間程度)
 - `service` ラベルには `getServiceHandler` に渡される service type (`aws` / `awsv2` / `gcp` / `test` / `dump`) を使う。
-- `echo-contrib/prometheus` が Deprecated であることは認識しておく。`echoprometheus` への移行はメトリクス名 (`echo_*`) が変わり監視側への影響があるため本 issue には含めず、必要になった時点で別 issue とする。
 - 追加したメトリクスの `doc/USE.md` への追記は別 issue とする。
 
 ## 完了条件
