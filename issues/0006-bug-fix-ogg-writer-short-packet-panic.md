@@ -3,7 +3,7 @@
 - Created: 2026-11-20
 - Completed: {YYYY-MM-DD}
 - Branch: feature/fix-ogg-writer-short-packet-panic
-- Polished: {YYYY-MM-DD}
+- Polished: 2026-11-23
 
 ## 目的
 
@@ -28,11 +28,11 @@
 
 ## 設計方針
 
-- `Write` は、code 3 で長さが 2 バイト未満のパケットに対して、panic せずにエラーを返す。
-- `opus2ogg` は `Write` のエラーを、既存の経路と同じく `oggWriter.CloseWithError` で読み手に伝える。外部サービスへの送信が終わり、`createSpeechHandler` の既存のエラー処理で終了する。
-- Go 標準の fuzzing で、任意のペイロードで `Write` が panic しないことを確認する。シードには `{0x03}`、`silentPacket` の値、`{0x00}` を入れる。
+- `Write` は、長さが 0 のペイロードでは `payload[0]` を読まず、長さが 2 バイト未満かつ code が 3 のペイロードでは `payload[1]` を読まず、どちらも panic せずにエラーを返す。長さが 1 以上で code が 0 か 1 か 2 のパケットは、現状どおりエラーにしない。
+- `opus2ogg` は `Write` のエラーを、既存の経路と同じく `oggWriter.CloseWithError` で読み手に伝える。外部サービスへの送信が終わり、`createSpeechHandler` の既存のエラー処理で終了する。長さ 0 のペイロードは `opus2ogg` まで届くことがある。`opus2ogg` 内の `Unmarshal` が長さ 0 を拒否するので、`Write` は呼ばれない。`opus2ogg` と `createSpeechHandler` は変更しない。
+- Go 標準の fuzzing で、任意のペイロードで `Write` が panic しないことを確認する。対象は nil の `*codecs.OpusPacket` ではなく、ペイロードのバイト列であり、長さ 0 を含む。シードには `{0x03}`、`silentPacket` の値、`{0x00}`、空のバイト列を入れる。
 
 ## 完了条件
 
-- 1 バイトで code 3 のパケットを `Write` に渡しても panic せず、エラーが返る。
+- 長さが 0 のパケットと、1 バイトで code 3 のパケットを `Write` に渡しても panic せず、エラーが返る。
 - 上記の単体テストと、任意のペイロードで panic しないことを確認する fuzz テストがある。
