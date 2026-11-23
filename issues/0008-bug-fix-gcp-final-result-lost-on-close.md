@@ -3,7 +3,7 @@
 - Created: 2026-11-20
 - Completed: {YYYY-MM-DD}
 - Branch: feature/fix-gcp-final-result-lost-on-close
-- Polished: {YYYY-MM-DD}
+- Polished: 2026-11-23
 
 ## 目的
 
@@ -20,13 +20,15 @@
 
 ## 設計方針
 
-- 送信用の goroutine は、音声の送信を終えたら `CloseSend` だけを呼ぶ。
-- `client.Close()` は、`Handle` の goroutine が `Recv` の終了を確認した後に呼ぶ。クライアントの所有権を受信側に移す。
+- 送信用の goroutine は、音声の送信を終えたら `stream.CloseSend()` を呼ぶ。`client.Close()` は呼ばない。`r.Close()` はこれまでどおり送信用の goroutine で呼ぶ。
+- `SpeechToText.Start` は `stream` と `client` を返し、`client` の所有権を `Handle` の goroutine に移す。0010 の設計方針にある「送信用の goroutine」は、この変更後は「受信用の goroutine」と読み替える。
+- `Handle` の goroutine は、`client.Close()` を defer で呼ぶ。これにより、`Recv` の終了を確認した場合だけでなく、ctx がキャンセルされた場合や `Recv` がエラーを返した場合も、`client.Close()` が呼ばれる。
 - `Recv` が返す `io.EOF` は正常な終了として扱い、error レベルのログも type: error の結果も出さずに pipe を閉じる。
 - ctx がキャンセルされた場合は、これまでどおりすぐに終了する。
+- テストから接続先を差し替えられるようにする。`SpeechToTextHandler` から `SpeechToText.Start` に `option.ClientOption` を渡せるようにし、テストでは `option.WithEndpoint`、`option.WithoutAuthentication`、`option.WithGRPCDialOption(grpc.WithTransportCredentials(insecure.NewCredentials()))` でローカルの gRPC サーバーを指定する。
 
 ## 完了条件
 
 - 音声の送信を終えた後に GCP が返す結果を、クライアントに送信できる。
 - `Recv` が `io.EOF` を返した場合に、error レベルのログと type: error の結果を出さない。
-- 上記を、ローカルで起動した gRPC サーバーを接続先にしたテストで確認できる。
+- 上記を確認する、ローカルで起動した gRPC サーバーを接続先にしたテストがある。
