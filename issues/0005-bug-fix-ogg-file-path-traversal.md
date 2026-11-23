@@ -3,7 +3,7 @@
 - Created: 2026-11-17
 - Completed: {YYYY-MM-DD}
 - Branch: feature/fix-ogg-file-path-traversal
-- Polished: {YYYY-MM-DD}
+- Polished: 2026-11-23
 
 ## 目的
 
@@ -15,8 +15,8 @@
 - `header.SoraSessionID` と `header.SoraConnectionID` は、`newSoraHeader` がリクエストヘッダーの `sora-session-id` と `sora-connection-id` から取り出した値で、どこでも検証していない。
 - `path.Join` はパスを正規化するため、値に `../` を含めると `ogg_dir` より上のディレクトリを指す。`/` を含めるとサブディレクトリを指す。
 - `os.Create` は既存のファイルを切り詰めて開くため、末尾が `-<sora-connection-id>.ogg` になる既存のファイルを上書きできる。
-- Suzu は、クライアント認証 (`tls_verify_cacert_path`) を設定しない限り、待ち受けに到達できる誰からでもリクエストを受け付ける。
-- `opus2ogg` を呼ぶのは `AmazonTranscribeV2Handler.Handle` と `SpeechToTextHandler.Handle` で、`-service aws` と `gcp` が該当する。
+- Suzu は、`https = true` かつ `tls_verify_cacert_path` を設定している場合を除き、待ち受けに到達できる誰からでもリクエストを受け付ける。
+- `opus2ogg` を呼ぶのは `AmazonTranscribeV2Handler.Handle` と `SpeechToTextHandler.Handle` で、`-service aws`、`awsv2`、`gcp` が該当する。`awsv2` は `aws` と同じハンドラーに登録されている。
 - `opus2ogg` は音声を受信する前に Ogg ファイルを作成するため、外部サービスに接続しなくてもファイルは作成される。
 - `enable_ogg_file_output` の既定値は false。
 
@@ -28,11 +28,11 @@
 
 ## 設計方針
 
-- Ogg ファイル名に使う `sora-session-id` と `sora-connection-id` の値が、パスの区切り文字 (`/` と `\`) と `..` を含まないことを検証する。
-- 検証に失敗した場合は Ogg ファイルを作成せず、`os.Create` が失敗した場合と同じくエラーを返す。
-- 不正な値を送ったときに `ogg_dir` の外にファイルが作成されないことを確認するテストを追加する。
+- `opus2ogg` で、`EnableOggFileOutput` が有効な場合に限り、Ogg ファイル名に使う `sora-session-id` と `sora-connection-id` の値が、パスの区切り文字 (`/` と `\`) と `..` を含まないことを検証する。
+- 検証に失敗した場合は Ogg ファイルを作成せず、`os.Create` が失敗した場合と同じく `nil, err` を返す。
+- `sora-session-id` と `sora-connection-id` のそれぞれに不正な値を含むリクエストを送り、Ogg ファイルが作成されず、エラーが返ることを確認するテストを追加する。
 
 ## 完了条件
 
-- `sora-session-id` または `sora-connection-id` にパスの区切り文字や `..` を含むリクエストで、`ogg_dir` の外にファイルが作成されない。
+- `enable_ogg_file_output = true` のとき、`sora-session-id` または `sora-connection-id` にパスの区切り文字や `..` を含むリクエストで、Ogg ファイルが作成されず、エラーが返る。
 - 上記を確認するテストがある。
