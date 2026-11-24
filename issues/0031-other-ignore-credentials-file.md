@@ -3,7 +3,7 @@
 - Created: 2026-11-20
 - Completed: {YYYY-MM-DD}
 - Branch: feature/fix-ignore-credentials-file
-- Polished: {YYYY-MM-DD}
+- Polished: 2026-11-25
 
 ## 目的
 
