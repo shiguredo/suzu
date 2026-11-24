@@ -1,13 +1,15 @@
-# ルーティングの細部とメトリクスのラベルのテストを追加する
+# ルーティングの細部とメトリクスのラベル、ResponseWriter のラッパーのテストを追加する
 
 - Created: 2026-11-20
 - Completed: {YYYY-MM-DD}
 - Branch: feature/add-routing-and-metrics-label-tests
-- Polished: {YYYY-MM-DD}
+- Polished: 2026-11-25
 
 ## 目的
 
-`CHANGES.md` の `## develop` に書いた、echo から net/http への移行によるルーティングとメトリクスの変化を、テストで固定する。いずれも `http.ServeMux` の実装の細部に依存するため、Go の更新で変わった場合に検出できるようにする。
+`CHANGES.md` の `## develop` に書いた、echo から net/http への移行によるルーティングとメトリクスの変化を、テストで固定する。あわせて、移行で追加した `responseWriter` のラッパーの `Unwrap` と、`CHANGES.md` に明記していない `GET *` の 400 をテストで固定する。
+
+ルーティングの挙動とメトリクスの `url` ラベルは `http.ServeMux` の実装の細部に依存し、`Unwrap` は `http.ResponseController` に依存するため、Go の更新で変わった場合に検出できるようにする。
 
 ## 現状
 
