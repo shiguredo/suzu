@@ -3,7 +3,7 @@
 - Created: 2026-11-20
 - Completed: {YYYY-MM-DD}
 - Branch: feature/update-error-log-identifiers
-- Polished: {YYYY-MM-DD}
+- Polished: 2026-11-25
 
 ## 目的
 
@@ -21,13 +21,20 @@
 ## 設計方針
 
 - 外部サービスとのやりとりのログには、`channel_id`、`connection_id`、取得できる場合は `session_id` を付ける。識別子を付けたサブロガーを作って使い回す。
-- `ErrServerDisconnected` と元のエラーは、別のキーで出力する。
+  - `session_id` は外部サービスのセッション ID (AWS Transcribe の `SessionID`) とし、Sora の `sora-session-id` は使わない。`session_id` が空の場合は付けない。
+- `ErrServerDisconnected` と元のエラーは、別のキーで出力する。`error` には元のエラーを、`server_disconnected` には `ErrServerDisconnected` を出力する。
 - `wrod` を `word` に直す。
-- メッセージを大文字のハイフン区切りに揃える。
-- キーやメッセージの変更はログを集約しているパーサーに影響するため、`CHANGES.md` の `## develop` に記載する。
+- メッセージを持つログのメッセージを、大文字の英字とハイフンだけで構成する形式に揃える。メッセージを持たないログ (`Send()` だけのログ) には、新しいメッセージを追加しない。
+- `retry interrupted` は debug ログのメッセージであると同時に `createSpeechHandler` が返すエラーの文言でもある。debug ログのメッセージだけを `RETRY-INTERRUPTED` に変え、エラーの文言は変えない。
+- キーやメッセージの変更はログを集約しているパーサーに影響するため、`CHANGES.md` の `## develop` に `[CHANGE]` として、変更するキーとメッセージ、およびパーサーへの影響を記載する。担当者の行を含める。
 
 ## 完了条件
 
-- 外部サービスとのやりとりの error レベルのログに、`channel_id` と `connection_id` がある。
+- 外部サービスとのやりとりの error レベルのログに、`channel_id` と `connection_id` がある。`session_id` が取得できる場合は `session_id` もある。
+- `handler.go` の `createSpeechHandler` の `max_retry` が 1 未満のログに、`error` と `server_disconnected` が別々に出力されている。
 - 1 つのログで同じキーを 2 回出力しない。
-- ログのメッセージの書式が揃っている。
+- `wrod` キーが `word` になっている。
+- メッセージを持つログのメッセージが、大文字の英字とハイフンだけで構成されている。メッセージを持たないログには、新しいメッセージを追加していない。
+- `retry interrupted` のエラー文言は変わっていない。
+- `CHANGES.md` の `## develop` に `[CHANGE]` のエントリがあり、変更するキーとメッセージ、およびパーサーへの影響と担当者の行が書かれている。
+- `make test` と CI の staticcheck が通る。
