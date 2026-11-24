@@ -3,7 +3,7 @@
 - Created: 2026-11-20
 - Completed: {YYYY-MM-DD}
 - Branch: feature/fix-aws-http-transport-created-per-stream
-- Polished: {YYYY-MM-DD}
+- Polished: 2026-11-24
 
 ## 目的
 
@@ -23,11 +23,22 @@
 
 ## 設計方針
 
-- Amazon Transcribe のクライアント (または `http.Transport`) は、起動時に 1 回だけ作り、すべてのストリームで共有する。
-- 認証情報の読み込みも起動時に 1 回にする。認証情報の更新は SDK の仕組みに任せる。
-- `aws_http_*` の既定値の扱いは別の issue (aws_profile を設定していない場合の既定値) と整合させる。
+- Amazon Transcribe のクライアントは、Suzu の起動時に 1 回だけ作り、すべてのストリームとリトライで共有する。`AmazonTranscribeV2.Start` は `NewAmazonTranscribeClientV2` を呼ばない。
+- クライアントの生成は `server.go` の `NewServer` で行い、`Server` が参照する `Config` に実行時にだけ設定する非公開のフィールド (例: `awsTranscribeClient *transcribestreaming.Client`) で保持する。`newServiceHandlerFunc` の引数を増やすと 4 つのハンドラーとテストに影響するため、この方法を第一候補とする。
+- `-service` が `aws` または `awsv2` のときだけクライアントを生成し、`gcp` / `test` / `dump` では生成しない。生成に失敗した場合は `NewServer` がエラーを返し、`cmd/suzu/main.go` が Fatal で終了する。
+- `handler.go` の `createSpeechHandler` は `*s.config` を AWS のハンドラーに渡すため、`Config` のフィールドに設定したクライアントが `AmazonTranscribeV2Handler` と `AmazonTranscribeV2` まで渡る。`AmazonTranscribeV2.Start` はそのフィールドを使う。
+- `AmazonTranscribeV2.Start` でクライアントが nil の場合は、`NewServer` を経由しないテストなどのためにエラーを返す。`Config` を直接組み立てて `Handle` を呼ぶテストは、クライアントを設定するか `NewServer` 経由にする。
+- `NewAmazonTranscribeClientV2` はクライアントの組み立てを 1 箇所に保つため残す。`aws_http_*` の既定値の扱いは `issues/0013-bug-fix-aws-http-client-defaults-lost.md` で扱い、この issue では変更しない。0013 の変更とは独立して実装できる。
+- `config.LoadDefaultConfig` に渡す ctx は、起動時の処理のためリクエストの ctx ではなく `context.Background()` にする (`context.TODO()` でも動作は同じ)。`LoadDefaultConfig` は認証情報の取得を遅延するため、起動時に認証情報の取得は行わない。
+- keep-alive が有効な場合、共有した Transport のアイドル接続は次のストリームで再利用する。ストリーム終了時に `CloseIdleConnections` を呼ばない。`aws_http_idle_conn_timeout_sec` (0013 適用後は未設定時の AWS SDK の既定値) で期限切れになる。Suzu のプロセス終了時は OS が閉じるため、明示的に `CloseIdleConnections` を呼ぶ必要はない。
+- `transcribestreaming.Client` と `http.Transport` は複数の goroutine から同時に使えるため、複数のストリームが同時に走っても追加の排他制御は不要である。
+- `NewServer` を `aws` で呼ぶテストは、`t.Setenv` で `HOME` と `AWS_*` を固定し、開発者の `~/.aws` と環境変数に依存しないようにする。
 
 ## 完了条件
 
-- 複数のストリームとリトライで、同じクライアントと Transport が使われる。
-- `aws_http_max_conns_per_host` などの上限が、プロセス全体に対して効く。
+- `-service` が `aws` または `awsv2` のとき、`NewServer` が `NewAmazonTranscribeClientV2` を 1 回だけ呼び、`Server` がそのクライアントを保持する。`AmazonTranscribeV2.Start` と `AmazonTranscribeV2Handler.Handle` のリトライで、同じクライアントと Transport が使われる。
+- `-service` が `gcp` / `test` / `dump` のとき、AWS のクライアントを作らない。
+- `aws_http_max_conns_per_host`、`aws_http_max_idle_conns`、`aws_http_max_idle_conns_per_host` が、共有した 1 つの Transport の設定としてプロセス全体に効く。複数のストリームが同時に走っても、上限が Transport ごとに分かれない。
+- keep-alive が有効な場合、ストリーム終了後に `CloseIdleConnections` を呼ばず、アイドル接続が次のストリームで再利用される。
+- クライアントの生成に失敗した場合、`NewServer` がエラーを返し、起動しない。
+- `NewServer` が保持するクライアントと、`/speech` の AWS ハンドラーに渡る `Config` のクライアントが同じであることを確認するテストがある。
