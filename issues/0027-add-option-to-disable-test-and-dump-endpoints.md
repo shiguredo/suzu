@@ -3,7 +3,7 @@
 - Created: 2026-11-20
 - Completed: {YYYY-MM-DD}
 - Branch: feature/add-option-to-disable-test-and-dump-endpoints
-- Polished: {YYYY-MM-DD}
+- Polished: 2026-11-25
 
 ## 目的
 
@@ -19,12 +19,21 @@
 
 ## 設計方針
 
-- `/test` と `/dump` を登録しないようにする設定 (例: `disable_debug_endpoints`) を追加する。既定ではこれまでどおり登録する。
-- 無効にした場合、`/test` と `/dump` は登録していないパスと同じく 404 になる。
-- `config_example.ini` と `doc/USE.md` に設定を記載し、`CHANGES.md` の `## develop` に `[ADD]` として記載する。
+- `config.go` の `Config` に `DisableDebugEndpoints` (`disable_debug_endpoints`) を追加する。既定値は `false` とし、これまでどおり `/test` と `/dump` を登録する。
+- `server.go` の `NewServer` で、`DisableDebugEndpoints` が `true` の場合は `/test` と `/dump` の `handleRoute` を呼ばない。`handleRoute` はメソッドのルートと OPTIONS のルートを登録するため、両方のルートを登録しない。
+- 無効にした場合、`/test` と `/dump` は登録していないパスと同じく 404 になる。メソッドにかかわらず 404 になり、OPTIONS も 404 になる。
+- `-service` に `test` や `dump` を指定した場合も、`/speech` はこれまでどおりそのハンドラーを使う。設定は `/test` と `/dump` の登録だけを制御する。
+- `config.go` の `ShowConfig` で `disable_debug_endpoints` を出力する。
+- `config_example.ini` に `disable_debug_endpoints` の説明と既定値 (`false`) を追加する。
+- `doc/USE.md` のデバッグ機能の節に、`disable_debug_endpoints` で `/test` と `/dump` を無効にできることと、無効にすると `dump_file` が使われないことを追加する。
+- `CHANGES.md` の `## develop` に `[ADD]` として、設定項目と既定値を記載する (担当者の行を含む)。
+- `server_test.go` に、無効時に `/test` と `/dump` が 404 になることを確認するテストを追加する。既定の挙動は既存の `TestServer` で確認している。
 
 ## 完了条件
 
-- 設定を有効にすると、`/test` と `/dump` が 404 になる。
-- 既定では、これまでどおり `/test` と `/dump` を受け付ける。
+- `disable_debug_endpoints = true` の場合、`/test` と `/dump` へのリクエストが、メソッドにかかわらず 404 になる。
+- `disable_debug_endpoints` が未設定または `false` の場合、これまでどおり `POST /test` と `POST /dump` を受け付ける。
 - 上記を確認するテストがある。
+- `config_example.ini` と `doc/USE.md` に `disable_debug_endpoints` が記載されている。
+- 起動時の `CONF` のログに `disable_debug_endpoints` が出る。
+- `CHANGES.md` の `## develop` に `[ADD]` のエントリがある。
