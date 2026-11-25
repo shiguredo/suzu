@@ -1,13 +1,13 @@
-# CHANGES.md の develop の種別の順序と、echo から net/http への移行の記載を正確にする
+# CHANGES.md の develop の記載とリリース日の書式を規約と実装に合わせる
 
 - Created: 2026-11-20
 - Completed: {YYYY-MM-DD}
 - Branch: feature/fix-changes-develop-section
-- Polished: {YYYY-MM-DD}
+- Polished: 2026-11-25
 
 ## 目的
 
-`CHANGES.md` の `## develop` を shiguredo-changelog の規約に沿わせ、echo から net/http への移行による変化を、運用者が正確に把握できるようにする。
+`CHANGES.md` の `## develop` の記載を shiguredo-changelog の規約と実装に合わせ、リリース済みのセクションのリリース日の書式を規約どおりにする。特に、echo から net/http への移行による変化を、運用者が正確に把握できるようにする。
 
 ## 現状
 
@@ -50,24 +50,25 @@
 - Exporter の TCP keep-alive の間隔が 3 分から Go の既定 (15 秒) になる。
 - Exporter を TLS で待ち受ける場合、HTTP/1.1 のクライアントと ALPN で `http/1.1` を合意するようになる。
 - debug レベルの `FLUSH-FAILED` のログが出る。
-- 起動時の `CONF` のログに `disable_trailing_slash_removal` と `disable_options_response` が出る。
 
-### その他の記載の誤り
+### その他の記載の誤りと記載漏れ
 
 - `[ADD]` の「パスの末尾のスラッシュの除去と、登録したパスへの OPTIONS への応答を」は「への」が重なっている。「以前と同じく」としているが、GET を受け付けるパスの Allow ヘッダーの値とアクセスログの uri は以前と異なる。末尾スラッシュの除去がメインサーバーだけに適用され、Exporter には適用されないことが書かれていない。
+- `[ADD]` の設定項目の追加で、起動時の `CONF` のログに `disable_trailing_slash_removal` と `disable_options_response` が出ることが書かれていない。
 - `[UPDATE] AWS SDK の HTTP クライアントの http.Transport を config.ini で設定可能にする` は、設定項目の追加のため `[ADD]` が妥当である。
 - `[CHANGE] クライアントから取得した音声データの想定サイズが、最大サイズを超えていた場合にエラーにする` に、`audio_streaming_header = true` の場合だけという条件がない。
 - `[CHANGE] ... クライアントに InternalServerError を返す` は、`500 Internal Server Error` と書く。
 
 ## 設計方針
 
-- `## develop` のエントリを CHANGE → ADD → UPDATE → FIX の順に並べ直す。
-- リリース済みのセクションのリリース日の書式を `**リリース日**: YYYY-MM-DD` に直す。
+- `## develop` のメインのエントリを CHANGE → ADD → UPDATE → FIX の順に並べ直す。`### misc` サブセクションはそのまま残し、中のエントリの順序を整える。
+- リリース済みのセクションの既にあるリリース日の書式を `**リリース日**: YYYY-MM-DD` に直す。
 - 移行の `[CHANGE]` の記載を実測の結果に合わせて直し、記載がないものを追記する。
+- 「その他の記載の誤りと記載漏れ」の各項目を直す。`CONF` のログの追加は `[ADD]` の設定項目の追加によるものなので、`[ADD]` に追記する。
 - 運用者向けの記載にする。
 
 ## 完了条件
 
-- `## develop` のエントリが規約の順序で並んでいる。
-- リリース日の書式が規約どおりになっている。
-- 上記の移行の記載の誤りと記載漏れがない。
+- `## develop` のメインのエントリが規約の順序で並び、`### misc` のエントリも規約の順序で並んでいる。
+- 既にあるリリース日の書式が規約どおりになっている。
+- 現状に挙げた記載の誤りと記載漏れがない。
