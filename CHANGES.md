@@ -46,10 +46,13 @@
   - Exporter の内部エラー (TLS ハンドシェイクの失敗など) のログを、標準出力ではなく標準エラー出力に出力する
   - エラー応答を変更する
     - 対象は、/speech などがエラーになった場合と panic した場合、メインサーバーと Exporter で 404 / 405 になった場合
-    - ボディを {"message":"..."} 形式の JSON から text/plain に変更する
+    - ボディは {"message":"..."} 形式の JSON のまま変更しない
       - 400 / 500 のボディは Bad Request / Internal Server Error になり、原因のエラーの文言を含めない
-      - 404 / 405 のボディは 404 page not found / Method Not Allowed になる
-    - X-Content-Type-Options: nosniff ヘッダーを付ける
+      - 404 / 405 のボディは Not Found / Method Not Allowed になる
+        - 以前の 404 は 404 page not found だった
+      - Content-Type は application/json になり、X-Content-Type-Options: nosniff ヘッダーは付けない
+      - アクセスログの bytes_out とメトリクスの suzu_http_response_size_bytes は、ボディのサイズの変化に応じて変わる
+        - 404 / 405 のボディが JSON になるため、以前と値が異なる
     - 外部サービスへの接続に成功した後、結果を 1 つも送信しないままエラーで終了した場合に、送信済みの 200 のレスポンスのボディに {"message":"..."} 形式の JSON を追記しない
       - 以前は、外部サービスから切断されて再接続に失敗した場合などに追記することがあり、原因のエラーの文言を含むこともあった
   - メインサーバーと Exporter のルーティングの細部を変更する

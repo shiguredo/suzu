@@ -122,9 +122,9 @@ func TestRemoveTrailingSlash(t *testing.T) {
 // アダプター (errorHandlerFunc) がハンドラーの返したエラーをヘッダーの送信状況に応じて扱うことを確認する
 func TestErrorHandlerFunc(t *testing.T) {
 	// ヘッダーが未送信の場合、アダプターは httpError 以外のエラーを 500 に変換する
-	// 内部エラーの文言はクライアントに返さず、ステータスコードの文言だけを返す
+	// 内部エラーの文言はクライアントに返さず、ステータスコードの文言だけを JSON で返す
 	// ラッパーを通さずに httptest.ResponseRecorder を直接渡し、アダプターがラッパーを生成する経路も確認する
-	t.Run("ヘッダー未送信で httpError 以外のエラーを返すと内部エラーの文言を含めずに 500 を返す", func(t *testing.T) {
+	t.Run("ヘッダー未送信で httpError 以外のエラーを返すと内部エラーの文言を含めずに JSON で 500 を返す", func(t *testing.T) {
 		rec := httptest.NewRecorder()
 
 		h := errorHandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
@@ -133,8 +133,11 @@ func TestErrorHandlerFunc(t *testing.T) {
 		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/test", nil))
 
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-		assert.Equal(t, "Internal Server Error\n", rec.Body.String())
-		assert.Equal(t, "text/plain; charset=utf-8", rec.Header().Get("Content-Type"))
+		// echo を使用していた頃と同じく、ステータスコードの文言だけを JSON で返す
+		assert.Equal(t, "{\"message\":\"Internal Server Error\"}\n", rec.Body.String())
+		assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+		// http.Error が付けていた nosniff は付けない
+		assert.Empty(t, rec.Header().Get("X-Content-Type-Options"))
 	})
 
 	// createSpeechHandler は外部サービス接続成功後に Flush でヘッダーを送信し、その後エラーを返すことがある
@@ -197,7 +200,8 @@ func TestMainHandler(t *testing.T) {
 		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/panic", nil))
 
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-		assert.Equal(t, "Internal Server Error\n", rec.Body.String())
+		assert.Equal(t, "{\"message\":\"Internal Server Error\"}\n", rec.Body.String())
+		assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 
 		entries := logEntries(t, logs)
 
@@ -306,8 +310,8 @@ func TestMainHandler(t *testing.T) {
 			}
 			// ステータスコードだけのエラーは「400 Bad Request」形式になる
 			assert.Equal(t, "400 Bad Request", accessLog["error"])
-			// bytes_out は書き込んだエラー応答のボディ ("Bad Request\n") のバイト数
-			assert.Equal(t, float64(len("Bad Request\n")), accessLog["bytes_out"])
+			// bytes_out は書き込んだエラー応答のボディ ({"message":"Bad Request"} と改行) のバイト数
+			assert.Equal(t, float64(len("{\"message\":\"Bad Request\"}\n")), accessLog["bytes_out"])
 		}
 	})
 

@@ -95,6 +95,8 @@ func (w *responseWriter) statusCode() int {
 // trailingSlashRemoval が true の場合は、パスの末尾のスラッシュを取り除いてからルーティングする
 // recover の後でメトリクスとアクセスログを記録するため、panic で 500 を返した場合も両方に反映される
 func newMainHandler(mux *http.ServeMux, trailingSlashRemoval bool) http.Handler {
+	router := newJSONErrorRouter(mux)
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// ルーティング、メトリクス、アクセスログより前に末尾のスラッシュを取り除き、以降は取り除いた後のリクエストを使う
 		if trailingSlashRemoval {
@@ -105,12 +107,97 @@ func newMainHandler(mux *http.ServeMux, trailingSlashRemoval bool) http.Handler 
 		start := time.Now()
 
 		// メトリクスが参照する r.Pattern は mux が r に設定するため、r を差し替えずに渡す
-		serveWithRecover(rw, r, mux)
+		// 404 / 405 は mux の代わりに jsonErrorRouter が JSON で返す
+		serveWithRecover(rw, r, router)
 
 		latency := time.Since(start)
 		observeHTTPMetrics(rw, r, latency)
 		writeAccessLog(rw, r, latency)
 	})
+}
+
+// jsonErrorRouter は http.ServeMux の 404 / 405 の応答を JSON に置き換える http.Handler
+// ServeMux はエラー応答を書き換えられる形で返さないため、バッファせずに応答の形式だけを差し替える
+// ハンドラーが書く正常系の応答には関与しないため、ストリーミングの逐次送信にも影響しない
+type jsonErrorRouter struct {
+	mux *http.ServeMux
+}
+
+// newJSONErrorRouter は mux をラップした jsonErrorRouter を生成する
+func newJSONErrorRouter(mux *http.ServeMux) *jsonErrorRouter {
+	return &jsonErrorRouter{mux: mux}
+}
+
+// ServeHTTP は mux にルーティングし、404 / 405 の応答だけを JSON に置き換える
+func (rt *jsonErrorRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Handler はリクエストを書き換えないため、mux が r.Pattern を設定する経路は ServeHTTP のまま使う
+	// マッチしない場合は、404 か 405 の応答を書くハンドラーと空のパターンが返る
+	// 307 のリダイレクトもパターンが空になる場合があるため、404 / 405 のハンドラーかどうかを判定して除外する
+	h, pattern := rt.mux.Handler(r)
+	if pattern != "" {
+		rt.mux.ServeHTTP(w, r)
+		return
+	}
+
+	// 実際に書かれる応答を受け取って、404 / 405 だった場合だけ本文を JSON に差し替える
+	// 404 / 405 は ServeMux が固定の応答を書くため、ヘッダーの Allow もこの結果からそのまま使える
+	rec := &errorResponseRecorder{header: make(http.Header)}
+	h.ServeHTTP(rec, r)
+
+	switch rec.status {
+	case http.StatusNotFound, http.StatusMethodNotAllowed:
+		// 307 のリダイレクトはパターンが空になる場合があるため、ここで除外する
+		for k, v := range rec.header {
+			w.Header()[k] = v
+		}
+		writeJSONError(w, rec.status)
+	default:
+		// 404 / 405 以外の応答は、受け取った内容をそのまま送信する
+		// ハンドラーを通した経路のため、この経路には通常は到達しない
+		rec.writeTo(w)
+	}
+}
+
+// errorResponseRecorder は、ServeMux が 404 / 405 のときに書く応答を受け取る http.ResponseWriter
+// 応答のヘッダー、ステータスコード、本文を一時的に保持する
+// 本文は JSON に差し替えるため使わないが、404 / 405 以外の応答が来た場合に備えて保持する
+type errorResponseRecorder struct {
+	header http.Header
+	status int
+	body   []byte
+}
+
+// Header はレスポンスヘッダーを返す
+func (r *errorResponseRecorder) Header() http.Header {
+	return r.header
+}
+
+// WriteHeader は最初に書かれたステータスコードを記録する
+func (r *errorResponseRecorder) WriteHeader(code int) {
+	if r.status == 0 {
+		r.status = code
+	}
+}
+
+// Write は本文を保持する
+// ステータスコードを書かずに本文を書いた場合は 200 として記録する
+func (r *errorResponseRecorder) Write(b []byte) (int, error) {
+	r.WriteHeader(http.StatusOK)
+	r.body = append(r.body, b...)
+	return len(b), nil
+}
+
+// writeTo は保持したヘッダー、ステータスコード、本文を w に書き出す
+func (r *errorResponseRecorder) writeTo(w http.ResponseWriter) {
+	for k, v := range r.header {
+		w.Header()[k] = v
+	}
+	if r.status == 0 {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(r.status)
+	}
+	_, _ = w.Write(r.body)
 }
 
 // removeTrailingSlash は、パスの末尾のスラッシュを 1 つ取り除いたリクエストを返す
@@ -169,10 +256,31 @@ func serveWithRecover(rw *responseWriter, r *http.Request, next http.Handler) {
 			return
 		}
 		// アダプターと同じく、panic の内容はクライアントに返さず、ステータスコードの文言だけを返す
-		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		writeJSONError(rw, http.StatusInternalServerError)
 	}()
 
 	next.ServeHTTP(rw, r)
+}
+
+// writeJSONError はステータスコードの文言だけを含むエラー応答を JSON で書き出す
+// echo を使用していた頃と同じ形式で、原因のエラー文言はクライアントに返さない
+// ステータスコードに既定型文が無い場合は message を空文字にする
+func writeJSONError(w http.ResponseWriter, code int) {
+	// 本文の長さが変わるため、既存の Content-Length を削除する
+	// 残したまま長さの異なる本文を書くと、net/http が ErrContentLength を返す
+	w.Header().Del("Content-Length")
+	// http.Error で書いた応答を引き継いだ場合に備えて、nosniff も削除する
+	// echo を使用していた頃は付けていなかったため、応答の形式をそろえる
+	w.Header().Del("X-Content-Type-Options")
+	w.Header().Set("Content-Type", "application/json")
+
+	// echo の JSONSerializer と同じく末尾に改行を付ける
+	body := fmt.Sprintf("{\"message\":%q}\n", http.StatusText(code))
+
+	w.WriteHeader(code)
+	// 書き込みのエラーは、Write の後続の処理で検出できないため、ここでは扱わない
+	// クライアントとの切断は、その後の書き込みや読み込みで検出する
+	_, _ = w.Write([]byte(body))
 }
 
 // writeAccessLog はアクセスログを zerolog の info で出力する
@@ -244,7 +352,7 @@ func (h errorHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		code = httpErr.code
 	}
 	// 内部エラーの文言はクライアントに返さず、ステータスコードの文言だけを返す
-	http.Error(rw, http.StatusText(code), code)
+	writeJSONError(rw, code)
 }
 
 // httpError はクライアントに返すステータスコードを持つエラー

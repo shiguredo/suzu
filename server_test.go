@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -253,12 +254,59 @@ func TestServer(t *testing.T) {
 		assert.Equal(t, 1, resp.ProtoMajor)
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
-		// ボディは http.StatusText の文言だけになる
+		// ボディは echo を使用していた頃と同じく、http.StatusText の文言だけを含む JSON になる
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("レスポンスボディの読み込みに失敗した: %v", err)
 		}
-		assert.Equal(t, "Bad Request\n", string(body))
+		assert.Equal(t, "{\"message\":\"Bad Request\"}\n", string(body))
+		assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+		// http.Error が付けていた nosniff は付けない
+		assert.Empty(t, resp.Header.Get("X-Content-Type-Options"))
+	})
+
+	// echo を使用していた頃と同じく、メインサーバーと Exporter の 404 / 405 も JSON で返す
+	// ServeMux の応答を差し替えるため、ハンドラーを通る 400 などのエラー応答と同じ形式になることを確認する
+	t.Run("メインサーバーと Exporter の 404 / 405 を JSON で返す", func(t *testing.T) {
+		testCases := []struct {
+			baseURL    string
+			method     string
+			path       string
+			statusCode int
+			message    string
+		}{
+			{mainURL, http.MethodGet, "/not-found", http.StatusNotFound, "Not Found"},
+			{mainURL, http.MethodGet, "/speech", http.StatusMethodNotAllowed, "Method Not Allowed"},
+			{exporterURL, http.MethodGet, "/not-found", http.StatusNotFound, "Not Found"},
+			{exporterURL, http.MethodGet, "/metrics/not-found", http.StatusNotFound, "Not Found"},
+			// 登録したパスへのメソッド違いは 405 になる
+			{exporterURL, http.MethodPost, "/metrics", http.StatusMethodNotAllowed, "Method Not Allowed"},
+		}
+		for _, tc := range testCases {
+			req, err := http.NewRequestWithContext(t.Context(), tc.method, tc.baseURL+tc.path, nil)
+			if err != nil {
+				t.Fatalf("リクエストの生成に失敗した: %v", err)
+			}
+			resp, err := http1Client.Do(req)
+			if err != nil {
+				t.Fatalf("リクエストに失敗した: %v", err)
+			}
+			body, err := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil {
+				t.Fatalf("レスポンスボディの読み込みに失敗した: %v", err)
+			}
+
+			assert.Equal(t, tc.statusCode, resp.StatusCode, "%s %s のステータスコード", tc.method, tc.path)
+			assert.Equal(t, "application/json", resp.Header.Get("Content-Type"), "%s %s の Content-Type", tc.method, tc.path)
+			assert.Empty(t, resp.Header.Get("X-Content-Type-Options"), "%s %s の nosniff", tc.method, tc.path)
+			// ボディはステータスコードの文言だけを含む JSON で、末尾に改行が付く
+			assert.Equal(t, fmt.Sprintf("{\"message\":%q}\n", tc.message), string(body), "%s %s のボディ", tc.method, tc.path)
+			// 405 の場合は Allow ヘッダーが残る
+			if tc.statusCode == http.StatusMethodNotAllowed {
+				assert.NotEmpty(t, resp.Header.Get("Allow"), "%s %s の Allow ヘッダー", tc.method, tc.path)
+			}
+		}
 	})
 
 	// Sora の audio_streaming_url や LB のヘルスチェックのパスを末尾スラッシュ付きで設定していても受け付ける
