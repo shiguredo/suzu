@@ -97,8 +97,10 @@ func NewServer(c *Config, service string) (*Server, error) {
 	handleRoute(exporterMux, http.MethodGet, "/metrics", promhttp.Handler(), respondToOptions)
 
 	s.exporterServer = &http.Server{
-		Addr:    net.JoinHostPort(c.ExporterListenAddr, strconv.Itoa(c.ExporterListenPort)),
-		Handler: exporterMux,
+		Addr: net.JoinHostPort(c.ExporterListenAddr, strconv.Itoa(c.ExporterListenPort)),
+		// Exporter もエラー応答の形式をメインサーバーとそろえるため、404 / 405 を JSON で返す
+		// アクセスログとメトリクスの計測は行わない
+		Handler: newJSONErrorRouter(exporterMux),
 	}
 
 	zlog.Info().Str("service_type", service).Send()

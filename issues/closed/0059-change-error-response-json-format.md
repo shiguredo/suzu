@@ -1,7 +1,7 @@
 # エラー応答を echo と同じく {"message":"..."} の JSON 形式に戻す
 
 - Created: 2026-11-26
-- Completed: {YYYY-MM-DD}
+- Completed: 2026-11-26
 - Branch: feature/change-error-response-json-format
 - Polished: 2026-11-26
 
@@ -92,3 +92,13 @@ Sora クライアントから見て、`result.message` にステータスコー�
   - 「X-Content-Type-Options: nosniff ヘッダーを付ける」の行を削除する。`nosniff` を付けない方針のため
   - 変更履歴は派生元ブランチとの最終的な差分だけを書く規約のため、中間状態 (text/plain) を経たことは書かない
 - 影響を受ける利用者向けに、`Content-Type` が `application/json` になり、`bytes_out` の値が変わることを書く
+
+## 解決方法 (実装)
+
+- `middleware.go` に `writeJSONError` を追加し、`errorHandlerFunc.ServeHTTP` と `serveWithRecover` の `http.Error` を置き換えた。`Content-Length` と `X-Content-Type-Options` を削除し、`Content-Type: application/json` で `{"message":"<StatusText>"}` と末尾の改行を書き出す
+- 404 / 405 は `jsonErrorRouter` で扱う。`mux.Handler` がパターンを返さない場合に `errorResponseRecorder` で応答を受け取り、ステータスコードが 404 か 405 のときだけ JSON に差し替える。307 のリダイレクトはパターンが空でもステータスコードで除外し、`ServeMux` の応答をそのまま通す
+- `Allow` ヘッダーは `ServeMux` が書いたものを `errorResponseRecorder` から引き継ぐため、`handleRoute` の値を再現する必要がない
+- Exporter は `Server` の `exporterServer` に `Handler: newJSONErrorRouter(exporterMux)` を設定し、メインサーバーと同じ形式にそろえた
+- `middleware_test.go` と `server_test.go` のアサーションを JSON 前提に更新し、メインサーバーと Exporter の 404 / 405 の本文、`Content-Type`、`nosniff` を付けないこと、`Allow` が残ることの検証を追加した
+- `CHANGES.md` の `develop` の「エラー応答を変更する」を、最終的な応答形式に合わせて書き換え、`nosniff` の行を削除した
+- 実サーバーで 400 / 404 / 405 の応答と、307 リダイレクトと Exporter の `/metrics` が変わらないことを確認した。`go test .`、`go vet .`、`staticcheck .`、`gofmt -l` はいずれも問題なし
